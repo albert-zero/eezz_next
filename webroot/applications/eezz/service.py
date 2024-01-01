@@ -77,7 +77,7 @@ class TService:
         self.public_key  = self.private_key.public_key()
 
         if not self.root_path:
-            self.root_path = Path('/home/paul/Projects/github/EezzServer2/webroot')
+            self.root_path = Path(r'C:\Users\alzer\Projects\github\eezz_full\webroot')
         if isinstance(self.root_path, str):
             self.root_path = Path(self.root_path)
 
@@ -93,13 +93,13 @@ class TService:
     def assign_object(self, obj_id: str, a_descr: str, attrs: dict, a_tag: Tag = None) -> None:
         try:
             x_list  = a_descr.split('.')
-            x, y, z = x_list[0], x_list[1], x_list[2:]
+            x, y, z = x_list[0], x_list[1], x_list[2]
         except Exception as ex:
             print(ex)
             logging.error(f'{ex}: Description of an assignment is <Directory>.<Module>.<Class> ')
             return
 
-        x_path = self.application_path / '/'.join(x)
+        x_path = self.application_path / x
 
         if not str(x_path) in sys.path:
             sys.path.append(str(x_path))
@@ -207,19 +207,21 @@ class TQuery:
                 setattr(self, x_key, ','.join(x_val))
 
 
-if __name__ == '__main__':
-    xx_sys = TService(root_path='/home/paul/Projects/github/EezzServer2/webroot')
-    # #xx_sys.assign_object('1', 'examples.directory.TDirView', {'path': '/home/paul/Projects/github/EezzServer2/webroot'}, None)
-    # xx_object, xx_method, xx_tag = xx_sys.get_method("1", 'print')
-    #  xx_method()
-    # xx_object.print()
+# --- Section for module tests
+def test_simple_lark1():
+    print('Test a simple LARK statement. The module TDirView exits: Test assignment')
+    x_service      = TService(root_path=r'C:\Users\alzer\Projects\github\eezz_full\webroot')
+    x_parser       = Lark.open(str(Path(TService().resource_path) / 'eezz.lark'))
 
-    g_parser = Lark.open(str(Path(TService().resource_path) / 'eezz.lark'))
-    dataeezz = 'assign: examples.directory.TDirView(path="."),  post_init: find_devices(), update: this.tbody: Database.table_users.tbody'
-    g_syntax_tree = g_parser.parse(dataeezz)
-    g_tag         = Tag(name='text')
-    g_transformer = TServiceCompiler(g_tag, 'Directory')
-    g_list_json = g_transformer.transform(g_syntax_tree)
-    if isinstance(g_list_json, Tree):
-        print(g_list_json.children)
-    print(g_list_json)
+    x_data_sample1 = 'assign: examples.directory.TDirView(path=".")'
+    x_syntax_tree  = x_parser.parse(x_data_sample1)
+
+    x_parent_tag   = Tag(name='text')
+    x_transformer  = TServiceCompiler(x_parent_tag, 'Directory')
+    x_list_json    = x_transformer.transform(x_syntax_tree)
+    print(x_list_json)
+    pass
+
+
+if __name__ == '__main__':
+    test_simple_lark1()

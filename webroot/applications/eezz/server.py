@@ -32,8 +32,10 @@ from   websocket      import TWebSocket
 from   pathlib        import Path
 from   http_agent     import THttpAgent
 from   service        import TService
+from   blueserv       import TBluetooth
 import time
 import logging
+import json
 
 
 class TWebServer(http.server.HTTPServer):
@@ -84,18 +86,25 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
         x_result     = urlparse(self.path)
         x_query      = parse_qs(x_result.query)
         x_query_path = x_result.path
+        x_resource   = TService().root_path / f'public/.{x_query_path}'
 
         if self.m_client[0] in ('localhost', '127.0.0.1'):
+            # Administration commands possible only on local machine
             if x_query_path == '/system/shutdown':
-                xxx = Thread(target=shutdown_function, args=[self])
-                xxx.start()
-                # self.send_response(404)
-                # self.end_headers()
+                Thread(target=shutdown_function, args=[self]).start()
                 return
             if x_query_path == '/system/eezzyfree':
-                pass
+                # Polling request for an existing connection
+                x_result = TBluetooth().get_coupled_user(x_query)
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(x_result).encode('utf-8'))
+                return
+            if x_query_path == '/eezzyfree':
+                # Assign a user to the administration page
+                TBluetooth().connect(x_query)
 
-        x_resource = TService().root_path / f'public/.{x_query_path}'
         if x_resource.is_dir():
             x_resource = TService().root_path / 'public/index.html'
 

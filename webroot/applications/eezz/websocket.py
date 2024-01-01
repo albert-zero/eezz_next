@@ -29,6 +29,8 @@ import socket
 # from   Crypto.Hash import SHA
 import hashlib
 import base64
+import time
+
 import select
 import json
 
@@ -133,7 +135,7 @@ class TWebSocketClient:
         # - x_response = self.m_agent_client.handle_request(x_json_obj)
         # - self.write_frame(x_response.encode('utf-8'))
 
-    def handle_aync_request(self, request: dict, result: str = ''):
+    def handle_aync_request(self, request: dict):
         with self.m_lock:
             x_response = self.m_agent_client.handle_request(request)
             self.write_frame(x_response.encode('utf-8'))
@@ -301,7 +303,7 @@ class TWebSocket(Thread):
         self.m_clients     = dict()
         self.m_agent_class = a_agent_class
         self.m_running     = True
-        super().__init__(name='WebSocket')
+        super().__init__(daemon=True, name='WebSocket')
     
     def shutdown(self):
         """ Shutdown closes all sockets """
@@ -353,21 +355,52 @@ class TWebSocket(Thread):
                         self.m_clients.pop(x_socket)
 
 
-@dataclass(kw_only=True)
 class TAsyncHandler(Thread):
-    """ Execute method in background task """
-    condition:      Condition = Condition()
-    method:         Callable
-    args:           dict
-    socket_server:  TWebSocketClient
-    request:        dict
-    description:    str
-
-    def __post_init__(self):
-        super().__init__(daemon=True, name=self.description)
+    """ Execute method in background task
+    # method:         Callable            # The method to be called
+    # args:           dict                # The arguments for this method as key/value pairs
+    # socket_server:  TWebSocketClient    # The server to send the result
+    # request:        dict                # The request, which is waiting for the method to return
+    # description:    str                 # The name of the thread """
+    def __init__(self, method: Callable, args: dict, socket_server: TWebSocketClient, request: dict, description: str):
+        super().__init__(daemon=True, name=description)
+        self.method = method
+        self.args   = args
+        self.socket_server = socket_server
+        self.request = request
+        self.description = description
 
     def run(self):
-        x_result = self.method(self.args)
-        self.socket_server.handle_aync_request(self.request, x_result)
-        with self.condition:
-            self.condition.notify_all()
+        self.request['result'] = self.method(**self.args)
+        self.socket_server.handle_aync_request(self.request)
+
+
+# ---- Module test section:
+def test_tcm():
+    """ simulate a time consuming method (tcm)"""
+    for i in range(10):
+        time.sleep(1)
+        print('.', end='')
+    print('')
+
+
+class TestSocketServer(TWebSocketClient):
+    """ Simulate a request handler, waiting for a method to finish"""
+    def handle_aync_request(self, request: dict):
+        print(request)
+
+
+def test_async_hadler():
+    """ Test for TAsyncHandler thread """
+    print('Test TAsyncHandler: async method call and socket server output \n')
+    x_req    = {'test': 'threads'}
+    x_ss     = TestSocketServer(a_client_addr=('',), a_web_addr=0, a_agent=TWebSocketAgent)
+    x_thread = TAsyncHandler(method=test_tcm, args={}, socket_server=x_ss, request=x_req, description='test')
+    x_thread.start()
+    print('Main thread waiting for the method to return')
+    x_thread.join()
+
+
+if __name__ == '__main__':
+    test_async_hadler()
+

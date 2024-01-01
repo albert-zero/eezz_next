@@ -24,49 +24,7 @@ from websocket import TWebSocketAgent
 from service   import TService, TServiceCompiler, TTranslate
 from lark      import Lark, UnexpectedCharacters, Tree
 from Crypto.Hash  import SHA256
-
-
-class TFile:
-    """ Class to be used as handle for file download """
-    def __init__(self, name: str, size: int, chunk_size: int):
-        """  Class handles download of files
-        :param name: Name of the file
-        :param size: Size in bytes on disc
-        :param chunk_size: Chunk of bytes transmitted in one request. Constant ip to the last
-        """
-        self.name        = name
-        self.size        = size
-        self.chunk_size  = chunk_size
-        self.progress    = 0
-        self.transferred = 0
-        self.chunk_count = divmod(size, chunk_size)[0] + 1
-        self.hash_chain  = ['' for x in range(self.chunk_count)]
-
-    def write_chunk(self, raw_data: Any, sequence_nr: int):
-        """ Write constant chunks of raw data to file. The last chunk might be smaller
-        :param raw_data: Raw chunk of data
-        :param sequence_nr: Sequence number, counting the number of chunks and could re-arrange segments
-        """
-        x_hash        = SHA256.new()
-        x_offset      = sequence_nr * self.chunk_size
-        x_chunk_size  = min(self.chunk_size, self.size - x_offset)
-        self.progress = math.floor(100.0 * (x_offset + x_chunk_size) / self.size)
-
-        with open(self.name, "r+b") as x_out:
-            # Accept any chunk any time
-            self.transferred += x_chunk_size
-            x_data_slice      = raw_data[:x_chunk_size]
-            x_memory_map      = mmap.mmap(x_out.fileno(), 0)
-            x_memory_view     = memoryview(x_memory_map)
-            x_memory_slice    = x_memory_view[x_offset: x_offset + x_chunk_size]
-            x_memory_slice[:] = x_data_slice
-
-            x_memory_slice.release()
-            x_memory_view.release()
-            x_memory_map.close()
-
-            x_hash.update(raw_data)
-            self.hash_chain[sequence_nr] = base64.b64encode(x_hash.digest()).decode('utf-8')
+from filesrv  import  TFile, TEezzFile
 
 
 class THttpAgent(TWebSocketAgent):
@@ -131,6 +89,12 @@ class THttpAgent(TWebSocketAgent):
         x_update = dict()
 
         if x_event['initialize']:
+            if request_data['type'] == 'eezz':
+                # Create loader.TEezzFile object
+                # self.map_downloads['name-preview']  = TEezzFile.preview_file
+                # self.map_downloads['name-document'] = TEezzFile.document_file
+                pass
+
             self.map_downloads['name'] = TFile(x_event['name'], x_event['chunk_size'])
 
         x_file   = self.map_downloads['name']
@@ -381,4 +345,3 @@ if __name__ == '__main__':
         print(xx_str)
 
     print('done')
-    

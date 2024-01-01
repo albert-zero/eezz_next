@@ -8,12 +8,14 @@
 
 """
 import inspect
+import queue
 from   pathlib import Path
 import logging
 import linecache
 import os
 import ctypes
 import select
+from   queue           import Queue
 from   threading       import Thread, Lock, Condition
 from   table           import TTable, TTableRow
 from   service         import singleton
@@ -35,6 +37,7 @@ from   enum             import Enum
 import gettext
 from   database         import TMobileDevices
 from   dataclasses      import dataclass
+from   typing           import Tuple, Any, Callable
 
 _ = gettext.gettext
 
@@ -69,13 +72,27 @@ class TBluetooth(TTable):
         # noinspection PyArgumentList
         super().__init__(column_names=['Address', 'Name'], title='bluetooth devices')
         self.m_lock        = Lock()
-        self.bt_service     = TBluetoothService()
         self.easy_free_lock_thread: Thread | None = None
         self.easy_free_scan_thread: Thread | None = None
 
         self.easy_free_scan_thread = TEezzyFreeScan()
         self.easy_free_scan_thread.start()
-        self.couped_address = None
+        self.condition = Condition()
+        self.bt_service_threads = dict()
+        self.bt_credentials = None
+
+    def connect(self, credentials: dict) -> None:
+        """ Connect to existing setup. If the credentials are not sufficient, we just ignore the call
+        :param credentials: Dictionary with entry 'sid' and 'name' as list of just one entry
+        """
+        try:
+            self.bt_credentials = credentials
+            x_sid  = credentials['sid']
+            x_rows = TMobileDevices().get_visible_rows(filter_column=('CSid', x_sid[0]))
+            if x_rows:
+                self.bt_credentials['address'] = x_rows[0].get_value('CAddr')
+        except (KeyError, TypeError):
+            self.bt_credentials = None
 
     def find_devices(self) -> None:
         """ Is called frequently by scan_thread to show new devices in range. All access to the list
@@ -88,33 +105,43 @@ class TBluetooth(TTable):
             for x_item in x_result:
                 x_address, x_name = x_item
                 self.append([x_address, x_name])
-                self.do_eezzyfree(x_address)
-            self.do_sort(1)
+                self.start_bluetooth(x_address)
+            self.do_sort(0)
+            with self.condition:
+                self.condition.notify_all()
 
-    def do_eezzyfree(self, address: str) -> None:
+    def start_bluetooth(self, address: str) -> bool:
         """  Check if the connection to device already exists, which is ensured by a running eezzy-free thread, which
         sends frequently a PING request.
         :param address: The address to connect to if not already done
         """
-        if not TMobileDevices().do_find('CAddr', address):
-            return
-        if not (self.easy_free_lock_thread and self.easy_free_lock_thread.is_alive()):
-            self.couped_address = address
-            self.easy_free_lock_thread = TEezzyFree(address)
-            self.easy_free_lock_thread.start()
+        if self.bt_credentials is None or self.bt_credentials['address'] != address:
+            return False
 
-    def get_coupled_user(self, sid: str = None) -> dict | None:
-        """
-        :param sid: The SID to crosscheck the current connection
+        x_thread = self.bt_service_threads.get(address)
+        if not (x_thread and x_thread.is_alive()):
+            x_thread = TBtQueueService(address)
+            x_thread.start()
+            self.bt_service_threads[address] = x_thread
+        return True
+
+    def get_coupled_user(self, credentials: dict) -> dict | None:
+        """ Called by external process to unlock workstation
+        :param credentials: The SID to crosscheck the current connection
         :return: The password to unlock the workstation
         """
-        if not self.couped_address:
+        if not self.bt_credentials or \
+                not self.bt_credentials.get('address') or \
+                not self.bt_credentials['sid'] == credentials['sid']:
             return {'result': {'code': 500}}
 
-        x_row = TMobileDevices().get_couple(self.couped_address)
+        x_address = self.bt_credentials['address']
+        x_row     = TMobileDevices().get_couple(x_address)
         # ['CAddr', 'CDevice', 'CSid', 'CUser', 'CAddr', 'CVector', 'CKey']
-        x_addr, x_device, x_sid, x_user, x_sid, x_vector64, x_rsa_key = x_row.get_values()
+        x_addr, x_device, x_sid, x_user, x_sid, x_vector64, x_rsa_key = x_row.get_values_list()
         # todo check x_sid == sid
+        # - if the lock daemon is hanging on the wrong mobile, this is the time to correct the setup
+        #
 
         x_rsa_key = RSA.importKey(x_rsa_key)
         x_vector  = base64.b64decode(x_vector64)
@@ -149,7 +176,14 @@ class TBluetooth(TTable):
             return {"return": {"code": 1120, "value": x_ex}}
 
     def set_coupled_user(self, device_address: str, device_name: str, user: str, sid: str, password: str) -> dict:
-        """ Stores the user password on mobile device
+        """ Stores the user password on mobile device. The password is encrypted and the key is stored in the
+        windows registry.
+        :param device_address: Address of the mobile device as returned by find_devices
+        :param device_name: Name of the mobile as returned by find_address
+        :param user: Name of the user in the windows registry
+        :param sid: SID is the user-id stored with the user in the registry
+        :param password: Password will be encrypted and stored on device for unlock workstation
+        :return: EEZZ Confirmation message as dict
         """
         x_vector     = Random.new().read(16)
         x_vector64   = base64.b64encode(x_vector)
@@ -168,7 +202,7 @@ class TBluetooth(TTable):
         x_priv_key    = x_rsa_key.exportKey()
         x_pub_key     = x_rsa_key.publickey().exportKey().decode('utf8')
         x_pub_key_str = ''.join([xLine for xLine in x_pub_key.split('\n') if not ('----' in xLine)])
-        x_response    = self.bt_service.send_request(device_address, {"command": "SETUSR", "args": [sid, x_pwd_encr64, x_pub_key_str]})
+        x_response    = self.bluetooth_request(device_address, {"command": "SETUSR", "args": [sid, x_pwd_encr64, x_pub_key_str]})
 
         # insert the public key into local database
         if x_response['return']['code'] == 200:
@@ -190,7 +224,6 @@ class TBluetooth(TTable):
         :return:         Status message
         """
         # get coupled user for a given address:
-        TMobileDevices()
         if not email or not iban or not password or not alias:
             x_response = {"return": {"code": ReturnCode.ATTRIBUTES.value, "value": "mandatory fields missing"}}
             return x_response
@@ -200,45 +233,48 @@ class TBluetooth(TTable):
         x_request  = {"command": "Register",
                       "args":  [x_hash_md5.hexdigest(), ''],
                       "TUser": {"CEmail": email, "CNameAlias": alias, "CNameFirst": fname, "CNameLast": lname, "CIban": iban}}
-        x_response = self.bt_service.send_request(x_address, x_request)
-        x_response['address'] = x_address
-
+        x_response = self.bluetooth_request(address=x_address, command=x_request)
         if x_response['return']['code'] == 200:
             # self.mDatabase.setSim(x_address, x_response['TDevice']['CSim'])
             x_response['return']['args'] = [_('Reply to verification E-Mail to accomplish registration')]
         return x_response
 
-    def get_eezz_key(self):
-        """ Get the private key from selected device """
-        if self.couped_address == None:
-            return {'result': {'code': 500, 'value': 'device out of range'}}
-        x_response = self.bt_service.send_request(self.couped_address, {"command": "GETKEY", "args": []})
-        x_response['address'] = self.couped_address
+    def bluetooth_request(self, address, command: dict) -> dict:
+        """ launch request to the mobile device like {"command": "GETKEY", "args": []} """
+        x_thread = self.bt_service_threads.get(address)
+        if not (x_thread and not x_thread.is_alive()):
+            return {'return': {'code': 500}}
+
+        x_thread.request_queue.put(command, block=True)
+        x_response = x_thread.response_queue.get(block=True)
         return x_response
 
-    def get_visible_rows(self, get_all=False) -> list:
+    def get_visible_rows(self, get_all=False, filter_column=Tuple[str, Any]) -> list:
         """ thread save access to the table entries
-        :return: all table rows
+        :param filter_column: Filter for a named column
+        :param get_all: Get more elements than visible_rows if set to True
+        :return: All table rows in the view
         """
         with self.m_lock:
-            return super().get_visible_rows(get_all=True)
+            return super().get_visible_rows(get_all=True, filter_column=filter_column)
 
 
 @singleton
 class TUserAccount(TTable):
-    """  """
-    def __init__(self, path: str):
+    """ Read the registry for local users """
+    def __init__(self):
+        """ Setup the table """
         # noinspection PyArgumentList
         super().__init__(column_names=['User', 'SID'], title='Users')
-        self.m_hostname = str()
         self.read_windows_registry()
         self.lock = Lock()
 
     def read_windows_registry(self):
-        try:
-            x_profile_list_hdl = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList')
-
-            for i in range(15):
+        x_profile_list_hdl = None
+        x_tcp_ip_hdl       = None
+        x_profile_list_hdl = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList')
+        for i in range(15):
+            try:
                 x_sid         = winreg.EnumKey(x_profile_list_hdl, i)
                 x_profile_key = winreg.OpenKey(x_profile_list_hdl, x_sid)
 
@@ -249,26 +285,37 @@ class TUserAccount(TTable):
                 if x_sid_person[1] != 21:
                     continue
 
-                x_parts       = x_image_path[0].split(os.sep)
-                x_user        = x_parts[-1]
+                x_parts = x_image_path[0].split(os.sep)
+                x_user  = x_parts[-1]
 
                 self.append([x_user, x_sid])
-                x_tcp_ip_hdl    = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters')
-                x_hostname      = winreg.QueryValueEx(x_tcp_ip_hdl, 'hostname')
-                self.m_hostname = x_hostname[0]
-        except OSError:
-            return
+                # x_tcp_ip_hdl    = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters')
+                # x_hostname      = winreg.QueryValueEx(x_tcp_ip_hdl, 'hostname')
+                # self.m_hostname = x_hostname[0]
+            except (OSError, FileNotFoundError) as ex:
+                # todo log message from exception
+                continue
+        if x_profile_list_hdl:
+            x_profile_list_hdl.Close()
 
     def do_select(self, row_id: str) -> TTableRow | None:
+        """ Overwrite do_select to be thread save
+        :param row_id: The key to search for
+        :return: The row with the row_id or None, if not found
+        """
         with self.lock:
             return super().do_select(row_id)
 
     def get_selected_row(self) -> TTableRow | None:
+        """ Access the results of previous do_select
+        :return: The selected row
+        """
         with self.lock:
-            return super().get_selected_row()
+            return self.selected_row
 
 
 class TEezzyFreeScan(Thread):
+    """ Threads scans bluetooth devices in range and TBluetooth tries to couple known addresses """
     def __init__(self):
         super().__init__(daemon=True, name='EEzzyFreeScan')
 
@@ -278,76 +325,113 @@ class TEezzyFreeScan(Thread):
             time.sleep(2)
 
 
-class TEezzyFree(Thread):
+class TBtQueueService(Thread):
+    """ Thread queues requests to bluetooth device. This allows to intermix the frequent automatic requests
+    with user commands
+    Usage: put a request to the request_queue and wait for answer in the response queue
+    All requests have a timeout, so there will be no dead-lock with blocking access to the queues """
     def __init__(self, address: str):
         super().__init__(daemon=True, name='EezzyFreeLock')
-        self.m_address = address
-        self.m_service = TBluetoothService()
+        self.address        = address
+        self.bt_service     = TBluetoothService(address)
+        self.condition      = Condition()
+        self.request_queue  = Queue()
+        self.response_queue = Queue()
+        self.eezzy_free     = False
 
     def run(self):
+        if not self.bt_service.connected:
+            return
+
         while True:
-            x_response = self.m_service.send_request(self.m_address, {'command': 'PING'})
-            if x_response['return']['code'] != 200 and x_response['return']['code'] != 100:
-                ctypes.windll.user32.LockWorkStation()
-                TBluetooth().coupled_address = None
-                break
-            time.sleep(2)
+            try:
+                x_req = self.request_queue.get(block=True, timeout=4)
+                x_res = self.bt_service.send_request(x_req)
+                x_res['address'] = self.address
+                self.response_queue.put(x_res)
+                self.response_queue.task_done()
+            except queue.Empty:
+                # Ping if the device is still in range and lock workstation, if eezzy-free is active
+                if self.eezzy_free:
+                    x_response = self.bt_service.send_request({'command': 'PING'})
+                    if x_response['return']['code'] != 200 and x_response['return']['code'] != 100:
+                        ctypes.windll.user32.LockWorkStation()
+                        break
 
 
-@singleton
+@dataclass(kw_only=True)
 class TBluetoothService:
-    def __init__(self):
-        self.eezz_service = "07e30214-406b-11e3-8770-84a6c8168ea0"
-        self.m_lock       = Lock()
-        self.bt_socket    = None
+    """ The TBluetoothService handles a connection for a specific mobile given by bt_address """
+    eezz_service: str = "07e30214-406b-11e3-8770-84a6c8168ea0"
+    m_lock: Lock      = Lock()
+    bt_socket         = None
+    bt_service: list  = None
+    bt_address        = None
 
-    def send_request(self, address: str, message: dict) -> dict:
+    def __init__(self, address):
+        self.connected  = False
+        self.bt_address = address
+        self.open_connection()
+
+    def open_connection(self) -> bool:
+        if self.connected:
+            return True
+        self.bt_service = bluetooth.find_service(uuid=self.eezz_service, address=self.bt_address)
+        if self.bt_service:
+            self.bt_socket  = BluetoothSocket(bluetooth.RFCOMM)
+            self.bt_socket.connect((self.bt_socket[0]['host'], self.bt_socket[0]['port']))
+            self.connected  = True
+        return self.connected
+
+    def send_request(self, message: dict) -> dict:
+        if not self.open_connection():
+            return {"return": {"code": 500, "value": f'Could not connect to EEZZ service on {self.bt_address}'}}
+
         try:
             with self.m_lock:
-                # Connect to the selected bluetooth device
-                x_service = bluetooth.find_service(uuid=self.eezz_service, address=address)
-                x_socket  = BluetoothSocket(bluetooth.RFCOMM)
-                x_timeout: float = 0.4
-
-                if not x_service:
-                    return {"return": {"code": ReturnCode.BT_SERVICE, "value": f'EEZZ service not acitve on {address}'}}
-                x_socket.connect((x_service[0]['host'], x_service[0]['port']))
-
+                x_timeout: float = 1.0
                 # Send request: Wait for writer and send message
-                x_rd, x_wr, x_err = select.select([], [x_socket], [x_socket], x_timeout)
+                x_rd, x_wr, x_err = select.select([], [self.bt_socket], [], x_timeout)
                 if not x_wr:
-                    x_socket.close()
-                    return {"return": {"code": ReturnCode.TIMEOUT, "value": f'EEZZ service timeout on {address}'}}
+                    return {"return": {"code": ReturnCode.TIMEOUT, "value": f'EEZZ service timeout on {self.bt_address}'}}
 
                 for x_writer in x_wr:
                     x_writer.send(json.dumps(message).encode('utf8'))
                     break
 
                 # receive an answer
-                x_rd, x_wr, x_err = select.select([x_socket], [], [x_socket], x_timeout)
+                x_rd, x_wr, x_err = select.select([self.bt_socket], [], [self.bt_socket], x_timeout)
                 for x_error in x_err:
-                    x_error.close()
                     return {"return": {"code": 514, "value": ''}}
 
                 for x_reader in x_rd:
                     x_result   = x_reader.recv(1024)
                     x_result   = x_result.decode('utf8').split('\n')[-2]
-                    x_reader.close()
                     return json.loads(x_result)
 
-                return {"return": {"code": ReturnCode.TIMEOUT, "value": f'EEZZ service timeout on {address}'}}
+                return {"return": {"code": ReturnCode.TIMEOUT, "value": f'EEZZ service timeout on {self.bt_address}'}}
         except OSError as xEx:
-            x_socket.close()
+            self.connected = False
+            self.bt_socket.close()
             return {"return": {"code": 514, "value": xEx}}
 
 
+# --- Section for module test
+def test_user_table():
+    """ Test access to the windows registry """
+    x_users = TUserAccount()
+    x_users.print()
+
+
+def test_bluetooth_table():
+    """ Test the access to the bluetooth environment """
+    x_users = TBluetooth()
+    with x_users.condition:
+        x_users.condition.wait()
+    x_users.print()
+
+
 if __name__ == '__main__':
-    """ Main entry point for mdule tests
-    """
-    frameinfo = inspect.getframeinfo(inspect.currentframe())
-    x_path = Path(frameinfo.filename)
-
-    print(f'File: {x_path.stem}, {frameinfo.lineno}')
-    print(TMessage().message[1000])
-    exit()
-
+    """ Main entry point for module tests """
+    test_user_table()
+    test_bluetooth_table()
