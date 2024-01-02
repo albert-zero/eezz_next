@@ -141,7 +141,8 @@ class TServiceCompiler(Transformer):
         self.qualified_string = lambda item: '.'.join([str(x) for x in item])
         self.list_updates     = lambda item: list(itertools.accumulate(item, lambda a, b: a | b))[-1]
         self.list_arguments   = lambda item: list(itertools.accumulate(item, lambda a, b: a | b))[-1]
-        self.update_section   = lambda item: {'update': item[0]}
+        self.update_section   = lambda item: {'update':   item[0]}
+        self.download         = lambda item: {'download': {'document': item[0].children[0], 'file': item[1].children[0]}}
         self.update_item      = lambda item: {item[0]: item[1]} if len(item) == 2 else {item[0]: item[0]}
         self.assignment       = lambda item: {item[0]: item[1]}
         self.format_string    = lambda item: f'{{{".".join(item)}}}'
@@ -208,20 +209,22 @@ class TQuery:
 
 
 # --- Section for module tests
-def test_simple_lark1():
-    print('Test a simple LARK statement. The module TDirView exits: Test assignment')
+def test_parser(source: str):
+    print(f'\ntest parser: {source}')
     x_service      = TService(root_path=r'C:\Users\alzer\Projects\github\eezz_full\webroot')
     x_parser       = Lark.open(str(Path(TService().resource_path) / 'eezz.lark'))
-
-    x_data_sample1 = 'assign: examples.directory.TDirView(path=".")'
-    x_syntax_tree  = x_parser.parse(x_data_sample1)
-
+    x_syntax_tree  = x_parser.parse(source)
     x_parent_tag   = Tag(name='text')
     x_transformer  = TServiceCompiler(x_parent_tag, 'Directory')
     x_list_json    = x_transformer.transform(x_syntax_tree)
-    print(x_list_json)
-    pass
+    if type(x_list_json) is Tree:
+        print( list(itertools.accumulate(x_list_json.children, lambda a, b: a | b))[-1] )
+    else:
+        print(x_list_json)
 
 
 if __name__ == '__main__':
-    test_simple_lark1()
+    test_parser(source="""assign:   examples.directory.TDirView(path=".")""")
+    test_parser(source="""download: document(name=test1, author=albert), files( main=main, prev=prev )""")
+
+

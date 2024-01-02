@@ -5,10 +5,11 @@
                   | "assign"    ":" function_call             -> table_assignment
                   | "update"    ":" list_updates              -> update_section
                   | "post_init" ":" function_call             -> post_init
+                  | "download"  ":" document "," files        -> download
                   | string      ":" string                    -> template_section
 
-?download         : function_call, [ file (", " file )* ]     -> file_download
-file_descr        : "file"      ":" string
+document          : "document"  "(" list_arguments ")"
+files             : "files"     "(" list_arguments ")"
 
 list_updates      : [ update_item  ("," update_item  )* ]
 update_item       : qualified_string "=" qualified_string
