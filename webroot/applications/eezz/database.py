@@ -9,12 +9,23 @@
     
 """
 import sqlite3
-from   Crypto.Hash  import MD5
-from   service      import TService, singleton
-from   dataclasses  import dataclass
-from   table        import TTable, TNavigation, TTableRow
-from   typing       import Tuple, Any, List
-from   pathlib      import Path
+import base64
+import uuid
+import json
+
+from   Crypto.Signature import PKCS1_v1_5
+from   Crypto.Hash      import MD5, SHA1, SHA256
+from   Crypto.Cipher    import AES
+from   Crypto           import Random
+
+from   service          import TService, singleton
+from   dataclasses      import dataclass
+from   table            import TTable, TNavigation, TTableRow
+from   typing           import Tuple, Any, List
+from   pathlib          import Path
+from   filesrv          import TEezzFile, TFileCompress
+from   threading        import Thread
+from   queue            import Queue
 
 
 @dataclass(kw_only=True)
@@ -108,64 +119,12 @@ class TDatabaseTable(TTable):
         return super().get_visible_rows(get_all=get_all, filter_column=filter_column)
 
 
-@singleton
-@dataclass(kw_only=True)
-class TMobileDevices(TDatabaseTable):
-    column_names: List[str] = None
-
-    def __post_init__(self):
-        self.primary_key_inx = 0
-        self.title            = 'TUser'
-        self.column_names     = ['CAddr', 'CDevice', 'CSid', 'CUser', 'CVector', 'CKey']
-        self.statement_create = """
-            create table if not exists 
-                {table} ({0} text PRIMARY KEY, {1} text, {2} text, {3} text, {4} text, {5} text) """.format(table=self.title, *self.column_names)
-        self.statement_select = """ select * from  TUser """
-        self.statement_count  = """ select count(*) as Count from {table} """.format(table=self.title)
-        self.statement_insert = """ insert or replace into {table} ({0}, {1}, {2}, {3}, {4}, {5}) 
-                                        values (:address, :device, sid, :user, :vector, :key)""".format(table=self.title, *self.column_names)
-        super().__post_init__()
-        super().db_create()
-
-    def get_couple(self, address: str):
-        if not self.is_synchron:
-            super().get_visible_rows(get_all=True)
-        return super().do_select(row_id=address)
-
-
-@singleton
-@dataclass(kw_only=True)
-class TDocuments(TDatabaseTable):
-    column_names: List[str] = None
-
-    def __post_init__(self):
-        self.primary_key_inx  = 1
-        self.title            = 'TDocuments'
-        self.column_names     = ['CID', 'CKey', 'CAddr', 'CTitle', 'CDescr', 'CLink', 'CStatus', 'CAuthor']
-        self.statement_create = """ 
-            create table if not exists 
-                {table} ({0} text not null, {1} text not null, {2} text, {3} text, {4} text, {5} text, {6} text, {7} text, 
-                    PRIMARY KEY ( {0}, {1} ))""".format(table=self.title, *self.column_names)
-        self.statement_select = """ select * from {table}""".format(table=self.title)
-        self.statement_insert = """ 
-            insert or replace into {table} ({0}, {1}, {2}, {3} {4} {5} {6} {7}) 
-                values (:doc_id, :doc_key, :address, :title, :descr, :link, :status, :author) """.format(table=self.title, *self.column_names)
-        self.statement_count = """  select count(*) as Count from {table} """.format(table=self.title)
-        super().__post_init__()
-        super().db_create()
-
-
+# --- section for module tests
 def test_mobile_devices():
     x_table = TMobileDevices()
     x_table.print()
 
 
-def test_documents():
-    x_table = TDocuments()
-    x_table.print()
-
-
 if __name__ == '__main__':
     test_mobile_devices()
-    test_documents()
 

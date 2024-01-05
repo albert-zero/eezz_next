@@ -18,8 +18,6 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- 
 """
 import itertools
 import json
@@ -32,6 +30,7 @@ from   dataclasses import dataclass
 from   pathlib     import Path
 from   importlib   import import_module
 from   lark        import Lark, Transformer, Tree
+from   lark.exceptions import UnexpectedCharacters
 from   table       import TTable
 from   typing      import Dict, Callable
 from   threading   import Thread
@@ -39,7 +38,7 @@ from   Crypto.PublicKey import RSA
 
 
 def singleton(a_class):
-    """ Singleton decorator for TService """
+    """ Singleton decorator """
     instances = {}
 
     def get_instance(**kwargs):
@@ -53,24 +52,24 @@ def singleton(a_class):
 @dataclass(kw_only=True)
 class TService:
     """ Container for environment """
-    root_path:        Path = None
-    document_path:    Path = None
-    application_path: Path = None
-    public_path:      Path = None
-    resource_path:    Path = None
-    locales_path:     Path = None
+    root_path:        Path = None        # WEB root path
+    document_path:    Path = None        # EEZZ documents
+    application_path: Path = None        # applications root path like applications/eezz
+    public_path:      Path = None        # WEB public path for local HTML files
+    resource_path:    Path = None        # Resources: lark-grammar, websocket.js, templates.html, ...
+    locales_path:     Path = None        # translation files
     host:             str  = 'localhost'
-    websocket_addr:   int  = 8100
-    global_objects:   dict = None
-    post_init_fkt:    list = None
-    translate:        bool = False
+    websocket_addr:   int  = 8100        # WEB socket address
+    global_objects:   dict = None        # Objects assigned to HTML-tags
+    translate:        bool = False       # Generate a translation template of set to True
     async_methods:    Dict[Callable, Thread] = None
-    private_key:      RSA.RsaKey = None
-    public_key:       RSA.RsaKey = None
-    database_path:    Path = None
-    eezz_service_id:  str  = None
+    private_key:      RSA.RsaKey = None  # Global private key
+    public_key:       RSA.RsaKey = None  # Global public key
+    database_path:    Path = None        # sqlite database
+    eezz_service_id:  str  = None        # Bluetooth EEZZ service ID
 
     def __post_init__(self):
+        """ Generate RSA key pair and set environment variables """
         x_mod  = int("C5F23FA172317A1F6930C0F9AF79FF044D34BFD1336E5A174155953487A4FF0C744A093CA7044F39842AC685AB37C55F1F01F0055561BAD9C3EEA22B28D09F061875ED5BDB2F1F2B797B1BEF6534C0D4FCEFAFFA8F3A91396961165241564BD6E3CA08023F2A760A0B54A4A6A996CDF7DE3491468C199566EE5993FCFD03A2B285AD6FBBC014A20C801618EE19F88EB8E6359624A35FDD7976F316D6AB225CF85DA5E63AB30248D38297A835CF16B9799973C2F9F05F5F850B3152B3A05F06FEC0FBDA95C70911F59F6A11A1451822ABFE4FE5A021F7EA983BDE9F442302891DCF51B7322EAFB88950F2617B7120F9B87534719DCA27E87D82A183CB37BC7045", 16)
         x_exp  = int("10001", 16)
         self.private_key = RSA.construct((x_mod, x_exp))
@@ -87,17 +86,26 @@ class TService:
         self.document_path    = self.root_path      / 'database'
         self.database_path    = self.document_path  / 'eezz.db'
         self.locales_path     = self.resource_path  / 'locales'
+        self.logging_path     = self.root_path      / 'logs'
         self.global_objects   = dict()
-        self.post_init_fkt    = list()
+        self.logging_path.mkdir(exist_ok=True)
 
-    def assign_object(self, obj_id: str, a_descr: str, attrs: dict, a_tag: Tag = None) -> None:
+    def assign_object(self, obj_id: str, description: str, attrs: dict, a_tag: Tag = None) -> None:
+        """ Assigns an object to an HTML tag
+        :exception IndexError: description systax does not match
+        :exception AttributeError: Class not found
+        :param obj_id:  Unique object-id
+        :param description: Path to the class: <directory>.<module>.<class>
+        :param attrs: Attributes for the constructor
+        :param a_tag: Parent tag which handles an instance of this object
+        :return:
+        """
         try:
-            x_list  = a_descr.split('.')
+            x_list  = description.split('.')
             x, y, z = x_list[0], x_list[1], x_list[2]
-        except Exception as ex:
-            print(ex)
-            logging.error(f'{ex}: Description of an assignment is <Directory>.<Module>.<Class> ')
-            return
+        except IndexError as x_except:
+            logging.error(msg=f'assign_object: description has to match: <directory>.<module>.<class>: {description}')
+            raise x_except
 
         x_path = self.application_path / x
 
@@ -108,20 +116,31 @@ class TService:
             x_module    = import_module(y)
             x_class     = getattr(x_module, z)
             x_object    = x_class(**attrs)
-            self.global_objects.update({obj_id: (x_object, a_tag, a_descr)})
-        except Exception as ex:
-            print(ex)
-            logging.error(ex)
-
-    def add_post_init_method(self, obj_id: str, a_method_name: str, args: dict) -> None:
-        self.post_init_fkt.append((obj_id, a_method_name, args))
+            self.global_objects.update({obj_id: (x_object, a_tag, description)})
+        except AttributeError as x_except:
+            logging.error(msg=f'assign_object: module {x}.{y} has mo class {z}')
+            raise x_except
 
     def get_method(self, obj_id: str, a_method_name: str) -> tuple:
-        x_object, x_tag, x_descr = self.global_objects[obj_id]
-        x_method = getattr(x_object, a_method_name)
-        return x_object, x_method, x_tag
+        """ Get a method by name for a given object
+        :exception AttributeError: Class has no method with the given name
+        :param obj_id:
+        :param a_method_name:
+        :return: tuple(object, method, parent-tag)
+        """
+        try:
+            x_object, x_tag, x_descr = self.global_objects[obj_id]
+            x_method = getattr(x_object, a_method_name)
+            return x_object, x_method, x_tag
+        except AttributeError as x_except:
+            logging.error(msg=f'assign failed: module {x}.{y} has mo class {z}')
+            raise x_except
 
     def get_object(self, obj_id: str) -> TTable:
+        """ Get the object for a given ID
+        :param obj_id: Unique object ID
+        :return: A TTable object
+        """
         x_object, x_tag, x_descr = self.global_objects[obj_id]
         return x_object
 
@@ -129,13 +148,18 @@ class TService:
 class TServiceCompiler(Transformer):
     """ Transforms the parser tree into a list of dictionaries """
     def __init__(self, a_tag: Tag, a_id: str = '', a_query: dict = None):
+        """ The transformer output is in json format
+        :param a_tag:   The parent tag
+        :param a_id:    The unique object id
+        :param a_query: The URL query part
+        """
         super().__init__()
         self.m_id       = a_id
         self.m_tag      = a_tag
         self.m_query    = a_query
         self.m_service  = TService()
 
-        # Generator section
+        # Generator section for primitive statements
         self.simple_str       = lambda item: ''.join([str(x) for x in item])
         self.escaped_str      = lambda item: ''.join([x.strip('"') for x in item])
         self.qualified_string = lambda item: '.'.join([str(x) for x in item])
@@ -173,18 +197,19 @@ class TServiceCompiler(Transformer):
         try:
             x_query = TQuery(self.m_query)
             x_args  = {x_key: x_val.format(query=x_query) for x_key, x_val in x_args.items()}
-        except AttributeError as ex:
-            pass
+        except AttributeError as x_except:
+            logging.debug(msg=f'table_assignment: {x_function}, {x_args}')
         self.m_service.assign_object(self.m_id, x_function, x_args, self.m_tag)
         return {'assign': {'function': x_function, 'args': x_args, 'id': self.m_id}}
 
 
 class TTranslate:
-    def __init__(self):
-        pass
-
     @staticmethod
-    def generate_pot(self, a_soup, a_title):
+    def generate_pot(a_soup, a_title):
+        """ Generate a POT file from HTML file
+        :param a_soup: The HTML page for translation
+        :param a_title: The file name for the POT file
+        """
         try:
             x_pot_file = TService().locales_path / f'{a_title}.pot'
             x_elements = a_soup.find_all(lambda x_tag: x_tag.has_attr('data-eezz-i18n'))
@@ -195,8 +220,8 @@ class TTranslate:
                 for x_elem in x_elements:
                     f.write(f"msgid  \"{x_elem['data-eezz-i18n']}\"\n"
                             f"msgstr \"{[str(x) for x in x_elem.descendants]}\"\n\n")
-        except FileNotFoundError as ex:
-            logging.error(f'Creation of POT file is not possible: {str(ex)}')
+        except FileNotFoundError as x_except:
+            logging.error(msg=f'Creation of POT file is not possible', stack_info=True, stacklevel=3)
 
 
 @dataclass(kw_only=True)
@@ -210,21 +235,44 @@ class TQuery:
 
 # --- Section for module tests
 def test_parser(source: str):
-    print(f'\ntest parser: {source}')
-    x_service      = TService(root_path=r'C:\Users\alzer\Projects\github\eezz_full\webroot')
-    x_parser       = Lark.open(str(Path(TService().resource_path) / 'eezz.lark'))
-    x_syntax_tree  = x_parser.parse(source)
     x_parent_tag   = Tag(name='text')
-    x_transformer  = TServiceCompiler(x_parent_tag, 'Directory')
-    x_list_json    = x_transformer.transform(x_syntax_tree)
-    if type(x_list_json) is Tree:
-        print( list(itertools.accumulate(x_list_json.children, lambda a, b: a | b))[-1] )
-    else:
-        print(x_list_json)
+    x_parser       = Lark.open(str(Path(TService().resource_path) / 'eezz.lark'))
+
+    try:
+        x_syntax_tree  = x_parser.parse(source)
+        x_transformer  = TServiceCompiler(x_parent_tag, 'Directory')
+        x_list_json    = x_transformer.transform(x_syntax_tree)
+        if type(x_list_json) is Tree:
+            logging.debug(msg=list(itertools.accumulate(x_list_json.children, lambda a, b: a | b))[-1] )
+        else:
+            logging.debug(msg=x_list_json)
+    except UnexpectedCharacters as x_ex:
+        logging.error(msg=f'invalid expression: parent-tag={x_parent_tag.name}, position={x_ex.pos_in_stream}', stack_info=True, stacklevel=3)
+        raise x_ex
 
 
 if __name__ == '__main__':
+    x_service  = TService(root_path=r'C:\Users\alzer\Projects\github\eezz_full\webroot')
+    x_log_path = x_service.logging_path / 'app.log'
+    logging.basicConfig(filename=x_log_path, filemode='w', style='{', format='{name} - {levelname} - {message}')
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    # test parser
+    logger.debug(msg="application.eezz.service.__main__:")
+    logger.debug(msg="Test the parser: assign statement")
     test_parser(source="""assign:   examples.directory.TDirView(path=".")""")
+
+    logger.debug(msg="Test the parser: download statement")
     test_parser(source="""download: document(name=test1, author=albert), files( main=main, prev=prev )""")
+
+    # test parser exception and logging
+    logger.debug(msg="Test the parser: wrong download statement:")
+    logger.debug(msg="download: files(name=test1, author=albert), documents( main=main, prev=prev )")
+    try:
+        test_parser(source="""download: files(name=test1, author=albert), documents( main=main, prev=prev )""")
+    except UnexpectedCharacters as x_ex:
+        logger.error(msg='Test parser exception successful', stack_info=True)
+
 
 

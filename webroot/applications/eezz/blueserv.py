@@ -25,8 +25,10 @@ from   bluetooth       import BluetoothSocket
 import base64
 
 from   Crypto          import Random
+from   Crypto.Cipher    import AES
+
 from   itertools       import zip_longest
-import json 
+import json
 import winreg
 import struct
 import time
@@ -38,6 +40,7 @@ import gettext
 from   database         import TMobileDevices
 from   dataclasses      import dataclass
 from   typing           import Tuple, Any, Callable
+from   seccom           import TSecureSocket
 
 _ = gettext.gettext
 
@@ -120,7 +123,7 @@ class TBluetooth(TTable):
 
         x_thread = self.bt_service_threads.get(address)
         if not (x_thread and x_thread.is_alive()):
-            x_thread = TBtQueueService(address)
+            x_thread = TQueueRequest(address)
             x_thread.start()
             self.bt_service_threads[address] = x_thread
         return True
@@ -175,7 +178,7 @@ class TBluetooth(TTable):
         except Exception as x_ex:
             return {"return": {"code": 1120, "value": x_ex}}
 
-    def set_coupled_user(self, device_address: str, device_name: str, user: str, sid: str, password: str) -> dict:
+    def set_coupled_user(self, device_address: str, user: str, password: str) -> dict:
         """ Stores the user password on mobile device. The password is encrypted and the key is stored in the
         windows registry.
         :param device_address: Address of the mobile device as returned by find_devices
@@ -185,10 +188,13 @@ class TBluetooth(TTable):
         :param password: Password will be encrypted and stored on device for unlock workstation
         :return: EEZZ Confirmation message as dict
         """
-        x_vector     = Random.new().read(16)
-        x_vector64   = base64.b64encode(x_vector)
-        x_pwd_encr   = b''.join([bytes([(int(x) ^ y) & 0xff]) for x, y in zip_longest(password.encode('utf8'), x_vector, fillvalue=0)])
-        x_pwd_encr64 = base64.b64encode(x_pwd_encr).decode('utf8')
+        x_device_address = self.bt_credentials.get('address')
+        x_device_name    = self.bt_credentials.get('device_name')
+        x_device_sid     = self.bt_credentials.get('device_sid')
+        x_vector      = Random.new().read(16)
+        x_vector64    = base64.b64encode(x_vector)
+        x_pwd_encr    = b''.join([bytes([(int(x) ^ y) & 0xff]) for x, y in zip_longest(password.encode('utf8'), x_vector, fillvalue=0)])
+        x_pwd_encr64  = base64.b64encode(x_pwd_encr).decode('utf8')
         try:
             # Store the base vector in registry as alternative retrieval of password
             x_device_hdl = winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, 'Software\\eezz\\assoc', 0, winreg.KEY_SET_VALUE)
@@ -202,12 +208,12 @@ class TBluetooth(TTable):
         x_priv_key    = x_rsa_key.exportKey()
         x_pub_key     = x_rsa_key.publickey().exportKey().decode('utf8')
         x_pub_key_str = ''.join([xLine for xLine in x_pub_key.split('\n') if not ('----' in xLine)])
-        x_response    = self.bluetooth_request(device_address, {"command": "SETUSR", "args": [sid, x_pwd_encr64, x_pub_key_str]})
+        x_response    = self.bluetooth_request({"command": "SETUSR", "args": [x_device_sid, x_pwd_encr64, x_pub_key_str]})
 
         # insert the public key into local database
         if x_response['return']['code'] == 200:
             # :address, :device, sid, :user, :vector, :key
-            TMobileDevices().db_insert(row_data={'address': device_address, 'device': device_name, 'sid': sid, 'user': user, 'vector64': x_vector64, 'key': x_priv_key})
+            TMobileDevices().db_insert(row_data={'address': x_device_address, 'device': x_device_name, 'sid': x_device_sid, 'user': user, 'vector64': x_vector64, 'key': x_priv_key})
             x_response['return']['args'] = [_("Password successfully stored on device")]
         return x_response
 
@@ -239,8 +245,14 @@ class TBluetooth(TTable):
             x_response['return']['args'] = [_('Reply to verification E-Mail to accomplish registration')]
         return x_response
 
-    def bluetooth_request(self, address, command: dict) -> dict:
+    def bluetooth_request(self, command: dict, address=None) -> dict:
         """ launch request to the mobile device like {"command": "GETKEY", "args": []} """
+        x_address = address
+        if not x_address:
+            x_address = self.bt_credentials['address']
+        if not x_address:
+            return {'return': {'code': 500}}
+
         x_thread = self.bt_service_threads.get(address)
         if not (x_thread and not x_thread.is_alive()):
             return {'return': {'code': 500}}
@@ -257,6 +269,68 @@ class TBluetooth(TTable):
         """
         with self.m_lock:
             return super().get_visible_rows(get_all=True, filter_column=filter_column)
+
+    def decrypt_key(self, encrypted_key: bytes) -> bytes:
+        # Get the device key for decryption
+        x_response          = self.bluetooth_request(command={"command": "GETKEY", "args": []})
+        x_dev_keyvector64   = x_response['return']['value']
+        x_dev_keyvector     = base64.b64decode(x_dev_keyvector64)
+
+        x_encrypted_key_64  = encrypted_key
+        x_encrypted_key     = base64.b64decode(x_encrypted_key_64)
+
+        x_cipher            = AES.new(x_dev_keyvector[16:], AES.MODE_CBC, x_dev_keyvector[:16])
+        x_doc_keyvector     = x_cipher.decrypt(x_encrypted_key)
+        x_doc_keyvector64   = base64.b64encode(x_doc_keyvector)
+        return x_doc_keyvector64
+
+    def encrypt_key(self, key: bytes, vector: bytes) -> bytes:
+        # Get the device key for encryption
+        x_response          = self.bluetooth_request(command={"command": "GETKEY", "args": []})
+        x_dev_keyvector64   = x_response['return']['value']
+        x_dev_keyvector     = base64.b64decode(x_dev_keyvector64)
+
+        x_doc_keyvector     = base64.b64decode(key + vector)
+        x_cipher            = AES.new(x_dev_keyvector[16:], AES.MODE_CBC, x_dev_keyvector[:16])
+        x_encrypted_key     = x_cipher.encrypt(x_doc_keyvector)
+        x_encrypted_key64   = base64.b64encode(x_encrypted_key)
+        return x_encrypted_key64
+
+    def register_document(self, document_key: bytes, document_header: dict) -> dict:
+        # Store and sign the document header using the document-key and the device-sim
+        x_eezz_connection   = TSecureSocket()
+        x_response          = x_eezz_connection.send_request('reqheader', [self.bt_credentials.get('sim'), document_key], document_header)
+        x_json_response     = json.loads(x_response.decode('utf-8'))
+        return x_json_response
+
+    def get_document_info(self, document_id: bytes, buy_request=False) -> dict:
+        x_device_sim        = self.bt_credentials['sim']
+        x_eezz_connection   = TSecureSocket()
+        x_response          = x_eezz_connection.send_request('reqkey', [document_id, x_device_sim, int(buy_request)])
+        x_json_response     = json.loads(x_response.decode('utf-8'))
+
+        x_crpyt_key         = x_json_response.get('key')
+        x_transaction_key   = x_json_response.get('transaction')
+
+        if x_crpyt_key:
+            x_document_key = self.decrypt_key(x_crpyt_key)
+            x_json_response['return'] = {'code': 200, 'value': x_document_key}
+        elif x_transaction_key:
+            x_json_response['return'] = {'code': 100, 'value': x_transaction_key}
+        return x_json_response
+
+    def buy_document(self, transaction_key: bytes):
+        x_eezz_connection   = TSecureSocket()
+        x_response          = x_eezz_connection.send_request('reqkeycommit', [transaction_key])
+        x_json_response     = json.loads(x_response.decode('utf-8'))
+        x_encrypted_key     = x_json_response['key']
+        x_document_key      = self.decrypt_key(x_encrypted_key)
+        x_json_response['return'] = {'code': 200, 'value': x_document_key}
+        return x_json_response
+
+    def add_document(self, document_id: bytes, document_key: bytes) -> dict:
+        x_response = self.bluetooth_request({"command": "ADDDOC", "args": [document_id, document_key]})
+        return x_response
 
 
 @singleton
@@ -325,7 +399,7 @@ class TEezzyFreeScan(Thread):
             time.sleep(2)
 
 
-class TBtQueueService(Thread):
+class TQueueRequest(Thread):
     """ Thread queues requests to bluetooth device. This allows to intermix the frequent automatic requests
     with user commands
     Usage: put a request to the request_queue and wait for answer in the response queue

@@ -24,7 +24,8 @@ from websocket import TWebSocketAgent
 from service   import TService, TServiceCompiler, TTranslate
 from lark      import Lark, UnexpectedCharacters, Tree
 from Crypto.Hash  import SHA256
-from filesrv  import  TFile, TEezzFile
+from filesrv   import  TFile, TEezzFile
+from database  import  TDocuments
 
 
 class THttpAgent(TWebSocketAgent):
@@ -47,7 +48,7 @@ class THttpAgent(TWebSocketAgent):
             # manage translation if service started with command line option --translate:
             if TService().translate:
                 x_translate = TTranslate()
-                x_translate.generate_pot(x_soup, request_data['title'])
+                x_translate.generate_pot(request_data['title'], )
             x_result = {'update': x_updates, 'event': 'init'}
             return json.dumps(x_result)
         if 'call' in request_data:
@@ -77,6 +78,10 @@ class THttpAgent(TWebSocketAgent):
 
             x_result = {'update': x_updates}
             return json.dumps(x_result)
+
+    def setup_download(self, request_data: dict) -> str:
+        TDocuments().create_header(request_data)
+        return json.dumps(request_data)
 
     def handle_download(self, request_data: dict, raw_data: Any) -> str:
         """ Handle file downloads: The browser slices the file into chunks and the agent has to

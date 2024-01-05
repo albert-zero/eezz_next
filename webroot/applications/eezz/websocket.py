@@ -48,6 +48,10 @@ class TWebSocketAgent:
         pass
 
     @abstractmethod
+    def setup_download(self, request_data: dict) -> str:
+        return ''
+
+    @abstractmethod
     def handle_request(self, request_data: Any) -> str:
         """ handle request expects a json structure """
         return ''
@@ -105,6 +109,11 @@ class TWebSocketClient:
         """ Receives an request and send a response """
         x_json_str = self.read_websocket()
         x_json_obj = json.loads(x_json_str.decode('utf-8'))
+
+        if 'download' in x_json_obj:
+            x_response = self.m_agent_client.setup_download(x_json_obj)
+            self.write_frame(x_response.encode('utf-8'))
+            return
 
         if 'file' in x_json_obj:
             with self.m_lock:
@@ -320,7 +329,6 @@ class TWebSocket(Thread):
         self.m_web_socket.listen(15)
 
         x_read_list  = [self.m_web_socket]
-        # aWebSocket.settimeout(60)
         print(f'websocket {self.m_web_addr[0]} at {self.m_web_addr[1]}')
 
         while self.m_running:

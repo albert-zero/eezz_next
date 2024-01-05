@@ -94,6 +94,10 @@ class TTableRow:
         except ValueError:
             return None
 
+    def __getitem__(self, column: int | str) -> Any:
+        x_inx = column if type(column) is int else self.column_descr.index(column)
+        return self.cells[x_inx].value
+
 
 @dataclass(kw_only=True)
 class TTable(collections.UserList):
@@ -191,7 +195,7 @@ class TTable(collections.UserList):
                 x.value = self.column_names_alias[x.value]
         return self.header_row
 
-    def get_visible_rows(self, get_all: bool = False, filter_column: Tuple[str, Any] = None) -> list:
+    def get_visible_rows(self, get_all: bool = False, filter_column: Tuple[str, Any] = None) -> List[TTableRow]:
         """ Return the visible rows """
         x_filter_index = None
         if len(self.data) == 0:
@@ -243,6 +247,7 @@ class TTable(collections.UserList):
     def do_sort(self, column: int | str, reverse: bool = False) -> None:
         """ Toggle sort on a given column index"""
         try:
+            # todo: x_sort = lambda row: row[column]
             x_inx = column if type(column) is int else self.column_names.index(column)
             self.m_column_descr[x_inx].sort = TSort.DESCENDING if reverse else TSort.ASCENDING
             super().sort(key=lambda x_row: x_row.cells[x_inx].value, reverse=reverse)

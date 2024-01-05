@@ -20,6 +20,7 @@ from   Crypto.Cipher     import AES
 from   Crypto            import Random
 import service
 
+
 class TSecureSocket:
     """ """
     def __init__(self):
