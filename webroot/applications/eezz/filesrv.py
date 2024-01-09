@@ -39,6 +39,13 @@ from    queue          import Queue
 import  tarfile
 import  mimetypes
 from    io             import BufferedReader
+from    enum           import Enum
+
+
+class TFileMode(Enum):
+    NORMAL  = 0
+    ENCRYPT = 1
+    DECRYPT = 2
 
 
 @dataclass(kw_only=True)
@@ -58,8 +65,9 @@ class TFile:
             x_output.seek(self.size-1)
             x_output.write(b'\x00')
 
-    def write(self, raw_data: Any, sequence_nr: int):
+    def write(self, raw_data: Any, sequence_nr: int, mode: TFileMode = TFileMode.NORMAL) -> str:
         """ Write constant chunks of raw data to file. The last chunk might be smaller
+        :param mode:
         :param raw_data: Raw chunk of data
         :param sequence_nr: Sequence number, counting the number of chunks and could re-arrange segments
         """
@@ -79,6 +87,7 @@ class TFile:
             x_memory_slice.release()
             x_memory_view.release()
             x_memory_map.close()
+        return ''
 
 
 @dataclass(kw_only=True)
@@ -94,32 +103,31 @@ class TEezzFile(TFile):
         self.cypher     = AES.new(self.key, AES.MODE_CBC, self.vector)
         self.hash_chain = dict()
 
-    def write(self, raw_data: Any, sequence_nr: int):
-        self.encrypt(raw_data=raw_data, sequence_nr=sequence_nr)
-        if self.transferred >= self.size and self.response:
-            self.response.put(self)
+    def write(self, raw_data: Any, sequence_nr: int, mode: TFileMode = TFileMode.ENCRYPT) -> str:
+        if mode == TFileMode.ENCRYPT:
+            x_hash = self.encrypt(raw_data=raw_data, sequence_nr=sequence_nr)
+            if self.transferred >= self.size and self.response:
+                self.response.put(self)
+        elif mode == TFileMode.DECRYPT:
+            x_hash = self.decrypt(raw_data=raw_data, sequence_nr=sequence_nr)
+            if self.transferred >= self.size and self.response:
+                self.response.put(self.destination)
+        else:
+            super().write(raw_data, sequence_nr)
+            x_hash = SHA256.new(raw_data).hexdigest()
+        return x_hash
 
-    def readio(self, source: BufferedReader) -> None:
+    def read(self, source: BufferedReader, hash_list: List[str] = None) -> None:
         x_sequence_nr = 0
         while True:
             x_raw_data = source.read(self.chunk_size)
-            x_hash     = self.read(x_raw_data, x_sequence_nr)
+            x_hash     = self.write(x_raw_data, x_sequence_nr, TFileMode.DECRYPT)
+            # todo check x_hash and hash_list[x_sequence_nr] raise FileCypherError
             if self.transferred >= self.size:
                 break
             x_sequence_nr += 1
 
-    def read(self, raw_data: Any, sequence_nr: int) -> bytes:
-        """ Decrypt chunk of data
-        :param raw_data: Encrypted data
-        :param sequence_nr: Sequence number in file
-        :return: Hash value of raw_data, which could be used to verify the data before usage
-        """
-        x_hash = self.decrypt(raw_data=raw_data, sequence_nr=sequence_nr)
-        if self.transferred >= self.size and self.response:
-            self.response.put(self.destination)
-        return x_hash
-
-    def encrypt(self, raw_data: Any, sequence_nr: int):
+    def encrypt(self, raw_data: Any, sequence_nr: int) -> str:
         x_stream = raw_data
         # for encryption all chunks have to be extended to 16-byte mod length
         if self.file_type == 'main':
@@ -128,21 +136,20 @@ class TEezzFile(TFile):
                 x_stream   += (16 - x_dimension[1]) * b'\x00'
             x_stream = self.cypher.encrypt(bytes(raw_data))
 
-        x_hash = SHA256.new()
-        x_hash.update(x_stream)
-        self.hash_chain[sequence_nr] = base64.b64encode(x_hash.digest()).decode('utf-8')
+        x_hash = SHA256.new(x_stream).hexdigest()
+        self.hash_chain[sequence_nr] = x_hash
         super().write(x_stream, sequence_nr)
+        return x_hash
 
-    def decrypt(self, raw_data: Any, sequence_nr: int) -> bytes:
+    def decrypt(self, raw_data: Any, sequence_nr: int) -> str:
         x_stream = raw_data
-        x_hash   = SHA256.new()
-        x_hash.update(raw_data)
-        self.hash_chain[sequence_nr] = base64.b64encode(x_hash.digest()).decode('utf-8')
+        x_hash   = SHA256.new(raw_data).hexdigest()
+        self.hash_chain[sequence_nr] = x_hash
 
         if self.file_type == 'main':
             x_stream = self.cypher.decrypt(bytes(raw_data))
         super().write(x_stream, sequence_nr)
-        return self.hash_chain[sequence_nr]
+        return x_hash
 
 
 # --- Section for module tests
@@ -210,7 +217,7 @@ def test_eezzfile_reader():
             x_chunk = x_input.read(1024)
             if len(x_chunk) == 0:
                 break
-            x_file.read(raw_data=x_chunk, sequence_nr=x_sequence)
+            x_file.write(raw_data=x_chunk, sequence_nr=x_sequence, mode=TFileMode.DECRYPT)
             x_sequence += 1
     print(x_file.hash_chain)
 

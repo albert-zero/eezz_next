@@ -25,17 +25,16 @@ import sys
 import logging
 import threading
 
-from   bs4         import Tag
-from   dataclasses import dataclass
-from   pathlib     import Path
-from   importlib   import import_module
-from   lark        import Lark, Transformer, Tree
-from   lark.exceptions import UnexpectedCharacters
-from   table       import TTable
-from   typing      import Dict, Callable
-from   threading   import Thread
-from   Crypto.PublicKey import RSA
-
+from   bs4                  import Tag
+from   dataclasses          import dataclass
+from   pathlib              import Path
+from   importlib            import import_module
+from   lark                 import Lark, Transformer, Tree
+from   lark.exceptions      import UnexpectedCharacters
+from   typing               import Dict, Callable, Type
+from   threading            import Thread
+from   Crypto.PublicKey     import RSA
+from   collections          import UserList
 
 def singleton(a_class):
     """ Singleton decorator """
@@ -136,7 +135,7 @@ class TService:
             logging.error(msg=f'assign failed: module {x}.{y} has mo class {z}')
             raise x_except
 
-    def get_object(self, obj_id: str) -> TTable:
+    def get_object(self, obj_id: str) -> UserList:
         """ Get the object for a given ID
         :param obj_id: Unique object ID
         :return: A TTable object
@@ -269,9 +268,10 @@ if __name__ == '__main__':
     # test parser exception and logging
     logger.debug(msg="Test the parser: wrong download statement:")
     logger.debug(msg="download: files(name=test1, author=albert), documents( main=main, prev=prev )")
+
     try:
         test_parser(source="""download: files(name=test1, author=albert), documents( main=main, prev=prev )""")
-    except UnexpectedCharacters as x_ex:
+    except UnexpectedCharacters as x_except:
         logger.error(msg='Test parser exception successful', stack_info=True)
 
 

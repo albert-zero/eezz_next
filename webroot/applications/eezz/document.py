@@ -1,4 +1,5 @@
 import io
+import itertools
 import time
 import tarfile
 import json
@@ -9,7 +10,7 @@ import logging
 from queue       import Queue
 from filesrv     import TEezzFile, TFile
 from service     import singleton, TService
-from database    import TDatabaseTable
+from database    import TDatabaseTable, TDatabaseColumn
 from blueserv    import TBluetooth
 from pathlib     import Path
 
@@ -24,23 +25,34 @@ from Crypto.Hash      import SHA1, SHA256
 
 @dataclass(kw_only=True)
 class TManifest:
+    """ The manifest represents the information for the EEZZ document """
     author:         str   = None
     price:          float = None
     currency:       str   = None
     files:          dict  = None
     descr_document: dict  = None
     named_values:   str   = None
+    column_names:   List[str] = None
 
     def __post_init__(self):
+        # Prepare consistent access of manifest to database
+        x_map_names = [('CID',     'document_id'),
+                       ('CKey',    'document_key'),
+                       ('CAddr',   'address'),
+                       ('CTitle',  'title'),
+                       ('CDescr',  'descr'),
+                       ('CLink',   'link'),
+                       ('CStatus', 'status'),
+                       ('CAuthor', 'author')]
+
         self.keys_sections       = ['header', 'signature', 'files']
-        self.keys_section_header = ['document_id', 'document_key', 'address', 'title', 'descr', 'link', 'status',
-                                    'author', 'price', 'currency', 'files']
+        self.column_names        = [x[0] for x in x_map_names]
+        self.keys_section_header = [x[1] for x in x_map_names] + ['price', 'currency', 'files']
         self.keys_section_files  = ['name', 'hash', 'hash_list', 'size', 'chunk_size', 'type']
 
         self.descr_header   = {x: '' if x != 'files' else {} for x in self.keys_section_header}
         self.descr_files    = {x: '' for x in self.keys_section_files}
         self.descr_document = {'header': self.descr_header, 'signature': ''}
-        self.named_values   = ' values (' + ' '.join(f':{x}' for x in self.keys_section_header) + ')'
 
     def set_values(self, section: str, proposed: dict | bytes):
         try:
@@ -64,17 +76,17 @@ class TMobileDevices(TDatabaseTable):
     column_names: List[str] = None
 
     def __post_init__(self):
-        self.primary_key_inx = 0
-        self.title            = 'TUser'
-        self.column_names     = ['CAddr', 'CDevice', 'CSid', 'CUser', 'CVector', 'CKey']
-        self.statement_create = """
-            create table if not exists 
-                {table} ({0} text PRIMARY KEY, {1} text, {2} text, {3} text, {4} text, {5} text) """.format(table=self.title, *self.column_names)
-        self.statement_select = """ select * from  TUser """
-        self.statement_count  = """ select count(*) as Count from {table} """.format(table=self.title)
-        self.statement_insert = """ insert or replace into {table} ({0}, {1}, {2}, {3}, {4}, {5}) 
-                                        values (:address, :device, sid, :user, :vector, :key)""".format(table=self.title, *self.column_names)
+        self.title              = 'TUser'
+        self.column_names       = ['CAddr', 'CDevice', 'CSid', 'CUser', 'CVector', 'CKey']
         super().__post_init__()
+
+        for x in self.m_column_descr:
+            x.type  = 'text'
+            x.alias = x.header[1:].lower()
+
+        self.m_column_descr[0].options     = 'not null'
+        self.m_column_descr[0].primary_key = True
+        super().prepare_statements()
         super().db_create()
 
     def get_couple(self, address: str):
@@ -96,19 +108,21 @@ class TDocuments(TDatabaseTable):
     name:         str             = None
 
     def __post_init__(self):
-        self.primary_key_inx  = 1
+        self.manifest = TManifest()
+
         self.title            = 'TDocuments'
-        self.column_names     = ['CID', 'CKey', 'CAddr', 'CTitle', 'CDescr', 'CLink', 'CStatus', 'CAuthor']
-        self.statement_create = """ 
-            create table if not exists 
-                {table} ({0} text not null, {1} text not null, {2} text, {3} text, {4} text, {5} text, {6} text, {7} text, 
-                    PRIMARY KEY ( {0}, {1} ))""".format(table=self.title, *self.column_names)
-        self.statement_select = """ select * from {table}""".format(table=self.title)
-        self.statement_insert = """ 
-            insert or replace into {table} ({0}, {1}, {2}, {3} {4} {5} {6} {7}) """.format(table=self.title, *self.column_names) + self.manifest.named_values
-        self.statement_count = """  select count(*) as Count from {table} """.format(table=self.title)
-        self.eezz_path       = TService().document_path / f'{name}.eezz'
+        self.column_names     = self.manifest.column_names
         super().__post_init__()
+
+        for i, x in enumerate(self.m_column_descr):
+            x.type  = 'text'
+            x.alias = self.manifest.keys_section_header[i]
+
+        for x in range(2):
+            self.m_column_descr[x].options     = 'not null'
+            self.m_column_descr[x].primary_key = True
+
+        super().prepare_statements()
         super().db_create()
 
     def prepare_download(self, request: dict):
@@ -183,13 +197,13 @@ class TDocuments(TDatabaseTable):
         """
         x_manifest  = self.unzip(manifest_only=True)
         x_header    = base64.b64decode(x_manifest['document'])
-        x_signatur  = base64.b64decode(x_manifest['signature'])
+        x_signature = base64.b64decode(x_manifest['signature'])
         x_hash      = SHA1.new(x_header)
 
         x_public_key = TService().public_key
         x_verifier   = PKCS1_v1_5.new(x_public_key)
 
-        if not x_verifier.verify(x_hash, x_signatur):
+        if not x_verifier.verify(x_hash, x_signature):
             return {'return': {'code':530, 'value':'Signature verification failed'}}
 
         x_response  = json.loads(x_header.decode('utf-8'))
@@ -268,8 +282,8 @@ class TDocuments(TDatabaseTable):
 
                 # Try to decrypt on the fly
                 if document_key and x_manifest['files'][x_tar_info.name]['type'] == 'crypt':
-                    x_chunk_size = x_manifest['files'][x_tar_info.name]['chunk_size']
-                    x_size       = x_manifest['files'][x_tar_info.name]['size']
+                    x_chunk_size  = x_manifest['files'][x_tar_info.name]['chunk_size']
+                    x_size        = x_manifest['files'][x_tar_info.name]['size']
 
                     # Remove the suffix
                     x_eezz_file  = TEezzFile(file_type='crypt',

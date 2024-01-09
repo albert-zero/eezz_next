@@ -37,7 +37,7 @@ from   Crypto.Cipher    import PKCS1_v1_5
 from   Crypto.Hash      import MD5
 from   enum             import Enum
 import gettext
-from   database         import TMobileDevices
+from   document         import TMobileDevices
 from   dataclasses      import dataclass
 from   typing           import Tuple, Any, Callable
 from   seccom           import TSecureSocket
@@ -91,9 +91,9 @@ class TBluetooth(TTable):
         try:
             self.bt_credentials = credentials
             x_sid  = credentials['sid']
-            x_rows = TMobileDevices().get_visible_rows(filter_column=('CSid', x_sid[0]))
+            x_rows = TMobileDevices().get_visible_rows(filter_row=lambda x: x['CSid'] == x_sid[0])
             if x_rows:
-                self.bt_credentials['address'] = x_rows[0].get_value('CAddr')
+                self.bt_credentials['address'] = x_rows[0]['CAddr']
         except (KeyError, TypeError):
             self.bt_credentials = None
 
@@ -261,14 +261,15 @@ class TBluetooth(TTable):
         x_response = x_thread.response_queue.get(block=True)
         return x_response
 
-    def get_visible_rows(self, get_all=False, filter_column=Tuple[str, Any]) -> list:
+    def get_visible_rows(self, get_all: bool = False, filter_row: Callable = lambda x: x) -> list:
         """ thread save access to the table entries
+        :param filter_row:
         :param filter_column: Filter for a named column
         :param get_all: Get more elements than visible_rows if set to True
         :return: All table rows in the view
         """
         with self.m_lock:
-            return super().get_visible_rows(get_all=True, filter_column=filter_column)
+            return super().get_visible_rows(get_all=True, filter_row=filter_row)
 
     def decrypt_key(self, encrypted_key: bytes) -> bytes:
         # Get the device key for decryption
