@@ -246,7 +246,11 @@ class TBluetooth(TTable):
         return x_response
 
     def bluetooth_request(self, command: dict, address=None) -> dict:
-        """ launch request to the mobile device like {"command": "GETKEY", "args": []} """
+        """ launch request to the mobile device like {"command": "GETKEY", "args": []}
+        :param command:
+        :param address:
+        :return:
+        """
         x_address = address
         if not x_address:
             x_address = self.bt_credentials['address']

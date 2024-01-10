@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    EezzServer:
-    High speed application development and
-    high speed execution based on HTML5
+    filesrv:
+    TFile: Base class enables download of files as parts of chunks of fixed size
+    TEezzFile: TFile for encryption, decryptiom and verification
+    TEezzFile supports async download and uses a Queue.queue to signal ready.
 
     Copyright (C) 2023  Albert Zedlitz
 
@@ -22,23 +23,18 @@
 import logging
 import os
 import mmap
-import base64
-import io
-import json
-import time
 
 from    typing         import Any, Callable, Dict, List
 from    Crypto.Hash    import SHA256
 from    Crypto.Cipher  import AES
 from    Crypto         import Random
 from    dataclasses    import dataclass
-from    threading      import Condition, Thread
 from    pathlib        import Path
 from    service        import TService
 from    queue          import Queue
 import  tarfile
 import  mimetypes
-from    io             import BufferedReader
+from    io             import BufferedReader, BytesIO
 from    enum           import Enum
 
 
@@ -196,9 +192,8 @@ def test_eezzfile_reader():
     except FileNotFoundError:
         pass
 
-    print(f'{x_source} --> {x_dest}')
-    x_file = TEezzFile(destination=x_dest, size=x_size, chunk_size=1024,
-                       file_type='main', response=x_queue, key=x_key, vector=x_vector)
+    logger.debug(f'--- Test TEezzFile: {x_source} --> {x_dest}, file-type=main')
+    x_file = TEezzFile(destination=x_dest, size=x_size, chunk_size=1024, file_type='main', response=x_queue, key=x_key, vector=x_vector)
     with x_source.open('rb+') as x_input:
         x_sequence = 0
         while True:
@@ -207,10 +202,10 @@ def test_eezzfile_reader():
                 break
             x_file.write(raw_data=x_chunk, sequence_nr=x_sequence)
             x_sequence += 1
-    print(x_file.hash_chain)
+    logger.debug(f'hash-list = {x_file.hash_chain}')
 
-    x_file = TEezzFile(destination=x_decr, size=x_size, chunk_size=1024,
-                       file_type='main', response=x_queue, key=x_key, vector=x_vector)
+    logger.debug(f'--- Test TEezzFile: {x_dest} --> {x_decr}, file-type=main')
+    x_file = TEezzFile(destination=x_decr, size=x_size, chunk_size=1024, file_type='main', response=x_queue, key=x_key, vector=x_vector)
     with x_dest.open('rb+') as x_input:
         x_sequence = 0
         while True:
@@ -219,9 +214,15 @@ def test_eezzfile_reader():
                 break
             x_file.write(raw_data=x_chunk, sequence_nr=x_sequence, mode=TFileMode.DECRYPT)
             x_sequence += 1
-    print(x_file.hash_chain)
+    logger.debug(f'hash-list = {x_file.hash_chain}')
 
 
 if __name__ == '__main__':
+    x_service  = TService(root_path=Path(r'C:\Users\alzer\Projects\github\eezz_full\webroot'))
+    x_log_path = x_service.logging_path / 'app.log'
+    logging.basicConfig(filename=x_log_path, filemode='w', style='{', format='{name} - {levelname} - {message}')
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
     test_file_reader()
     test_eezzfile_reader()

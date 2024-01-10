@@ -1,5 +1,3 @@
-import io
-import itertools
 import time
 import tarfile
 import json
@@ -7,10 +5,11 @@ import uuid
 import base64
 import logging
 
+from io          import BufferedReader, BytesIO
 from queue       import Queue
 from filesrv     import TEezzFile, TFile
 from service     import singleton, TService
-from database    import TDatabaseTable, TDatabaseColumn
+from database    import TDatabaseTable
 from blueserv    import TBluetooth
 from pathlib     import Path
 
@@ -73,6 +72,7 @@ class TManifest:
 @singleton
 @dataclass(kw_only=True)
 class TMobileDevices(TDatabaseTable):
+    """ Manage mobile device data for auto-login and document-key management """
     column_names: List[str] = None
 
     def __post_init__(self):
@@ -98,6 +98,7 @@ class TMobileDevices(TDatabaseTable):
 @singleton
 @dataclass(kw_only=True)
 class TDocuments(TDatabaseTable):
+    """ Manages documents """
     column_names: List[str]       = None
     files_list:   List[TEezzFile] = None
     key:          bytes           = None
@@ -218,7 +219,7 @@ class TDocuments(TDatabaseTable):
         # store result on database
 
     def zip(self, manifest: dict, files: List[TFile]):
-        x_zip_stream = io.BytesIO()
+        x_zip_stream = BytesIO()
         x_zip_stream.write(json.dumps(manifest).encode('utf-8'))
         x_zip_root   = Path(self.file_path.stem)
 
@@ -266,7 +267,7 @@ class TDocuments(TDatabaseTable):
                 x_dest   = Path(x_tar_info.name)
                 x_dest.mkdir(exist_ok=True)
 
-                x_buffer = x_zip_file.extractfile(x_tar_info)
+                x_buffer: BufferedReader | None = x_zip_file.extractfile(x_tar_info)
                 if x_dest.name == 'Manifest':
                     try:
                         x_manifest = json.loads(x_buffer.read().decode('utf8'))
@@ -276,42 +277,31 @@ class TDocuments(TDatabaseTable):
                 if manifest_only:
                     continue
 
-                # a: document-key is in database: self.get_visible_rows( CID = self.id )
-                # b: document-key is in eezz:     TBluetooth().get_document_info(document_id=self.id)
-                # else raise error
+                # Extract files only with correct key
+                x_file_descr  = x_manifest['files'][x_tar_info.name]
+                if not document_key and x_file_descr['type'] == 'main':
+                    continue
 
-                # Try to decrypt on the fly
-                if document_key and x_manifest['files'][x_tar_info.name]['type'] == 'crypt':
-                    x_chunk_size  = x_manifest['files'][x_tar_info.name]['chunk_size']
-                    x_size        = x_manifest['files'][x_tar_info.name]['size']
-
-                    # Remove the suffix
-                    x_eezz_file  = TEezzFile(file_type='crypt',
-                                             destination=x_dest.with_suffix(''),
-                                             size=x_size,  chunk_size=x_chunk_size,
-                                             key=document_key[16:], vector=document_key[:16], response=Queue())
-                    x_sequence = 0
-                    while True:
-                        x_chunk = x_buffer.read(x_chunk_size)
-                        if not x_chunk:
-                            break
-                        x_hash  = x_eezz_file.read(x_chunk, x_sequence)
-                        # todo check x_hash with manifest.hash_list[x_sequence]
-                        x_sequence += 1
-                else:
-                    with x_dest.open('wb') as x_output:
-                        x_output.write(x_buffer.read())
+                x_destination = x_dest.with_suffix('') if x_file_descr['type'] == 'main' else x_dest
+                x_eezz_file   = TEezzFile(file_type   = x_file_descr['type'],
+                                          destination = x_destination,
+                                          size        = x_file_descr['size'],
+                                          chunk_size  = x_file_descr['chunk_size'],
+                                          key         = document_key[16:],
+                                          vector      = document_key[:16],
+                                          response    = Queue())
+                x_eezz_file.read(x_buffer, x_file_descr['hash_list'])
         return x_manifest
 
 
 # -- section for module tests
 def test_manifest():
     logging.debug(msg='Test class TManifest')
-    x_maifest = TManifest()
-    x_maifest.set_values(section='header', proposed={'author': 'Albert', 'price': 14.5, 'currency': 'EUR'})
-    x_maifest.set_values(section='files',   proposed={'size': 1000, 'chunk_size': 1024, 'name': 'test.doc'})
-    x_maifest.set_values(section='files',   proposed={'size': 2000, 'chunk_size': 1024, 'name': 'preview.doc'})
-    logging.debug(msg=str(x_maifest))
+    x_manifest = TManifest()
+    x_manifest.set_values(section='header', proposed={'author': 'Albert', 'price': 14.5, 'currency': 'EUR'})
+    x_manifest.set_values(section='files',   proposed={'size': 1000, 'chunk_size': 1024, 'name': 'test.doc'})
+    x_manifest.set_values(section='files',   proposed={'size': 2000, 'chunk_size': 1024, 'name': 'preview.doc'})
+    logging.debug(msg=str(x_manifest))
 
 
 if __name__ == '__main__':
@@ -320,4 +310,7 @@ if __name__ == '__main__':
     logging.basicConfig(filename=x_log_path, filemode='w', style='{', format='{name} - {levelname} - {message}')
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
+
+    my_doc = TDocuments()
+    my_dev = TMobileDevices()
 

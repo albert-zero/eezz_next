@@ -50,8 +50,9 @@ class TSort(Enum):
 @dataclass(kw_only=True)
 class TTableCell:
     """ Table cell is the smallest unit of a table """
+    name:   str  = None
     width:  int  = 10
-    value:  int | float | str | datetime = None
+    value:  Any  = None
     index:  int  = 0
     type:   str  = 'str'
     attrs:  dict = None
@@ -91,6 +92,9 @@ class TTableRow:
         if type(self.cells) == List[str]:
             self.column_descr = [str(x) for x in self.cells]
             self.cells        = [TTableCell() for x in self.cells]
+        else:
+            self.column_descr = [x.name for x in self.cells]
+
         if self.attrs:
             for x, y in self.attrs.items():
                 setattr(self, x, y)
@@ -114,16 +118,15 @@ class TTable(collections.UserList):
     column_names_map:    Dict[str, TTableCell] | None = None
     column_names_alias:  Dict[str, str]        | None = None
     column_names_filter: List[int]             | None = None
-
     title:               str             = 'Table'
     attrs:               dict            = None
     visible_items:       int             = 20
     m_current_pos:       int             = 0
-    m_column_descr:      List[TTableColumn] = None
     selected_row:        TTableRow       = None
     header_row:          TTableRow       = None
     apply_filter_column: bool            = False
     format_types:        dict            = None
+    m_column_descr:      List[TTableColumn]   = None
     table_index:         Dict[str, TTableRow] = None
 
     def __post_init__(self):
@@ -133,7 +136,7 @@ class TTable(collections.UserList):
         super().__init__()
         self.table_index      = dict()
         self.m_column_descr   = [TTableColumn(index=x_inx, header=x_str, filter=x_str, width=len(x_str), sort=False) for x_inx, x_str in enumerate(self.column_names)]
-        x_cells               = [TTableCell(value=x_str, index=x_inx, width=len(x_str)) for x_inx, x_str in enumerate(self.column_names)]
+        x_cells               = [TTableCell(name=x_str, value=x_str, index=x_inx, width=len(x_str)) for x_inx, x_str in enumerate(self.column_names)]
         self.header_row       = TTableRow(cells=x_cells, type='header')
         self.column_names_map = {x.value: x for x in x_cells}
 
@@ -183,7 +186,7 @@ class TTable(collections.UserList):
         if self.table_index.get(row_id):
             raise TableInsertException()
 
-        x_cells = [TTableCell(width=len(str(x_cell)), value=x_cell, index=x_descr.index, type=x_descr.type) for x_cell, x_descr in x_row_descr]
+        x_cells = [TTableCell(name=x_descr.header, width=len(str(x_cell)), value=x_cell, index=x_descr.index, type=x_descr.type) for x_cell, x_descr in x_row_descr]
         x_row   = TTableRow(index=x_inx, cells=x_cells, attrs=attrs, type=row_type, row_id=row_id, column_descr=self.column_names)
 
         super(collections.UserList, self).append(x_row)
