@@ -1,43 +1,40 @@
 # -*- coding: utf-8 -*-
 """
-    EezzServer:
-    High speed application development and
-    high speed execution based on HTML5
+    * **THttpAgent**: Handle WEB-Socket requests
 
-    Copyright (C) 2023  Albert Zedlitz
+    The interaction with the JavaScript via WEB-Socket includes generation of HTML parts for user interface updates
 """
 import json
 import logging
 import uuid
 import copy
 import re
-import mmap
-import base64
-import math
 
 from pathlib   import Path
 from typing    import Any, Callable, Dict
 from bs4       import Tag, BeautifulSoup, NavigableString
-from itertools import product, chain, filterfalse
+from itertools import product, chain
 from table     import TTable, TTableCell, TTableRow
 from websocket import TWebSocketAgent
 from service   import TService, TServiceCompiler, TTranslate
 from lark      import Lark, UnexpectedCharacters, Tree
-from Crypto.Hash  import SHA256
-from filesrv   import  TFile, TEezzFile
-from database  import  TDocuments
+from filesrv   import  TFile
+from document  import  TDocuments
 
 
 class THttpAgent(TWebSocketAgent):
     """ Agent handles WEB socket events """
     def __init__(self):
-        self.map_downloads: Dict[str, TFile] = dict()
         super().__init__()
 
     def handle_request(self, request_data: dict) -> str:
         """ Handle WEB socket requests
+
+        * **initialize**: The browser sends the complete HTML for analysis.
+        * **call**: The request issues a method call and the result is send back to the browser
+
         :param request_data: The request send by the browser
-        :return: Response, formatted as dict, containing valid HTML for the browser
+        :return: Response in JSON stream, containing valid HTML parts for the browser
         """
         x_updates  = list()
         if 'initialize' in request_data:
@@ -79,48 +76,32 @@ class THttpAgent(TWebSocketAgent):
             x_result = {'update': x_updates}
             return json.dumps(x_result)
 
-    def setup_download(self, request_data: dict) -> str:
-        TDocuments().create_header(request_data)
-        return json.dumps(request_data)
-
     def handle_download(self, request_data: dict, raw_data: Any) -> str:
         """ Handle file downloads: The browser slices the file into chunks and the agent has to
          re-arrange the stream using the file name and the sequence number
+
          :param request_data: The request data are encoded in dictionary format
          :param raw_data: The rae data chunk to download
          :return: Progress information to the update destination of the event
          """
         x_event  = request_data['file']
-        x_update = dict()
+        x_update = request_data['update']
+        x_update['progress'] = ''
 
         if x_event['initialize']:
-            if request_data['type'] == 'eezz':
-                # Create loader.TEezzFile object
-                # self.map_downloads['name-preview']  = TEezzFile.preview_file
-                # self.map_downloads['name-document'] = TEezzFile.document_file
-                pass
-
-            self.map_downloads['name'] = TFile(x_event['name'], x_event['chunk_size'])
-
-        x_file   = self.map_downloads['name']
-        if not x_file:
-            x_result = {'message': 'missing initialize call for file download', 'code': 1000}
-            return json.dumps(x_result)
-
-        x_file.write_chunk(raw_data)
-        x_update['progress'] = x_file.progress
-        x_update['file']     = x_file.name
-        x_update['update']   = x_event['update']
-
-        if x_file.progress == 100:
-            del self.map_downloads[x_file.name]
+            TDocuments().prepare_download(x_event['initialize'])
+            return json.dumps(request_data['update'])
+        TDocuments().handle_download(x_event, raw_data)
         return json.dumps(x_update)
 
     def do_get(self, a_resource: Path | str, a_query: dict) -> str:
         """ Response to an HTML GET command
+
         The agent reads the source, compiles the data-eezz sections and adds the web-socket component
         It returns the enriched document
+
         :param a_resource: The path to the HTML document, containing EEZZ extensions
+        :type a_resource: pathlib.Path
         :param a_query: The query string of the URL
         :return: The compiled version of the HTML file
         """
@@ -166,11 +147,13 @@ class THttpAgent(TWebSocketAgent):
     def compile_data(self, a_parser: Lark, a_tag_list: list, a_id: str, a_query: dict = None) -> None:
         """ Compile data-eezz-json to data-eezz-compile,
         create tag attributes and generate tag-id to manage incoming requests
+
         :param a_parser: The Lark parser to compile EEZZ to json
         :param a_tag_list: HTML-Tag to compile
         :param a_id: The ID of the tag to be identified for update
         :param a_query: The query of the HTML request
-        :return: None """
+        :return: None
+        """
         x_service = TService()
         for x_tag in a_tag_list:
             x_id   = a_id
@@ -209,6 +192,7 @@ class THttpAgent(TWebSocketAgent):
 
     def format_attributes(self, a_key: str, a_value: str, a_fmt_funct: Callable) -> str:
         """ Eval template tag-attributes, diving deep into data-eezz-json
+
         :param a_key: Thw key string to pick the items in a HTML tag
         :param a_value: The dictionary in string format to be formatted
         :param a_fmt_funct: The function to be called to format the values
@@ -227,6 +211,7 @@ class THttpAgent(TWebSocketAgent):
     def generate_html_cells(self, a_tag: Tag, a_cell: TTableCell) -> Tag:
         """ Generate HTML cells
         Input for the lamda is a string and output is formatted according to the TTableCell object
+
         :param a_tag: The parent tag to generate the table cells
         :param a_cell: The template cell to format to HTML
         :return: The formatted HTML tag
@@ -247,7 +232,13 @@ class THttpAgent(TWebSocketAgent):
 
     def generate_html_rows(self, a_html_cells: list, a_tag: Tag, a_row: TTableRow) -> Tag:
         """ This operation add fixed cells to the table.
-        Cells which are not included as template for table data are used to add a constant info to the row"""
+        Cells which are not included as template for table data are used to add a constant info to the row
+
+        :param a_html_cells: A list of cells to build up a row
+        :param a_tag: The parent containing the templates for the row
+        :param a_row: The table row values to insert
+        :return: The row with values rendered to HZML
+        """
         x_fmt_attrs  = {x: self.format_attributes(x, y, lambda z: z.format(row=a_row)) for x, y in a_tag.attrs.items()}
         # x_html_cells = a_html_cells
         x_html_cells = [[copy.deepcopy(x)] if not x.has_attr('data-eezz-compiled') else a_html_cells for x in a_tag.css.select('th,td')]
@@ -268,11 +259,13 @@ class THttpAgent(TWebSocketAgent):
 
     def generate_html_table(self, a_table_tag: Tag) -> dict:
         """ Generates a table structure in four steps
+
         1. Get the column order and the viewport
         2. Get the row templates
         3. Evaluate the table cells
-        4. Send the result separated by table main elements """
-        x_table_obj    = TService().get_object(a_table_tag.attrs['id'])
+        4. Send the result separated by table main elements
+        """
+        x_table_obj: TTable = TService().get_object(a_table_tag.attrs['id'])
         x_row_template = a_table_tag.css.select('tr[data-eezz-compiled]')
         x_row_viewport = x_table_obj.get_visible_rows()
         x_table_header = x_table_obj.get_header_row()

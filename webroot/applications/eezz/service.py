@@ -31,7 +31,7 @@ from   pathlib              import Path
 from   importlib            import import_module
 from   lark                 import Lark, Transformer, Tree
 from   lark.exceptions      import UnexpectedCharacters
-from   typing               import Dict, Callable, Type
+from   typing               import Dict, Callable, Type, Any
 from   threading            import Thread
 from   Crypto.PublicKey     import RSA
 from   collections          import UserList
@@ -135,7 +135,7 @@ class TService:
             logging.error(msg=f'assign failed: module {x}.{y} has mo class {z}')
             raise x_except
 
-    def get_object(self, obj_id: str) -> UserList:
+    def get_object(self, obj_id: str) -> Any:
         """ Get the object for a given ID
         :param obj_id: Unique object ID
         :return: A TTable object

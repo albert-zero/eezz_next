@@ -12,9 +12,7 @@
 """
 
 import os
-import collections
-from   io           import TextIOWrapper
-from   sys          import stdout
+from   collections  import UserList
 from   dataclasses  import dataclass
 from   typing       import List, Dict, NewType, Tuple, Any, Callable
 from   enum         import Enum
@@ -112,7 +110,7 @@ class TTableRow:
 
 
 @dataclass(kw_only=True)
-class TTable(collections.UserList):
+class TTable(UserList):
     """ The table is derived from User-list to enable sort and list management """
     column_names:        List[str]
     column_names_map:    Dict[str, TTableCell] | None = None

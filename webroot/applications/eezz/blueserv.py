@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-    Copyright (C) 2015 www.EEZZ.biz (haftungsbeschränkt)
+Module implements the following classes
 
-    TBluetooth:
-    singleton to drive the bluetooth interface
-    
+    * **TBluetooth**: singleton to drive the bluetooth interface
+    * **TUserAccount**: Reads the windows user account from registry
+    * **TEezzyFreeScan**: Scans the bluetooth port for devices to enter or leave the range
+    * **TBluetoothService**: Connects to bluetooth-service EEZZ and manages communication
 
+    =Section A
 """
-import inspect
 import queue
-from   pathlib import Path
-import logging
-import linecache
 import os
 import ctypes
 import select
@@ -25,7 +23,7 @@ from   bluetooth       import BluetoothSocket
 import base64
 
 from   Crypto          import Random
-from   Crypto.Cipher    import AES
+from   Crypto.Cipher   import AES
 
 from   itertools       import zip_longest
 import json
@@ -37,7 +35,7 @@ from   Crypto.Cipher    import PKCS1_v1_5
 from   Crypto.Hash      import MD5
 from   enum             import Enum
 import gettext
-from   document         import TMobileDevices
+from   database         import TDatabaseTable
 from   dataclasses      import dataclass
 from   typing           import Tuple, Any, Callable
 from   seccom           import TSecureSocket
@@ -71,10 +69,11 @@ class TBluetooth(TTable):
     """ The bluetooth class manages bluetooth devices in range
     A scan_thread is started to keep looking for new devices.
     TBluetooth service is a singleton to manage this consistently """
-    def __init__(self):
+    def __init__(self, devices_table: TDatabaseTable):
         # noinspection PyArgumentList
         super().__init__(column_names=['Address', 'Name'], title='bluetooth devices')
-        self.m_lock        = Lock()
+        self.m_lock  = Lock()
+        self.devices = devices_table
         self.easy_free_lock_thread: Thread | None = None
         self.easy_free_scan_thread: Thread | None = None
 
@@ -91,7 +90,7 @@ class TBluetooth(TTable):
         try:
             self.bt_credentials = credentials
             x_sid  = credentials['sid']
-            x_rows = TMobileDevices().get_visible_rows(filter_row=lambda x: x['CSid'] == x_sid[0])
+            x_rows = self.devices.get_visible_rows(filter_row=lambda x: x['CSid'] == x_sid[0])
             if x_rows:
                 self.bt_credentials['address'] = x_rows[0]['CAddr']
         except (KeyError, TypeError):
@@ -139,9 +138,9 @@ class TBluetooth(TTable):
             return {'result': {'code': 500}}
 
         x_address = self.bt_credentials['address']
-        x_row     = TMobileDevices().get_couple(x_address)
+        x_rows    = self.devices.get_visible_rows(filter_row=lambda x: x['CAddress'] == x_address)
         # ['CAddr', 'CDevice', 'CSid', 'CUser', 'CAddr', 'CVector', 'CKey']
-        x_addr, x_device, x_sid, x_user, x_sid, x_vector64, x_rsa_key = x_row.get_values_list()
+        x_addr, x_device, x_sid, x_user, x_sid, x_vector64, x_rsa_key = x_rows[0].get_values_list()
         # todo check x_sid == sid
         # - if the lock daemon is hanging on the wrong mobile, this is the time to correct the setup
         #
@@ -213,7 +212,7 @@ class TBluetooth(TTable):
         # insert the public key into local database
         if x_response['return']['code'] == 200:
             # :address, :device, sid, :user, :vector, :key
-            TMobileDevices().db_insert(row_data={'address': x_device_address, 'device': x_device_name, 'sid': x_device_sid, 'user': user, 'vector64': x_vector64, 'key': x_priv_key})
+            self.devices.db_insert(row_data={'address': x_device_address, 'device': x_device_name, 'sid': x_device_sid, 'user': user, 'vector64': x_vector64, 'key': x_priv_key})
             x_response['return']['args'] = [_("Password successfully stored on device")]
         return x_response
 

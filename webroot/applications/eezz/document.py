@@ -5,18 +5,18 @@ import uuid
 import base64
 import logging
 
-from io          import BufferedReader, BytesIO
-from queue       import Queue
-from filesrv     import TEezzFile, TFile
-from service     import singleton, TService
-from database    import TDatabaseTable
-from blueserv    import TBluetooth
-from pathlib     import Path
+from io               import BufferedReader, BytesIO
+from queue            import Queue
+from filesrv          import TEezzFile, TFile, TFileMode
+from service          import singleton, TService
+from database         import TDatabaseTable
+from blueserv         import TBluetooth
+from pathlib          import Path
 
-from threading   import Thread
-from dataclasses import dataclass
-from typing      import List
-from Crypto      import Random
+from threading        import Thread
+from dataclasses      import dataclass
+from typing           import List, Any, Dict
+from Crypto           import Random
 from Crypto.Cipher    import AES
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash      import SHA1, SHA256
@@ -89,11 +89,6 @@ class TMobileDevices(TDatabaseTable):
         super().prepare_statements()
         super().db_create()
 
-    def get_couple(self, address: str):
-        if not self.is_synchron:
-            super().get_visible_rows(get_all=True)
-        return super().do_select(row_id=address)
-
 
 @singleton
 @dataclass(kw_only=True)
@@ -110,7 +105,7 @@ class TDocuments(TDatabaseTable):
 
     def __post_init__(self):
         self.manifest = TManifest()
-
+        self.map_files: Dict[str, TEezzFile] = dict()
         self.title            = 'TDocuments'
         self.column_names     = self.manifest.column_names
         super().__post_init__()
@@ -150,10 +145,16 @@ class TDocuments(TDatabaseTable):
 
         for x in x_files_descr:
             x_destination = x_path / f'{x["name"]}.crypt' if x['type'] == 'crypt' else x_path / x['name']
-            self.files_list.append(
-                TEezzFile(key=self.key, vector=self.vector, response=x_queue,
-                          file_type=x['type'], chunk_size=x['chunk_size'], destination=x_destination, size=x['size']))
+            x_file = TEezzFile(key=self.key, vector=self.vector, response=x_queue, file_type=x['type'], chunk_size=x['chunk_size'], destination=x_destination, size=x['size'])
+            self.map_files[x['name']] = x_file
+            self.files_list.append(x_file)
         Thread(target=self.create_document, daemon=True, args=(x_name, len(x_files_descr), x_queue)).start()
+
+    def handle_download(self, request: dict, raw_data: Any) -> dict:
+        x_sqnr = request.get('sequence_nr')
+        x_file = self.self.map_files[request.get('name')]
+        x_file.write(raw_data, x_sqnr, TFileMode = TFileMode.ENCRYPT)
+        return request['update']
 
     def create_document(self, name: str, nr_files: int, queue: Queue[TEezzFile]) -> None:
         """ After all files downloaded, The document header is registered on eezz server and signed

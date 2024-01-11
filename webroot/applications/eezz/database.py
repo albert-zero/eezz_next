@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    Copyright (C) 2024 www.EEZZ.biz (haftungsbeschränkt)
+This module implements the following classes
+    * **TDatabaseTable**: Create database from scratch. Encapsulate database access.
+    * **TDatabaseColumn**: Extends the TTableColumn by parameters, which are relevant only for database access
 
-    TDatabase
-    Create database from scratch.
-    Encapsulate database access.
-
-    TDatabaseColumn:
-    Extends the TTableColumn by parameters, which are relevant only for database access
 """
 import sqlite3
 import logging
@@ -24,25 +20,41 @@ from   pathlib          import Path
 
 @dataclass(kw_only=True)
 class TDatabaseColumn(TTableColumn):
-    """ Extension for column descriptor """
-    primary_key: bool = False   # column is a primary key
-    options:     str  = ''      # options could be for example: 'not null'
-    alias:       str  = ''      # alias used to insert values:  insert .... values (:alias, ...)
+    """ Extension for column descriptor TTableColumn """
+    primary_key: bool = False
+    """ Makes a column a primary key """
+    options:     str  = ''
+    """ Options is used to crate a database column and could be for example: 'not null' """
+    alias:       str  = ''      #
+    """ 
+    | Alias is the name for a column used to insert values:  
+    | ``insert .... values (:alias, ...)``"""
 
 
 @dataclass(kw_only=True)
 class TDatabaseTable(TTable):
     """ General database management
-     Purpose of this class is a sophisticate work with database using an internal cache. All database
-     operations are mapped to TTable. The column descriptor is used to generate the database table.
-    - The database results are restricted to the visible scope
-    - Any sort of data is launched to the database
-    - Only the first select statement is executed. For a new buffer, set member is_synchron to False """
+    Purpose of this class is a sophisticate work with database using an internal cache. All database
+    operations are mapped to TTable. The column descriptor is used to generate the database table.
+    The database results are restricted to the visible scope
+    Any sort of data is launched to the database
+    Only the first select statement is executed. For a new buffer, set member is_synchron to False
+    """
     statement_select: str       = None
+    """ 
+    | Select statement:
+    | ``select <columns> form <table> ... limit ... offset ... where ...`` """
     statement_count:  str       = None
+    """ 
+    | Count elements and store result in 'virtual_len'
+    | ``select count (*) ...`` """
     statement_create: str       = None
+    """
+    | Statement to create the table in the database
+    | ``create <TTable.title> <[TTable.column_names]> ... primary keys <[DatabaseColumn.primary_key]>``  
+    """
     statement_insert: str       = None
-    database_path:    Path      = TService().database_path
+    database_path:    Path      = None
     virtual_len:      int       = 0
     is_synchron:      bool      = False
     m_column_descr:   List[TDatabaseColumn] = None
@@ -51,6 +63,7 @@ class TDatabaseTable(TTable):
         """ Setup select options to restrict the data volume and sort directive.
          Add a new datatype 'text to the output formatter '"""
         super().__post_init__()
+        self.database_path  = TService().database_path
         self.select_option  = 'limit {limit} offset {offset}'
         self.select_sort    = 'order by {column_name} {order}'
         self.m_column_descr = [TDatabaseColumn(primary_key=False, alias=x.header, index=x.index, header=x.header, filter=x.filter, width=x.width, sort=x.sort) for x in self.m_column_descr]
@@ -61,9 +74,14 @@ class TDatabaseTable(TTable):
 
     def prepare_statements(self):
         """ Generate a set of consistent database statements for
+
         - create table
-        . insert or replace
-        - select requests """
+
+        - insert or replace
+
+        - select requests
+
+        """
         x_sections = list()
         x_sections.append(f'create table if not exists {self.title}')
         x_sections.append(', '.join([f'{x.header} {x.type} {x.options}' for x in self.m_column_descr]))
@@ -93,7 +111,9 @@ class TDatabaseTable(TTable):
 
     def db_insert(self, row_data: dict) -> None:
         """ Insert a table row to the database
-        :param row_data: Values of the form {alias: value}
+
+        :param row_data: Values of the form {TDatabaseColumn.alias: value}
+        :type row_data: dict
         """
         x_connection = sqlite3.connect(self.database_path)
         with x_connection:
@@ -103,16 +123,23 @@ class TDatabaseTable(TTable):
         x_connection.close()
 
     def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '') -> None:
+        """ Append data to the internal table, creating a unique row-key
+
+        :param table_row: A row to insert
+        :type table_row:  List of cell elements
+        :param attrs:     Attributes for this row
+        :type attrs:      Customizable dictionary
+        :param row_type:  Row type to specify the output
+        :param row_id:    If not set, the row-id is calculated from primary key values
         """
-        :param table_row:
-        :param attrs:
-        :param row_type:
-        :param row_id:
-        """
-        x_row_descr = list(zip(table_row, self.m_column_descr))
-        x_primary   = itertools.filterfalse(lambda x: not x[1].primary_key, x_row_descr)
-        x_row_id    = SHA256.new(''.join(x[0] for x in x_primary).encode('utf8')).hexdigest()
-        super().append(table_row=table_row, attrs=attrs, row_type=row_type, row_id=x_row_id)
+        if not row_id:
+            x_row_descr = list(zip(table_row, self.m_column_descr))
+            x_primary   = itertools.filterfalse(lambda x: not x[1].primary_key, x_row_descr)
+            row_id      = SHA256.new(''.join(x[0] for x in x_primary).encode('utf8')).hexdigest()
+        super().append(table_row=table_row, attrs=attrs, row_type=row_type, row_id=row_id)
+
+    def do_select(self, row_id: str) -> TTableRow:
+        return super().do_select(SHA256.new(row_id.encode('utf-8')).hexdigest())
 
     def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:
         super().navigate(where_togo=where_togo, position=position)
