@@ -1,56 +1,64 @@
 # -*- coding: utf-8 -*-
 """
-    filesrv:
-    TFile: Base class enables download of files as parts of chunks of fixed size
-    TEezzFile: TFile for encryption, decryptiom and verification
-    TEezzFile supports async download and uses a Queue.queue to signal ready.
+    This module implements the following classes:
 
-    Copyright (C) 2023  Albert Zedlitz
+    * **TFile**:        Takes a chunk of data and merges it to a file
+    * **TEezzFile**:    Extends TFile and implements encryption and decryption for transmitted data
+    * **TFileMode**:    Enum file-mode for TEezzFiles
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    This module supports a download of big files in chunks and ensures, that the incoming fragments are
+    put together in the correct order again. Furthermore, a hash is calculated for each chunk, so that the
+    data consistency of a file could be ensured during reading.
 """
-import logging
-import os
-import mmap
+import  logging
+import  os
+import  mmap
+from    typing         import Any, List
 
-from    typing         import Any, Callable, Dict, List
 from    Crypto.Hash    import SHA256
 from    Crypto.Cipher  import AES
 from    Crypto         import Random
+
 from    dataclasses    import dataclass
 from    pathlib        import Path
 from    service        import TService
 from    queue          import Queue
-import  tarfile
-import  mimetypes
-from    io             import BufferedReader, BytesIO
+from    io             import BufferedReader
 from    enum           import Enum
 
 
 class TFileMode(Enum):
+    """ File mode: Determine how to handle incoming stream
+
+    :param NORMAL:      Write through
+    :param ENCRYPT:     Encrypt and write
+    :param ENCRYPT:     Decrypt and write
+    """
     NORMAL  = 0
+    """ :meta private: """
     ENCRYPT = 1
+    """ :meta private: """
     DECRYPT = 2
+    """ :meta private: """
 
 
 @dataclass(kw_only=True)
 class TFile:
-    """ Class to be used as handle for file download """
+    """ Class to be used as file download handler. It accepts chunks of data in separate calls
+
+    :param file_type: User defined file type
+    :param destination: Path to store the file
+    :param size: The size of the file
+    :param chunk_size: Fixed size for each chunk of data, except the last element
+    """
     file_type:   str
+    """ :meta private:  """
     destination: Path
+    """ :meta private:  """
     size:        int
+    """ :meta private:  """
     chunk_size:  int
+    """ :meta private:  """
 
     def __post_init__(self):
         self.chunk_count = divmod(self.size, self.chunk_size)[0] + 1
@@ -62,10 +70,14 @@ class TFile:
             x_output.write(b'\x00')
 
     def write(self, raw_data: Any, sequence_nr: int, mode: TFileMode = TFileMode.NORMAL) -> str:
-        """ Write constant chunks of raw data to file. The last chunk might be smaller
-        :param mode:
-        :param raw_data: Raw chunk of data
-        :param sequence_nr: Sequence number, counting the number of chunks and could re-arrange segments
+        """ Write constant chunks of raw data to file. Only the last chunk might be smaller.
+        The sequence number is passed along, because we cannot guarantee, that elements received in the same
+        order as they are send.
+
+        :param raw_data:        Raw chunk of data
+        :param sequence_nr:     Sequence number to insert chunks at the right place
+        :param mode: Ignored:   set signature for derived classes
+        :return: Empty string:  set signature for derived classes
         """
         x_offset          = sequence_nr * self.chunk_size
         self.transferred += len(raw_data)
@@ -88,18 +100,42 @@ class TFile:
 
 @dataclass(kw_only=True)
 class TEezzFile(TFile):
+    """ Derived from TFile, this class allows encryption and decryption using AES key.
+    After finishing the transfer, the instance is pushed into the response queue, which allows to implement a
+    supervisor thread, which blocks on the queue reading
+
+    :param key:             AES key for cypher
+    :type  key:             Crypto.Random.new(16)
+    :param vector:          AES vector for cypher
+    :type  vector:          Crypto.Random.new(16)
+    :param response:        Queue to get the final state of an instance
+    :type  response:        Queue.queue
+    :param hash_chain:      A list of hash values for each chunk
+    :type hash_chain:       List[SHA256.hexdigest]
+    """
     key:          bytes
+    """ :meta private:  """
     vector:       bytes
+    """ :meta private:  """
     response:     Queue = None
+    """ :meta private:  """
     hash_chain:   dict  = None
+    """ :meta private:  """
 
     def __post_init__(self):
-        # super().__init__(destination=self.destination, size=self.size, chunk_size=self.chunk_size)
         super().__post_init__()
         self.cypher     = AES.new(self.key, AES.MODE_CBC, self.vector)
         self.hash_chain = dict()
 
     def write(self, raw_data: Any, sequence_nr: int, mode: TFileMode = TFileMode.ENCRYPT) -> str:
+        """ Write a chunk of data
+
+        :param raw_data:    The data chunk to write
+        :param sequence_nr: Sequence of the data chunk in the stream
+        :param mode:        The mode used to en- or decrypt the data or pass through
+        :return:            The hash value of the data after encryption/before decryption
+        :rtype:             SHA256.hexdigest
+        """
         if mode == TFileMode.ENCRYPT:
             x_hash = self.encrypt(raw_data=raw_data, sequence_nr=sequence_nr)
             if self.transferred >= self.size and self.response:
@@ -114,6 +150,12 @@ class TEezzFile(TFile):
         return x_hash
 
     def read(self, source: BufferedReader, hash_list: List[str] = None) -> None:
+        """ Read an encrypted file from source input stream and create an decrypted version
+
+        :param source:      Input stream
+        :param hash_list:   A hash list to check the stream
+        :type  hash_list:   List[SHA256.hexdigest]
+        """
         x_sequence_nr = 0
         while True:
             x_raw_data = source.read(self.chunk_size)
@@ -124,6 +166,13 @@ class TEezzFile(TFile):
             x_sequence_nr += 1
 
     def encrypt(self, raw_data: Any, sequence_nr: int) -> str:
+        """ Encrypt the incoming data stream
+
+        :param raw_data:    Data chunk of the stream
+        :param sequence_nr: Sequence number in the stream
+        :return:            Hash value of the chunk
+        :rtype:             SHA256.hexdigest
+        """
         x_stream = raw_data
         # for encryption all chunks have to be extended to 16-byte mod length
         if self.file_type == 'main':
@@ -138,6 +187,13 @@ class TEezzFile(TFile):
         return x_hash
 
     def decrypt(self, raw_data: Any, sequence_nr: int) -> str:
+        """ Decrypt the incoming stream
+
+        :param raw_data:    Data chunk of the steam
+        :param sequence_nr: Sequence number in the stream
+        :return:            Hash value of the chunk
+        :rtype:             SHA256.hexdigest
+        """
         x_stream = raw_data
         x_hash   = SHA256.new(raw_data).hexdigest()
         self.hash_chain[sequence_nr] = x_hash
@@ -150,7 +206,9 @@ class TEezzFile(TFile):
 
 # --- Section for module tests
 def test_file_reader():
-    """ Test the TFile interfaces """
+    """ Test the TFile interfaces
+    :meta private:
+    """
     # Read a file and test the TFile downloader
     x_source = Path(TService().root_path) / 'testdata/bird.jpg'
     x_stat   = os.stat(x_source)
@@ -177,7 +235,10 @@ def test_file_reader():
 def test_eezzfile_reader():
     """ Test the TEezzFile(TFile) interfaces
     TEezzFile.write would encrypt the file while
-    TEezzFile.read does the decryption using key and vector variables """
+    TEezzFile.read does the decryption using key and vector variables
+
+    :meta private:
+    """
     x_source    = Path(TService().root_path) / 'testdata/bird.jpg'
     x_stat      = os.stat(x_source)
     x_size      = x_stat.st_size
@@ -218,6 +279,7 @@ def test_eezzfile_reader():
 
 
 if __name__ == '__main__':
+    """ :meta private:  """
     x_service  = TService(root_path=Path(r'C:\Users\alzer\Projects\github\eezz_full\webroot'))
     x_log_path = x_service.logging_path / 'app.log'
     logging.basicConfig(filename=x_log_path, filemode='w', style='{', format='{name} - {levelname} - {message}')

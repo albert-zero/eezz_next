@@ -31,8 +31,8 @@ from   optparse       import OptionParser
 from   websocket      import TWebSocket
 from   pathlib        import Path
 from   http_agent     import THttpAgent
-from   service        import TService
-from   blueserv       import TBluetooth
+from   service        import TService, TGlobal
+from   session        import TSession
 import time
 import logging
 import json
@@ -77,7 +77,8 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
 
     def handle_request(self):
         """ handle GET and POST requests """
-        x_cookie = http.cookies.SimpleCookie()
+        x_cookie    = http.cookies.SimpleCookie()
+        x_service   = TService.get_instance()
 
         if 'eezzAgent' not in x_cookie:
             x_cookie['eezzAgent'] = 'AgentName'
@@ -95,7 +96,8 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
                 return
             if x_query_path == '/system/eezzyfree':
                 # Polling request for an existing connection
-                x_result = TBluetooth().get_coupled_user(x_query)
+                x_session = TGlobal.get_instance(TSession)
+                x_result  = x_session.get_user_pwd(x_query)
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.end_headers()
@@ -103,7 +105,8 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
                 return
             if x_query_path == '/eezzyfree':
                 # Assign a user to the administration page
-                TBluetooth().connect(x_query)
+                x_session = TGlobal.get_instance(TSession)
+                x_session.connect(x_query)
 
         if x_resource.is_dir():
             x_resource = TService().root_path / 'public/index.html'
@@ -155,15 +158,19 @@ if __name__ == "__main__":
     x_opt_parser.add_option("-x", "--websocket", dest="web_socket", default="8100",      help="Web-Socket Port (default 8100)",  type="int")
     x_opt_parser.add_option("-t", "--translate", dest="translate",  action="store_true", help="Optional creation of POT file")
 
-    (x_options, x_args) = x_opt_parser.parse_args()
-    x_service = TService(root_path=Path(x_options.web_root), host=x_options.http_host, websocket_addr=x_options.web_socket, translate=x_options.translate)
+    (x_options, x_args)         = x_opt_parser.parse_args()
 
-    if x_service.public_path.is_dir():
-        os.chdir(x_service.public_path)
+    main_service                = TGlobal.get_instance(TService)
+    main_service.root_path      = Path(x_options.web_root)
+    main_service.host           = x_options.http_host
+    main_service.websocket_addr = x_options.web_socket
+    main_service.translate      = x_options.translate
+
+    if main_service.public_path.is_dir():
+        os.chdir(main_service.public_path)
     else:
         x_opt_parser.print_help()
-        logging.critical(f'webroot not found. Given path "{x_service.root_path}"\n'
-                         f'terminating')
+        logging.critical(f'webroot not found. Given path "{main_service.root_path}"\nterminating')
         exit(0)
 
     x_httpd   = TWebServer((x_options.http_host, int(x_options.http_port)), THttpHandler, x_options.web_socket)

@@ -24,6 +24,10 @@ from document  import  TDocuments
 
 class THttpAgent(TWebSocketAgent):
     """ Agent handles WEB socket events """
+
+    def setup_download(self, request_data: dict) -> str:
+        pass
+
     def __init__(self):
         super().__init__()
 
