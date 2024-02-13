@@ -2,7 +2,6 @@ import sys
 import os
 from   pathlib    import Path
 from   datetime   import datetime, timezone
-from   threading  import Condition
 from   table      import TTable
 
 
@@ -26,7 +25,7 @@ class TDirPng(TTable):
     """ Example using row type """
     def __init__(self, path: str):
         # noinspection PyArgumentList
-        super().__init__(column_names=['File', 'Size', 'Access Time'], title='DirPng', condition=condition)
+        super().__init__(column_names=['File', 'Size', 'Access Time'], title='DirPng')
 
         a_path = Path(path)
         self.table_title = 'Directory'
@@ -39,7 +38,7 @@ class TDirPng(TTable):
 
 
 if __name__ == '__main__':
-    xdir = TDirView(path='/home/paul')
+    xdir = TDirView(path=str(Path.cwd() / '../docs'))
     xdir.print()
 
     #xdir = TDirPng(path='/home/paul')

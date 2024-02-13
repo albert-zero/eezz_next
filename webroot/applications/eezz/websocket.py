@@ -35,9 +35,8 @@ import select
 import json
 
 from   abc         import abstractmethod
-from   threading   import Thread, Condition, Lock
+from   threading   import Thread, Lock
 from   typing      import Any, Callable, Dict
-from   dataclasses import dataclass
 from   service     import TService
 
 
@@ -107,7 +106,10 @@ class TWebSocketClient:
         self.m_buffer = bytearray(65536 * 2)
 
     def handle_request(self) -> None:
-        """ Receives an request and send a response """
+        """ Receives an request and send a response
+        The given method is executed async, so there will be no blocking calls. After the call the result
+        is collected.
+        """
         x_json_str = self.read_websocket()
         x_json_obj = json.loads(x_json_str.decode('utf-8'))
 
@@ -140,17 +142,28 @@ class TWebSocketClient:
 
             x_descr   = f'{x_descr}.{x_name}'
             x_thread  = TAsyncHandler(socket_server=self, request=x_json_obj, method=x_method, args=x_args, description=x_descr)
-            x_thread.start()
             self.m_threads[x_method] = x_thread
+            x_thread.start()
         # - x_response = self.m_agent_client.handle_request(x_json_obj)
         # - self.write_frame(x_response.encode('utf-8'))
 
-    def handle_aync_request(self, request: dict):
+    def handle_aync_request(self, request: dict) -> None:
+        """ This method is called after each method call request by user interface. The idea of an async call is,
+        that a user method is unpredictable long-lasting and could block the entire communication channel.
+        The environment takes care, that the same method is not executed as long as prior execution lasts.
+
+        :param request: The original request to execute after EEZZ function call
+        :type  request: dict
+        """
         with self.m_lock:
             x_response = self.m_agent_client.handle_request(request)
             self.write_frame(x_response.encode('utf-8'))
 
     def read_websocket(self) -> bytes:
+        """ Read a chunk of data from stream
+
+        :return: The chunk of data coming from browser
+        """
         try:
             x_raw_data = bytes()
             while True:
@@ -180,6 +193,11 @@ class TWebSocketClient:
             raise
 
     def gen_handshake(self, a_data: str):
+        """ Upgrade HTTP connection to WEB-socket
+
+        :param a_data: Upgrade request data
+        :return:
+        """
         x_key           = 'accept'
         x_lines         = a_data.splitlines()
         self.m_headers  = {x_key: x_val for x_key, x_val in [x.split(':', 1) for x in x_lines[1:] if ':' in x]}
@@ -198,6 +216,10 @@ class TWebSocketClient:
         return x_result
     
     def gen_key(self):
+        """ Generates a key to establish a secure connection
+
+        :return: Base64 representation of the calculated hash
+        """
         x_hash     = hashlib.sha1()
         x_64key    = self.m_headers.get('Sec-WebSocket-Key').strip()
         x_key      = x_64key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
@@ -205,6 +227,10 @@ class TWebSocketClient:
         return base64.b64encode(x_hash.digest()).decode('utf-8')
 
     def read_frame_header(self):
+        """ Interpret the incoming data stream, starting with analysis of the first bytes
+
+        :return: A tuple of all attributes, which enable the program to read the pay-load
+        """
         x_bytes = self.m_socket.recv(2)
         
         if len(x_bytes) == 0:
@@ -230,7 +256,13 @@ class TWebSocketClient:
         return x_final, x_opcode, x_mask_vector, x_payload_len
 
     def read_frame(self, x_opcode, a_mask_vector, a_payload_len):
-        """ Read one frame """
+        """ Read one frame
+
+        :param x_opcode:        The opcode describes the data type
+        :param a_mask_vector:   The mask is used to decrypt and encrypt the data stream
+        :param a_payload_len:   The length of the data block
+        :return:                The buffer with the data
+        """
         if a_payload_len == 0:
             return bytearray()
         
@@ -261,7 +293,14 @@ class TWebSocketClient:
         return self.m_buffer[:a_payload_len]
 
     def write_frame(self, a_data: bytes, a_opcode: hex = 0x1, a_final: hex = (1 << 7), a_mask_vector: list = None) -> None:
-        """ Write single frame """
+        """ Write single frame
+
+        :param a_data:          Data to send to browser
+        :param a_opcode:        Opcode defines the kind of data
+        :param a_final:         Bool set to True, if all data are written to stream
+        :param a_mask_vector:   Mask to use for secure communication
+        :return: None
+        """
         x_payload_len = len(a_data)
         x_bytes       = bytearray(10)
         x_position    = 0
@@ -365,19 +404,24 @@ class TWebSocket(Thread):
 
 
 class TAsyncHandler(Thread):
-    """ Execute method in background task
-    # method:         Callable            # The method to be called
-    # args:           dict                # The arguments for this method as key/value pairs
-    # socket_server:  TWebSocketClient    # The server to send the result
-    # request:        dict                # The request, which is waiting for the method to return
-    # description:    str                 # The name of the thread """
+    """ Execute method in background task """
     def __init__(self, method: Callable, args: dict, socket_server: TWebSocketClient, request: dict, description: str):
+        """
+        :param method:          The method to be called
+        :type method:           Callable
+        :param args:            The arguments for this method as key/value pairs
+        :type args:             dict[name, value]
+        :param socket_server:   The server to send the result
+        :type socket_server:    TWebSocketClient
+        :param request:         The request, which is waiting for the method to return
+        :type request:          dict[eezz-lark-key:value]
+        :param description:     The name of the thread
+        """
         super().__init__(daemon=True, name=description)
-        self.method = method
-        self.args   = args
-        self.socket_server = socket_server
-        self.request = request
-        self.description = description
+        self.method         = method
+        self.args           = args
+        self.socket_server  = socket_server
+        self.request        = request
 
     def run(self):
         self.request['result'] = self.method(**self.args)

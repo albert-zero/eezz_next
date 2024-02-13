@@ -134,9 +134,12 @@ class TDatabaseTable(TTable):
             row_id      = SHA256.new(','.join(x[0] for x in x_primary).encode('utf8')).hexdigest()
 
         # if the row already exists, we ignore the rest:
+        if not attrs:
+            attrs = dict()
+        attrs['_database'] = 'new'
         super().append(table_row=table_row, attrs=attrs, row_type=row_type, row_id=row_id, exists_ok=False)
-        x_connection = sqlite3.connect(self.database_path)
 
+        x_connection = sqlite3.connect(self.database_path)
         with x_connection:
             x_cursor   = x_connection.cursor()
             x_row_data = {y.alias: x for x, y in x_row_descr}
@@ -146,18 +149,32 @@ class TDatabaseTable(TTable):
         x_row = super().append(table_row=table_row, attrs=attrs, row_type=row_type, exists_ok=True)
         return x_row
 
+    def commit(self):
+        x: TTableRow
+        x_connection = sqlite3.connect(self.database_path)
+        with x_connection:
+            x_cursor   = x_connection.cursor()
+
+            for x in self.data:
+                x_row_descr = list(zip(x.get_values_list(), self.column_descr))
+                if x.attrs.get('_database') == 'new':
+                    x.attrs.pop('_database')
+                    x_row_data = {y.alias: x for x, y in x_row_descr}
+                    x_cursor.execute(self.statement_insert.format(*self.column_names), x_row_data)
+        x_connection.close()
+
     def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:
         super().navigate(where_togo=where_togo, position=position)
-        self.is_synchron = False
+        if position == 0:
+            self.is_synchron = False
 
     def get_visible_rows(self, get_all=False):
         """ Works on local buffer, as long as the scope is not changed
         """
-        x_result_list = list()
-
         if self.is_synchron:
             return super().get_visible_rows(get_all=get_all)
 
+        x_result_list = list()
         x_connection = sqlite3.connect(self.database_path)
         with x_connection:
             x_options = '' if get_all else self.select_option.format(**{'limit': self.visible_items, 'offset': self.offset})
@@ -173,21 +190,24 @@ class TDatabaseTable(TTable):
         x_connection.close()
         return x_result_list
 
-    def do_select(self, columns: List[str], values: List[str], get_all: bool = False) -> List[TTableRow]:
-        """ Works on local buffer, as long as the scope is not changed
+    def do_select(self, select_struct: dict, get_all: bool = False) -> List[TTableRow]:
+        """ Works on local buffer, as long as the scope is not changed. If send to database the syntax of the
+        values have to be adjusted to
+        `splite3-like <https://www.sqlitetutorial.net/sqlite-like/>`_
+
         """
         x_result_list = list()
 
         if self.is_synchron:
-            return super().do_select(columns=columns, values=values, get_all=get_all)
+            return super().do_select(select_struct=select_struct, get_all=get_all)
 
         x_connection = sqlite3.connect(self.database_path)
         with x_connection:
             x_options = '' if get_all else self.select_option.format(**{'limit': self.visible_items, 'offset': self.offset})
             x_cursor  = x_connection.cursor()
 
-            x_where_stm = ' where '  + ' and '.join([f'{x} like ?' for x, y in columns])
-            x_cursor.execute(' '.join([self.statement_select, x_options, x_where_stm]), values)
+            x_where_stm = ' where '  + ' and '.join([f'{x} like ?' for x in select_struct.keys()])
+            x_cursor.execute(' '.join([self.statement_select, x_options, x_where_stm]), [x for x in select_struct.values()])
             x_result = x_cursor.fetchall()
 
             for x_row in x_result:

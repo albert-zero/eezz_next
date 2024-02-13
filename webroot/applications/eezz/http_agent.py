@@ -6,6 +6,7 @@
 """
 import json
 import logging
+import threading
 import uuid
 import copy
 import re
@@ -31,7 +32,7 @@ class THttpAgent(TWebSocketAgent):
     def __init__(self):
         super().__init__()
 
-    def handle_request(self, request_data: dict) -> str:
+    def handle_request(self, request_data: dict) -> str | None:
         """ Handle WEB socket requests
 
         * **initialize**: The browser sends the complete HTML for analysis.
@@ -52,6 +53,7 @@ class THttpAgent(TWebSocketAgent):
                 x_translate.generate_pot(request_data['title'], )
             x_result = {'update': x_updates, 'event': 'init'}
             return json.dumps(x_result)
+
         if 'call' in request_data:
             try:
                 x_event = request_data['call']
@@ -268,6 +270,8 @@ class THttpAgent(TWebSocketAgent):
         2. Get the row templates
         3. Evaluate the table cells
         4. Send the result separated by table main elements
+
+        :param a_table_tag: The parent table tag to produce the output
         """
         x_table_obj: TTable = TService().get_object(a_table_tag.attrs['id'])
         x_row_template = a_table_tag.css.select('tr[data-eezz-compiled]')
@@ -294,7 +298,7 @@ class THttpAgent(TWebSocketAgent):
         # separate header and body again for the result {a_table_tag["id"]}
         x_html = dict()
         x_html['caption'] = a_table_tag.caption.string.format(table=x_table_obj)
-        x_html['thead']   = str(x_list_html_rows[0]) if x_list_html_rows else ''
+        x_html['thead']   = ''.join([str(x) for x in x_list_html_rows[:1]]) if len(x_list_html_rows) > 0 else ''
         x_html['tbody']   = ''.join([str(x) for x in x_list_html_rows[1:]]) if len(x_list_html_rows) > 1 else ''
 
         return {'id': a_table_tag["id"], 'attrs': {}, 'html': x_html}

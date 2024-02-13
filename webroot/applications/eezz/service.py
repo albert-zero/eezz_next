@@ -129,7 +129,7 @@ class TService:
         """ Get a method by name for a given object
 
         :raise AttributeError: Class has no method with the given name
-        :param obj_id: Unique hash-ID for object as stored in :func:`eezz.service.TGlobalService.assign_object`
+        :param obj_id: Unique hash-ID for object as stored in :py:meth:`eezz.service.TService.assign_object`
         :param a_method_name:
         :return: tuple(object, method, parent-tag)
         """

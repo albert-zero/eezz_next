@@ -6,7 +6,6 @@
 import time
 import tarfile
 import json
-import uuid
 import base64
 import logging
 
@@ -23,9 +22,10 @@ from threading        import Thread
 from dataclasses      import dataclass
 from typing           import List, Any, Dict
 from Crypto           import Random
+
 from Crypto.Cipher    import AES
-from Crypto.Signature import PKCS1_v1_5
-from Crypto.Hash      import SHA1, SHA256
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash      import SHA1, SHA256, SHA384
 
 
 @dataclass(kw_only=True)
@@ -33,48 +33,41 @@ class TManifest:
     """ The manifest represents the information for the EEZZ document. This structure is stored
     together with all other EEZZ files.
 
-    :param author:
-    :param price:
-    :param currency:
-    :param files:
-    :param descr_document:
-    :param named_values:
     :param column_names:
+    :param document_key:
     """
-    author:         str   = None
-    """:meta private:"""
-    price:          float = None
-    """:meta private:"""
-    currency:       str   = None
-    """:meta private:"""
-    files:          dict  = None
-    """:meta private:"""
-    descr_document: dict  = None
-    """:meta private:"""
-    named_values:   str   = None
+    document_key:   bytes     = None
     """:meta private:"""
     column_names:   List[str] = None
     """:meta private:"""
 
     def __post_init__(self):
         # Prepare consistent access of manifest to database
-        x_map_names = [('CID',     'document_id'),
-                       ('CKey',    'document_key'),
-                       ('CAddr',   'address'),
-                       ('CTitle',  'title'),
-                       ('CDescr',  'descr'),
-                       ('CLink',   'link'),
-                       ('CStatus', 'status'),
-                       ('CAuthor', 'author')]
+        x_map_names = [('CKey',      'document_key'),
+                       ('CAddr',     'address'),
+                       ('CTitle',    'title'),
+                       ('CDescr',    'descr'),
+                       ('CLink',     'link'),
+                       ('CStatus',   'status'),
+                       ('CAuthor',   'author'),
+                       ('CPrice',    'price'),
+                       ('CCurrency', 'currency')]
 
-        self.keys_sections       = ['document', 'signature', 'files']
         self.column_names        = [x[0] for x in x_map_names]
-        self.keys_section_header = [x[1] for x in x_map_names] + ['price', 'currency', 'files']
+
+        self.keys_sections       = ['document', 'files']
+        self.keys_section_header = [x[1] for x in x_map_names] + ['files']
         self.keys_section_files  = ['name', 'hash', 'hash_list', 'size', 'chunk_size', 'type']
 
         self.descr_header   = {x: '' if x != 'files' else {} for x in self.keys_section_header}
         self.descr_files    = {x: '' for x in self.keys_section_files}
         self.descr_document = {'document': self.descr_header, 'signature': ''}
+
+    def get_key(self) -> str:
+        return self.descr_document['document']['document_key']
+
+    def get_values(self) -> list:
+        return [self.descr_document['document'][x[1]] for x in zip(self.column_names, self.keys_section_header)]
 
     def set_values(self, section: str, proposed: dict | bytes):
         """ Insert values to the manifest. There is a restricted set of keys in a fixed structure
@@ -94,11 +87,13 @@ class TManifest:
         except (TypeError, KeyError):
             pass
 
-    def scan(self, header: dict):
-        self.descr_document['signature'] = header.get('signature')
-        self.set_values('document', header['document'])
-        for x in header['document']['files']:
-            self.set_values('files', x)
+    def scan(self, header: str):
+        x_manifest  = json.loads(header)
+
+        x_manifest['document']['document_key'] = x_manifest['document']['guid']
+        self.set_values('document',  x_manifest['document'])
+        for x in x_manifest['files']:
+            self.set_values('files',  x_manifest[x])
 
     def __str__(self):
         return json.dumps(self.descr_document, indent=4)
@@ -107,6 +102,14 @@ class TManifest:
 @dataclass(kw_only=True)
 class TDocuments(TDatabaseTable):
     """ Manages documents
+    There are two ways to start the document:
+    
+    1. Create a document using prepare_download, handle_download and create
+       As a result the document is zipped in TAR format with a signed manifest. The key for decryption is stored on
+       the mobile device and on EEZZ
+    
+    2. Open a document, reading the manifest. Noe you could check if you have the key on your mobile device, or you
+       buy the key from EEZZ
 
     :param files_list:      List of files
     :param key:             Document key
@@ -117,6 +120,8 @@ class TDocuments(TDatabaseTable):
     :param eezz_path:       Document file name
     :param name:            Document name
     """
+    header:       dict            = None
+    """:meta private:"""
     files_list:   List[TEezzFile] = None
     """:meta private:"""
     key:          bytes           = None
@@ -145,7 +150,8 @@ class TDocuments(TDatabaseTable):
             x.type  = 'text'
             x.alias = self.manifest.keys_section_header[i]
 
-        for x in range(2):
+        # Primary key
+        for x in range(1):
             self.column_descr[x].options     = 'not null'
             self.column_descr[x].primary_key = True
 
@@ -171,8 +177,8 @@ class TDocuments(TDatabaseTable):
         x_path           = TService().document_path / base64.b64encode(self.key).decode('utf8')
         x_path.mkdir(exist_ok=True)
 
-        self.manifest.set_values(section='document', proposed={'document_id':  uuid.uuid4()})
-        self.manifest.set_values(section='document', proposed={'document_key': self.encrypt_key(self.key, self.vector)})
+        # Create a new document structure and pick values for the manifest
+        self.manifest = TManifest(document_key=self.key + self.vector)
         self.manifest.set_values(section='document', proposed=request)
 
         for x in x_files_descr:
@@ -220,59 +226,56 @@ class TDocuments(TDatabaseTable):
             x_files.append(x_file)
 
         # Store document header on EEZZ and sign the header
-        x_document_id   = self.manifest.descr_document['document']['document_id']
-        x_header        = self.manifest.descr_document['document']
-        x_response      = self.register_document(x_document_id, x_header)
-        if x_response['result']['code'] != 200:
+        response = self.eezz_register_document()
+        if response['result']['code'] != 200:
             return
 
         # Create local EEZZ file using the signed header
-        x_signed_header = json.loads(x_response['result']['value'])
-        self.zip(manifest=x_signed_header, files=x_files)
+        x_signed_header = response
+        x_signed_header.pop('result')
+
+        self.zip(destination=Path(name), manifest=x_signed_header, files=x_files)
 
         # Store the document header data to database
-        x_row_data      = [self.manifest.descr_document['document'][x.alias] for x in self.column_descr]
+        x_row_data = [self.manifest.descr_document['document'][x.alias] for x in self.column_descr]
         self.append(table_row=x_row_data)
 
-    def get_document_header(self, name: str) -> dict:
+    def read_document_header(self, source: Path) -> bool:
         """ If a customer finds an EEZZ document, this method opens the zipped content and verifies the header.
         With the verified header, the document could be unzipped.
 
-        :param name:
+        :param source:
         :return:
         """
-        x_manifest  = self.unzip(manifest_only=True)
+        x_manifest  = self.unzip(source=source, manifest_only=True)
         x_header    = base64.b64decode(x_manifest['document'])
         x_signature = base64.b64decode(x_manifest['signature'])
         x_hash      = SHA1.new(x_header)
 
         x_public_key = TService().public_key
-        x_verifier   = PKCS1_v1_5.new(x_public_key)
+        x_verifier   = pkcs1_15.new(x_public_key)
 
         if not x_verifier.verify(x_hash, x_signature):
-            return {'return': {'code': 530, 'value': 'Signature verification failed'}}
+            return False
 
-        x_response  = json.loads(x_header.decode('utf-8'))
-        x_response['return']  = {'code': 200, 'value': 'OK'}
-        return x_response
+        self.manifest = TManifest()
+        self.manifest.scan(x_header.decode('utf8'))
+        return True
 
-    def zip(self, manifest: dict, files: List[TFile]):
+    def zip(self, destination: Path, manifest: dict, files: List[TFile]):
+        """ Zip the given files and the manifest to an EEZZ document.
+
+        :param destination: Path to the EEZZ document. Has to be like <directory>/<filename>
+        :param manifest:    Description and header
+        :param files:       Files included for the document
+        """
         x_zip_stream = BytesIO()
         x_zip_stream.write(json.dumps(manifest).encode('utf-8'))
-        x_zip_root   = Path(self.eezz_path.stem)
+        x_zip_root   = destination.parent
 
-        x_file_list = list()
-        for x_file in files:
-            x_file_list.append({'name':     x_file.destination.stem,
-                                'type':     x_file.file_type,
-                                'path':     x_zip_root,
-                                'size':     x_file.size,
-                                'chunk_size': x_file.chunk_size,
-                                'hash':     x_file.hash_chain})
-
-        with tarfile.TarFile(self.eezz_path, "w") as x_zip_file:
+        with tarfile.TarFile(destination, "w") as x_zip_file:
             # store the info at the start of the tar file
-            x_entry_path       = x_zip_root / 'Manifest'
+            x_entry_path       = Path(x_zip_root) / 'Manifest'
 
             x_tar_info         = tarfile.TarInfo(name=str(x_entry_path))
             x_tar_info.size    = x_zip_stream.tell()
@@ -283,7 +286,7 @@ class TDocuments(TDatabaseTable):
 
             # store preview
             for x_file in files:
-                x_entry_path     = x_zip_root / x_file.destination.name
+                x_entry_path     = Path(x_zip_root) / x_file.destination.name
                 x_source_path    = x_file.destination
                 x_stat_info      = x_source_path.stat()
 
@@ -294,16 +297,17 @@ class TDocuments(TDatabaseTable):
                 with x_source_path.open("rb") as x_input:
                     x_zip_file.addfile(tarinfo=x_tar_info, fileobj=x_input)
 
-    def unzip(self, manifest_only=False, document_key: bytes = None) -> dict:
+    def unzip(self, source: Path, manifest_only=False, document_key: bytes = None) -> dict:
         """ Unzip a file and return the Manifest in JSON format. Unzip needs the document key. If the key is not
         available, unzip the preview and the manifest, store the result into database for further processing
 
+        :param source:
         :param manifest_only: Extract the header
         :param document_key: If set, try to decrypt the document on the fly
         :return: The header
         """
         x_manifest = dict()
-        with tarfile.TarFile(self.eezz_path, "r") as x_zip_file:
+        with tarfile.TarFile(source, "r") as x_zip_file:
             for x_tar_info in x_zip_file.getmembers():
                 x_dest   = Path(x_tar_info.name)
                 x_dest.mkdir(exist_ok=True)
@@ -318,7 +322,10 @@ class TDocuments(TDatabaseTable):
                         logging.error(msg="Manifest not in JSON format", stack_info=True, stacklevel=3)
                     continue
 
-                # Extract files only with correct key
+                # Extract files only with correct key.
+                # For an owner, the document key is stored in database. First extract the manifest and continue
+                # with access on database....
+                # To get ownership, proceed buy process for document key
                 x_file_descr  = x_manifest['files'][x_tar_info.name]
                 if not document_key and x_file_descr['type'] == 'main':
                     continue
@@ -334,67 +341,85 @@ class TDocuments(TDatabaseTable):
                 x_eezz_file.read(x_buffer, x_file_descr['hash_list'])
         return x_manifest
 
-    def register_document(self, document_key: bytes, document_header: dict) -> dict:
-        """ Register document
+    def eezz_register_document(self) -> dict:
+        """ Stores header and return signature
+        insert into TDocument (CID, RUser, CStatus, CHashDoc, CKey, CDiscount, CPrice, CCurrency, CTitle)
 
-        :param document_key:    Document key
-        :param document_header: Document header
-        :return:
         """
-        # Store and sign the document header using the document-key and the device-sim
+        # Store and sign the document header using the document-key
         x_eezz_connection   = TSecureSocket()
-        x_response          = x_eezz_connection.send_request('reqheader', ['', document_key], document_header)
+        x_response          = x_eezz_connection.send_request('reqheader', [self.session.sid, self.manifest.get_key()], str(self.manifest))
         x_json_response     = json.loads(x_response.decode('utf-8'))
         return x_json_response
 
-    def buy_document(self, transaction_key: bytes):
+    def eezz_buy_document(self, transaction_key: bytes):
+        """ From eezz_get_document_header you received a transaction key. You have to sign this key and send a bzy
+        request. This ensures, that the registered device is in range and the device key is accessible.
+
+        :param transaction_key:
+        """
+        # x_key    = self.get_device_key()
+        # RsaKey
+        # x_signer = pkcs1_15.new(x_key)
+        # x_hash   = SHA256.new(transaction_key)
+        # x_sign   = x_signer.sign(x_hash)
+
         x_eezz_connection   = TSecureSocket()
         x_response          = x_eezz_connection.send_request('reqkeycommit', [transaction_key])
         x_json_response     = json.loads(x_response.decode('utf-8'))
         x_encrypted_key     = x_json_response['key']
-        x_document_key      = self.decrypt_key(x_encrypted_key)
-        x_json_response['return'] = {'code': 200, 'value': x_document_key}
-        return x_json_response
+        key_vector          = self.decrypt_key_with_device(x_encrypted_key)
+        self.manifest.set_values('document',  {'document_key': key_vector})
+        self.append(self.manifest.get_values())
 
-    def get_document_info(self, document_id: bytes, buy_request=False) -> dict:
+    def eezz_get_document_key(self, buy_request=False) -> dict:
         x_device_sim        = ''
         x_eezz_connection   = TSecureSocket()
-        x_response          = x_eezz_connection.send_request('reqkey', [document_id, x_device_sim, int(buy_request)])
+        x_response          = x_eezz_connection.send_request('reqkey', [self.session.sid, self.manifest.get_key()], int(buy_request))
         x_json_response     = json.loads(x_response.decode('utf-8'))
 
         x_crpyt_key         = x_json_response.get('key')
         x_transaction_key   = x_json_response.get('transaction')
 
         if x_crpyt_key:
-            x_document_key = self.decrypt_key(x_crpyt_key)
+            x_document_key = self.decrypt_key_with_device(x_crpyt_key)
             x_json_response['return'] = {'code': 200, 'value': x_document_key}
         elif x_transaction_key:
             x_json_response['return'] = {'code': 100, 'value': x_transaction_key}
         return x_json_response
 
-    def add_document(self, document_id: bytes, document_key: bytes) -> dict:
-        x_response = self.session.send_request(command='ADDDOC', args=[document_id, document_key])
+    def add_document_to_device(self) -> dict:
+        x_response = self.session.send_bt_request(command='ADDDOC', args=[self.session.sid, self.manifest.get_key()])
         return x_response
 
-    def decrypt_key(self, encrypted_key: bytes) -> (bytes, bytes):
+    def get_device_key(self) -> bytes | None:
+        x_response          = self.session.send_bt_request(command='GETKEY', args=[])
+        if x_response['return']['code'] == 200:
+            x_dev_keyvector64   = x_response['return']['value']
+            return  base64.b64decode(x_dev_keyvector64)
+        else:
+            return None
+
+    def decrypt_key_with_device(self, encrypted_key: bytes) -> bytes | None:
         """ Decrypt the document key
 
         :param encrypted_key: The encrypted key
         :return:              The decrypted key, vector pair
         """
         # Get the device key for decryption
-        x_response          = self.session.send_request(command='GETKEY', args=[])
-        x_dev_keyvector64   = x_response['return']['value']
-        x_dev_keyvector     = base64.b64decode(x_dev_keyvector64)
+
+        x_dev_keyvector     = self.get_device_key()
+        if not x_dev_keyvector:
+            return None
 
         x_encrypted_key_64  = encrypted_key
         x_encrypted_key     = base64.b64decode(x_encrypted_key_64)
 
         x_cipher            = AES.new(x_dev_keyvector[16:], AES.MODE_CBC, x_dev_keyvector[:16])
         x_doc_keyvector     = x_cipher.decrypt(x_encrypted_key)
-        return x_doc_keyvector[16:], x_dev_keyvector[:16]
+        return x_doc_keyvector
 
-    def encrypt_key(self, key: bytes, vector: bytes) -> bytes:
+    def encrypt_key_with_device(self, key: bytes, vector: bytes) -> bytes | None:
         """ Encrypt the document key
 
         :param key:     Document key
@@ -402,9 +427,9 @@ class TDocuments(TDatabaseTable):
         :return:        encrypted document key
         """
         # Get the device key for encryption
-        x_response          = self.session.send_request(command='GETKEY', args=[])
-        x_dev_keyvector64   = x_response['return']['value']
-        x_dev_keyvector     = base64.b64decode(x_dev_keyvector64)
+        x_dev_keyvector     = self.get_device_key()
+        if not x_dev_keyvector:
+            return None
 
         x_doc_keyvector     = base64.b64decode(key + vector)
         x_cipher            = AES.new(x_dev_keyvector[16:], AES.MODE_CBC, x_dev_keyvector[:16])

@@ -1,71 +1,54 @@
 # -*- coding: utf-8 -*-
 """
-Module implements the following classes
+This module implements the following classes
 
-    * **TBluetooth**: singleton to drive the bluetooth interface
-    * **TUserAccount**: Reads the Windows user account from registry
-    * **TEezzyFreeScan**: Scans the bluetooth port for devices to enter or leave the range
-    * **TBluetoothService**: Connects to bluetooth-service EEZZ and manages communication
+    * **TBluetooth**:        TTable for listing bluetooth devices in range
+    * **TBluetoothService**: Communicates with bluetooth-service EEZZ on mobile device
 
 """
 import select
 from   threading       import Thread, Lock, Condition
-from   table           import TTable
+from   table           import TTable, TTableRow
 
 import bluetooth
 from   bluetooth       import BluetoothSocket
+
 import json
 import time
-from   enum             import Enum
 import gettext
 from   dataclasses      import dataclass
 from   itertools        import filterfalse
+from   typing           import List
 
 _ = gettext.gettext
 
 
-class ReturnCode(Enum):
-    TIMEOUT:            1100
-    PW_CHECK:           1101
-    PW_EVALUATION:      1102
-    DEVICE_SELECTION:   1104
-    DEVICE_RANGE:       1105
-    ATTRIBUTES:         1106
-    BT_SERVICE:         1107
-
-
-@dataclass()
-class TMessage:
-    code:       int  = None
-    value:      str  = None
-    message:    dict = None
-
-    def __post_init__(self):
-        if self.message:
-            self.code  = self.message['return']['code']
-            self.value = self.message['return']['value']
-        else:
-            self.message = {'return': {'code': self.code, 'value': self.value}}
-
-    def __str__(self):
-        json.dumps(self.message)
-
-
 @dataclass(kw_only=True)
 class TBluetoothService:
-    """ The TBluetoothService handles a connection for a specific mobile given by bt_address """
-    eezz_service:   str     = "07e30214-406b-11e3-8770-84a6c8168ea0"
-    m_lock:         Lock    = Lock()
-    bt_socket               = None
-    bt_service:     list    = None
-    address:        str     = None
+    """ The TBluetoothService handles a connection for a specific mobile given by bt_address
 
-    def __init__(self, address):
-        self.connected  = False
-        self.address = address
-        self.open_connection()
+    :param address:         The address of the bluetooth device
+    :param eezz_service:    The service GUID of the eezz App
+    :param m_lock:          Lock communication for a single request/response cycle
+    :param bt_socket:       The communication socket
+    :param bt_service:      The services associated with the eezz App
+    :param connected:       Indicates that the service is active
+    """
+    address:       str
+    """ :meta private: """
+    eezz_service:  str        = "07e30214-406b-11e3-8770-84a6c8168ea0"
+    """ :meta private: """
+    m_lock:        Lock       = Lock()
+    """ :meta private: """
+    bt_socket                 = None
+    """ :meta private: """
+    bt_service:    list       = None
+    """ :meta private: """
+    connected:     bool       = False
+    """ :meta private: """
 
     def open_connection(self):
+        """ Open a bluetooth connection """
         if self.connected:
             return
         self.bt_service = bluetooth.find_service(uuid=self.eezz_service, address=self.address)
@@ -75,21 +58,32 @@ class TBluetoothService:
             self.connected = True
 
     def shutdown(self):
+        """ Close a bluetooth connection """
         if self.connected:
             self.bt_socket.close()
             self.connected = False
 
-    def send_request(self, message: dict) -> dict:
+    def send_request(self, command: str, args: list) -> dict:
+        """ A request is send to the device, waiting for a response.
+        The protocol use EEZZ-JSON structure:
+        send ->    {message: str, args: list}
+        receive -> {return: dict { code: int, value: str}, ...}
+
+        :param command: The command to execute
+        :param args: The arguments for the given command
+        :return: JSON structure send by device
+        """
         if not self.open_connection():
             return {"return": {"code": 500, "value": f'Could not connect to EEZZ service on {self.address}'}}
 
+        message = {'command': command, 'argss': args}
         try:
             with self.m_lock:
                 x_timeout: float = 1.0
                 # Send request: Wait for writer and send message
                 x_rd, x_wr, x_err = select.select([], [self.bt_socket], [], x_timeout)
                 if not x_wr:
-                    return {"return": {"code": ReturnCode.TIMEOUT, "value": f'EEZZ service timeout on {self.address}'}}
+                    return {"return": {"code": 500, "value": f'EEZZ service timeout on {self.address}'}}
 
                 for x_writer in x_wr:
                     x_writer.send(json.dumps(message).encode('utf8'))
@@ -105,7 +99,7 @@ class TBluetoothService:
                     x_result   = x_result.decode('utf8').split('\n')[-2]
                     return json.loads(x_result)
 
-                return {"return": {"code": ReturnCode.TIMEOUT, "value": f'EEZZ service timeout on {self.address}'}}
+                return {"return": {"code": 500, "value": f'EEZZ service timeout on {self.address}'}}
         except OSError as xEx:
             self.connected = False
             self.bt_socket.close()
@@ -116,36 +110,53 @@ class TBluetoothService:
 class TBluetooth(TTable):
     """ The bluetooth class manages bluetooth devices in range
     A scan_thread is started to keep looking for new devices.
-    TBluetooth service is a singleton to manage this consistently """
-    bt_lock:            Lock      = None
-    bt_table_changed:   Condition = None
+    TBluetooth service is a singleton to manage this consistently
+
+    :param bt_table_changed:    Condition triggered, if there are changes in the list of devices in range
+    :param column_names:        Fixed column names ['Address', 'Name']
+    """
+    column_names:       List[str] = None
+    """ :meta private: """
 
     def __post_init__(self):
         self.column_names = ['Address', 'Name']
         self.title        = 'bluetooth devices'
         super().__post_init__()
 
-        self.bt_lock          = Lock()
         self.bt_table_changed = Condition()
         self.scan_bluetooth   = Thread(target=self.find_devices(), daemon=True, name='find devices').start()
 
     def find_devices(self) -> None:
-        """ Is called frequently by scan_thread to show new devices in range. All access to the list
-        has to be thread save in this case
+        """ This method is called frequently by thread `self.scan:bluetooth` to keep track of devices in range.
+        The table is checked for new devices or devices which went out of range. Only if the list changes the
+        condition TTable.async_condition is triggered with notify_all.
         """
         while True:
             x_result = bluetooth.discover_devices(flush_cache=True, lookup_names=True)
-            with self.bt_lock:
-                for x in filterfalse(lambda x_data: x_data['Address'] in x_result, self.data):
+
+            with self.asyc_lock:
+                table_changed = False
+
+                # Step 1: Reduce the internal list to devices in range
+                for x in filterfalse(lambda x_data: (x_data[0], x_data[1]) in x_result, self.data):
                     self.data.remove(x)
+                    table_changed = True
 
-                for x_item in x_result:
-                    x_address, x_name = x_item
-                    self.append([x_address, x_name], row_id=x_address, exists_ok=True)
+                # Step 2: Check for new entries
+                x_stored_devices = [(x[0], x[1]) for x in self.data]
+                for x in filterfalse(lambda x_data: x_data in x_stored_devices, x_result):
+                    self.append([x[0], x[1]], row_id=x[0], exists_ok=True)
+                    table_changed = True
 
-                with self.bt_table_changed:
-                    self.bt_table_changed.notify_all()
-                time.sleep(2)
+                if table_changed:
+                    with self.async_condition:
+                        self.async_condition.notify_all()
+            # wait a bit for next scan
+            time.sleep(2)
+
+    def get_visible_rows(self, get_all: bool = False) -> List[TTableRow]:
+        with self.asyc_lock:
+            return super().get_visible_rows(get_all=get_all)
 
 
 # --- Section for module test

@@ -88,7 +88,7 @@ class TSecureSocket:
 
 
 if __name__ == '__main__':
-    os.chdir(os.path.join('/','Users','Paul','production','webroot','public'))
+    os.chdir(os.path.join('/', 'Users', 'Paul', 'production', 'webroot', 'public'))
     aSecSock = TSecureSocket()
     aResp    = aSecSock.send_request('test', [12345678, 2345], 'some data')
     print(aResp)
