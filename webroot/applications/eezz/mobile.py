@@ -1,11 +1,22 @@
+"""
+This module implements
+
+    * :py:class:`eezz.mobile.TMobileDevices`: Database access to TUser
+
+The database table TUser holds the mobile device information per user
+"""
 
 from dataclasses import dataclass
 from database    import TDatabaseTable
+from typing      import List
 
 
 @dataclass(kw_only=True)
 class TMobileDevices(TDatabaseTable):
-    """ Manage mobile device data for auto-login and document-key management """
+    """ Manage mobile device data for auto-login and document-key management
+    """
+    column_names: List[str] = None    #: :meta private:
+
     def __post_init__(self):
         # Set the title and the columns before initializing the TDatabaseTable
         self.title              = 'TUser'
@@ -20,4 +31,3 @@ class TMobileDevices(TDatabaseTable):
         self.column_descr[0].primary_key = True
         super().prepare_statements()
         super().db_create()
-

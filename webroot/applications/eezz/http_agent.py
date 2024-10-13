@@ -6,37 +6,33 @@
 """
 import json
 import logging
-import threading
 import uuid
 import copy
 import re
 
 from pathlib   import Path
-from typing    import Any, Callable, Dict
+from typing    import Any, Callable
 from bs4       import Tag, BeautifulSoup, NavigableString
 from itertools import product, chain
 from table     import TTable, TTableCell, TTableRow
 from websocket import TWebSocketAgent
 from service   import TService, TServiceCompiler, TTranslate
 from lark      import Lark, UnexpectedCharacters, Tree
-from filesrv   import  TFile
 from document  import  TDocuments
 
 
 class THttpAgent(TWebSocketAgent):
     """ Agent handles WEB socket events """
 
-    def setup_download(self, request_data: dict) -> str:
-        pass
-
     def __init__(self):
         super().__init__()
+        self.documents: TDocuments | None = None
 
     def handle_request(self, request_data: dict) -> str | None:
         """ Handle WEB socket requests
 
         * **initialize**: The browser sends the complete HTML for analysis.
-        * **call**: The request issues a method call and the result is send back to the browser
+        * **call**: The request issues a method call and the result is sent back to the browser
 
         :param request_data: The request send by the browser
         :return: Response in JSON stream, containing valid HTML parts for the browser
@@ -50,27 +46,37 @@ class THttpAgent(TWebSocketAgent):
             # manage translation if service started with command line option --translate:
             if TService().translate:
                 x_translate = TTranslate()
-                x_translate.generate_pot(request_data['title'], )
+                x_translate.generate_pot(x_soup, request_data['title'])
             x_result = {'update': x_updates, 'event': 'init'}
             return json.dumps(x_result)
 
+        # A call request consists of a method to call and a set ot tags to update (updates might be an empty list)
+        # The update is a list of key-value pairs separated by a colon
+        # The key is the html-element-id and the attribute separated by dot
+        # The value is a valid HTML string to replace either the attribute value or part of the element (for example table.body)
         if 'call' in request_data:
             try:
+                # Only interested in the x_tag object, which is stored as key(object, method-name) in the TService database
+                # The method itself is executed in module TWebSocketClient
                 x_event = request_data['call']
                 x_obj, x_method, x_tag  = TService().get_method(x_event['id'], x_event['function'])
 
                 for x_key, x_value in x_event['update'].items():
                     if x_key == 'this.tbody':
+                        # A table might update its body, for example after navigation input (page up/down)
                         x_updates.append(self.generate_html_table(x_tag))
                     elif x_key == 'this':
+                        # A Grid might update all its children after navigation
                         x_updates.append(self.generate_html_grid(x_tag))
                     elif x_value.startswith('table.'):
+                        # Update specific attributes of a table, e.g. {table.name} or {table.id} etc...
                         x_attr_list = x_key.split('.')
                         x_attr      = '.' if len(x_attr_list) < 2 else '.'.join(x_attr_list[1:])
                         x_res_v     = str('{' + x_value + '}').format(table=x_obj)
                         x_res_d     = {'id': x_attr_list[0], 'attrs': {'result': 'todo:add result'}, 'html': {x_attr: x_res_v}}
                         x_updates.append(x_res_d)
                     elif re.match(r'"\w+"', x_value):
+                        # Update elements on the page, given an element-id and a value
                         x_attr_list = x_key.split('.')
                         x_attr      = '.' if len(x_attr_list) < 2 else '.'.join(x_attr_list[1:])
                         x_res_d     = {'id': x_attr_list[0], 'attrs': {'result': 'todo:add result'}, 'html': {x_attr: x_value.strip('"')}}
@@ -81,6 +87,11 @@ class THttpAgent(TWebSocketAgent):
 
             x_result = {'update': x_updates}
             return json.dumps(x_result)
+
+    def setup_download(self, request_data: dict) -> str:
+        self.documents = TDocuments()
+        self.documents.prepare_download(request=request_data)
+        return json.dumps(request_data['update'])
 
     def handle_download(self, request_data: dict, raw_data: Any) -> str:
         """ Handle file downloads: The browser slices the file into chunks and the agent has to
@@ -94,10 +105,7 @@ class THttpAgent(TWebSocketAgent):
         x_update = request_data['update']
         x_update['progress'] = ''
 
-        if x_event['initialize']:
-            TDocuments().prepare_download(x_event['initialize'])
-            return json.dumps(request_data['update'])
-        TDocuments().handle_download(x_event, raw_data)
+        self.documents.handle_download(x_event, raw_data)
         return json.dumps(x_update)
 
     def do_get(self, a_resource: Path | str, a_query: dict) -> str:
@@ -138,7 +146,7 @@ class THttpAgent(TWebSocketAgent):
                 pass
             if not x_chrom.has_attr('id'):
                 x_chrom['id'] = str(uuid.uuid1())[:8]
-            # Compile sub-tree using the current table id for events
+            # Compile subtree using the current table id for events
             self.compile_data(x_parser, x_chrom.css.select('[data-eezz]'), x_chrom['id'])
 
         for x_chrom in x_soup.css.select('select[data-eezz], .clzz_grid[data-eezz]'):
@@ -199,7 +207,7 @@ class THttpAgent(TWebSocketAgent):
     def format_attributes(self, a_key: str, a_value: str, a_fmt_funct: Callable) -> str:
         """ Eval template tag-attributes, diving deep into data-eezz-json
 
-        :param a_key: Thw key string to pick the items in a HTML tag
+        :param a_key: Thw key string to pick the items in an HTML tag
         :param a_value: The dictionary in string format to be formatted
         :param a_fmt_funct: The function to be called to format the values
         :return: The formatted string
@@ -314,7 +322,13 @@ class THttpAgent(TWebSocketAgent):
 
     def generate_html_grid_item(self, a_tag: Tag, a_row: TTableRow, a_header: TTableRow) -> Tag:
         """ Generates elements of the same kind, derived from a template and update content
-        according the row values """
+        according the row values
+
+        :param a_tag:       Template
+        :param a_row:       Row with data to parse
+        :param a_header:    Row meta information
+        :return:            Generated HTML tag
+        """
         x_fmt_attrs = {x: self.format_attributes(x, y, lambda z: z.format(row=a_row)) for x, y in a_tag.attrs.items()}
         x_fmt_row   = {x: y for x, y in zip(a_header.cells, a_row.cells)}
         x_new_tag   = Tag(name=a_tag.name, attrs=x_fmt_attrs)
@@ -323,6 +337,7 @@ class THttpAgent(TWebSocketAgent):
 
 
 if __name__ == '__main__':
+    """:meta private:"""
     text2 = """
     <h1 data-eezz='assign: examples.directory.Database()'>header</h1>
     <table data-eezz='name: directory, assign: examples.directory.TDirView(path="/home/paul")'> </table>
@@ -333,7 +348,7 @@ if __name__ == '__main__':
     # list_table = aSoup.css.select('table[data-eezz]')
     TService(root_path=Path('/home/paul/Projects/github/EezzServer2/webroot'))
     xx_gen  = THttpAgent()
-    xx_html = xx_gen.do_get(text2)
+    xx_html = xx_gen.do_get(text2, dict())
     xx_soup = BeautifulSoup(xx_html, 'html.parser', multi_valued_attributes=None)
 
     xx_h1_set = xx_soup.css.select('h1')

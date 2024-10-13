@@ -2,18 +2,25 @@
 """
     This module implements the following classes:
 
-    * **TTableCell**:   Defines properties of a table cell
-    * **TTableRow**:    Defines properties of a table row, containing a list of TTableCells
-    * **TTable**:       Defines properties of a table, containing a list of TTableRows
-    * **TTableColumn**: Defines properties of a table column
+    * :py:class:`eezz.table.TTableCell`:   Defines properties of a table cell
+    * :py:class:`eezz.table.TTableRow`:    Defines properties of a table row, containing a list of TTableCells
+    * :py:class:`eezz.table.TTableColumn`: Defines properties of a table column
+    * :py:class:`eezz.table.TTable`:       Defines properties of a table, containing a list of TTableRows
+    * :py:class:`eezz.table.TTableInsertException`: Exception on checking the row-id, which has to be unique
 
     TTable is used for formatted ASCII output of a table structure.
-    It allows to access the table data for further processing e.g. for HTML output.
-    It could also be used to access a SQL database table
+    It allows to access the table data for further processing e.g. for HTML output. The class handles an
+    internal read cursor, which allows to navigate in the list of rows and to read a fixed amount of rows.
 
     TTable is a list of TTableRow objects, each of which is a list of TCell objects.
-    The TColumn holds the column names and is used to organize sort and filter.
-    A TCell object could hold TTable objects for recursive tree structures.
+    The TTableColumn holds the as well column names as types and is used to organize sort and filter.
+    A TTableCell object could hold a TTable object for recursive tree structures.
+
+    Besides this the following enumerations are used
+
+    * :py:class:`eezz.table.TNavigation`:   Enumeration for method :py:meth:`eezz.table.TTable.navigate`
+    * :py:class:`eezz.table.TSort`:         Enumeration for method :py:meth:`eezz.table.TTable.do_sort`
+
 """
 import os
 import re
@@ -58,47 +65,41 @@ class TSort(Enum):
 
 @dataclass(kw_only=True)
 class TTableCell:
-    """ The cell is the smallest unit of a table """
-    name:   str  = None
-    """ Name of the column """
-    width:  int  = 10
-    """ Width of the cell content """
-    value:  Any  = None
-    """ Display value of the cell """
-    index:  int  = 0
-    """ Unique index of the column """
-    type:   str  = 'str'
-    """ Value type to specify the output format. Could be user defined """
-    attrs:  dict = None
-    """ Meta data to describe the data, the in- and output format """
+    """ The cell is the smallest unit of a table. This class is a dataclass, so all
+    parameters become properties
+
+    :ivar int  width: Width of the cell content
+    :ivar int  value: Display value of the cell
+    :ivar int  index: Index of this cell in the column
+    :ivar str  type:  Type of the value (class name), derived from runtime environment
+    :ivar dict attrs: User defined attributes
+    """
+    name:   str             #: Property - Name of the column
+    value:  Any             #: Property - Value of the cell
+    width:  int  = 10       #: :meta private:
+    index:  int  = 0        #: :meta private:
+    type:   str  = 'str'    #: :meta private:
+    attrs:  dict = None     #: :meta private:
 
 
 @dataclass(kw_only=True)
 class TTableColumn:
-    """ Summarize the cell properties in a column, which includes sorting and formatting
+    """ Summarize the cell properties in a column, which includes sorting and formatting.
+    This class is a dataclass, so all parameters become properties.
 
-    :param index:   Stable address the column, even if filtered or translated
-    :param header:  Name of the column
-    :param width:   Width to fit the largest element in the column
-    :param filter:  Visible name for output
-    :param sort:    Sort direction
-    :param type:    Customizable type
-    :param attrs:   Customizable attributes
+    :ivar int   index:   Stable address the column, even if filtered or translated
+    :ivar int   width:   Width to fit the largest element in the column
+    :ivar str   filter:  Visible name for output
+    :ivar TSort sort:    Sort direction
+    :ivar str   type:    Value type (class name)
     """
-    index:  int
-    """:meta private:"""
-    header: str
-    """:meta private:"""
-    width:  int  = 10
-    """:meta private:"""
-    filter: str  = ''
-    """:meta private:"""
-    sort:   bool = True
-    """:meta private:"""
-    type:   str  = ''
-    """:meta private:"""
-    attrs:  dict = None
-    """:meta private:"""
+    header: str             #: Property - Name of the column
+    attrs:  dict = None     #: Property - Customizable attributes of the column
+    index:  int  = 0        #: :meta private:
+    width:  int  = 10       #: :meta private:
+    filter: str  = ''       #: :meta private:
+    sort:   bool = True     #: :meta private:
+    type:   str  = ''       #: :meta private:
 
 
 # forward declaration
@@ -107,39 +108,34 @@ TTable = NewType('TTable', None)
 
 @dataclass(kw_only=True)
 class TTableRow:
-    """ This structure is created for each row in a table. It allows also to specify a sub-structure table
+    """ This structure is created for each row in a table. It allows also to specify a sub-structure table.
+    This class is a dataclass, so all parameters become properties
+    TTable row implements methods to access values like an array
 
-    :param cells:           A list of strings are converted to a list of TTableCells, the class which holds the cell attributes.
-    :type cells: List[TTableCell] | List[str]
-    :param cells_filter:    A list of cells with filtered attributes. Used for example for translation or re-ordering.
-    :param column_descr:    The column descriptor holds the name of the column
-    :param index:           Unique address for the column
-    :param row_id:          Unique row id for the entire table
-    :param child:           The row could handle recursive data structures
-    :param type:            Customizable type used for triggering template output
-    :param attrs:           Customizable row attributes
+    * __getitem__ : value = row[column-name]
+    * __setitem__ : row[column-name] = value
+
+    :ivar List[str] cells_filter:    A list of cells with filtered attributes. Used for example for translation or re-ordering.
+    :ivar List[str] column_descr:    The column descriptor holds the name of the column
+    :ivar int       index:           Unique address for the column
+    :ivar str       row_id:          Unique row id for the entire table
+    :ivar TTable    child:           The row could handle recursive data structures
+    :ivar str       type:            Customizable type used for triggering template output
+    :ivar dict      attrs:           Customizable row attributes
     """
-    cells:        List[TTableCell] | List[str]
-    """:meta private:"""
-    cells_filter: List[TTableCell] | None = None
-    """:meta private:"""
-    column_descr: List[str]   = None
-    """:meta private:"""
-    index:        int         = None
-    """:meta private:"""
-    row_id:       str         = None
-    """:meta private:"""
-    child:        TTable      = None
-    """:meta private:"""
-    type:         str         = 'body'
-    """:meta private:"""
-    attrs:        dict        = None
-    """:meta private:"""
+    cells:        List[TTableCell] | List[str]      #: Property - A list of strings are converted to a list of TTableCells
+    cells_filter: List[TTableCell] | None = None    #: :meta private:
+    column_descr: List[str]   = None                #: :meta private:
+    index:        int         = None                #: :meta private:
+    row_id:       str         = None                #: :meta private:
+    child:        TTable      = None                #: :meta private:
+    type:         str         = 'body'              #: :meta private:
+    attrs:        dict        = None                #: :meta private:
 
     def __post_init__(self):
         """ Create a row, converting the values to :py:obj:`eezz.table.TTableCell` """
         if type(self.cells) is List[str]:
-            self.cells = [TTableCell(name=str(x)) for x in self.cells]
+            self.cells = [TTableCell(name=str(x), value=str(x)) for x in self.cells]
 
         self.column_descr = [x.name for x in self.cells]
 
@@ -148,9 +144,10 @@ class TTableRow:
                 setattr(self, x, y)
 
     def get_values_list(self) -> list:
-        """ Get row values as a list
+        """ Get all values in a row as a list
 
-        :return: value of each cell of the row in a list
+        :return: value of each cell
+        :rtype:  List[any]
         """
         return [x.value for x in self.cells]
 
@@ -176,67 +173,60 @@ class TTableRow:
 @dataclass(kw_only=True)
 class TTable(UserList):
     """ The table is derived from User-list to enable sort and list management
+    This is a dataclass, so the arguments become properties
 
     .. _ttable_parameter_list:
 
-    :param column_names:        List names of the columns
-    :param column_names_map:    Map names for output to re-arrange order
-    :type  column_names_map:    list, optional
-    :param column_names_alias:  Map alias names to column names. This could be used to translate the table header\
+    :ivar Dict[str, TTableCell] column_names_map:    Map names for output to re-arrange order
+    :ivar Dict[str, str]        column_names_alias:  Map alias names to column names. This could be used to translate the table header\
     without changing the select statements.
-    :param column_names_filter: Map columns for output, allows selecting a subset and rearanging, without touching\
+    :ivar List[int]             column_names_filter: Map columns for output, allows selecting a subset and rearanging, without touching\
     the internal structure of the table
-    :param column_descr:        Contains all attributes of a column like type and width
-    :param table_index:         Managing an index for row-id
-    :param title:               Table title
-    :param attrs:               User defined attributes for the table
-    :param visible_items:       Number of visible items: default is 20
-    :param offset:              Cursor position in data set
-    :param selected_row:        Current selected row
-    :param header_row:          Header row
-    :param apply_filter_column: Choose between a filtered setup or the original header
-    :param format_types:        Maps a column type to a formatter for ASCII output
-    :type  format_types:        Dict[type: Callable[length,value]->format-str]
+    :ivar List[TTableColumn]    column_descr:        Contains all attributes of a column like type and width
+    :ivar Dict[str, TTableRow]  table_index:         Managing an index for row-id
+    :ivar int                   visible_items:       Number of visible items: default is 20
+    :ivar int                   offset:              Cursor position in data set
+    :ivar TTableRow             header_row:          Header row
+    :ivar bool                  apply_filter_column: Choose between a filtered setup or the original header
+    :ivar Dict[str, Callable]   format_types:        Maps a column type to a formatter for ASCII output
 
     Examples:
+        Table instance:
+
+        >>> from table import TTable
+        >>> my_table = TTable(column_names=['FileName', 'Size'], title='Directory')
+        >>> for file in Path('.').iterdir():
+        >>>     my_table.append(table_row=[file, file.stat().st_size])
+        >>> my_table.print()
+        Table: Directory
+        | FileName     | Size |
+        | .idea        | 4096 |
+        | directory.py | 1699 |
+        | __init__.py  |   37 |
+        | __pycache__  | 4096 |
+
         This is a possible extension of a format for type iban, breaking the string into chunks of 4:
 
         >>> iban = 'de1212341234123412'
         >>> format_types['iban'] = lambda x_size, x_val: ' '.join(['{}' for x in range(6)]).format(* re.findall('.{1,4}', iban)})
         de12 1234 1234 1234 1234 12
     """
-    column_names:           List[str]
-    """:meta private:"""
-    column_names_map:       Dict[str, TTableCell] | None = None
-    """:meta private:"""
-    column_names_alias:     Dict[str, str]        | None = None
-    """:meta private:"""
-    column_names_filter:    List[int]             | None = None
-    """:meta private:"""
-    column_descr:           List[TTableColumn]    = None
-    """:meta private:"""
-    table_index:            Dict[str, TTableRow]  = None
-    """:meta private:"""
-    title:                  str         = 'Table'
-    """:meta private:"""
-    attrs:                  dict        = None
-    """:meta private:"""
-    visible_items:          int         = 20
-    """:meta private:"""
-    offset:                 int         = 0
-    """:meta private:"""
-    selected_row:           TTableRow   = None
-    """:meta private:"""
-    header_row:             TTableRow   = None
-    """:meta private:"""
-    apply_filter_column:    bool        = False
-    """:meta private:"""
-    format_types:           dict        = None
-    """:meta private:"""
-    async_condition:        Condition   = Condition()
-    """:meta private:"""
-    async_lock:             Lock        = Lock()
-    """:meta private:"""
+    column_names:           List[str]                               #: Property - List of column names
+    title:                  str  = 'Table'                          #: Property - Table title name
+    column_names_map:       Dict[str, TTableCell] | None = None     #: :meta private:
+    column_names_alias:     Dict[str, str]        | None = None     #: :meta private:
+    column_names_filter:    List[int]             | None = None     #: :meta private:
+    column_descr:           List[TTableColumn]    = None            #: :meta private:
+    table_index:            Dict[str, TTableRow]  = None            #: :meta private:
+    attrs:                  dict        = None                      #: :meta private:
+    visible_items:          int         = 20                        #: :meta private:
+    offset:                 int         = 0                         #: :meta private:
+    selected_row:           TTableRow   = None                      #: :meta private:
+    header_row:             TTableRow   = None                      #: :meta private:
+    apply_filter_column:    bool        = False                     #: :meta private:
+    format_types:           dict        = None                      #: :meta private:
+    async_condition:        Condition   = Condition()               #: :meta private:
+    async_lock:             Lock        = Lock()                    #: :meta private:
 
     def __post_init__(self):
         """ Post init for a data class
@@ -248,7 +238,7 @@ class TTable(UserList):
         x_cells               = [TTableCell(name=x_str, value=x_str, index=x_inx, width=len(x_str)) for x_inx, x_str in enumerate(self.column_names)]
         self.header_row       = TTableRow(cells=x_cells, type='header')
         self.column_names_map = {x.value: x for x in x_cells}
-
+        self.keys_syntax       = re.compile('[a-zA-Z0-9]+')
         if not self.format_types:
             self.format_types = {
                 'int':      lambda x_size, x_val: ' {{:>{}}} '.format(x_size).format(x_val),
@@ -261,12 +251,25 @@ class TTable(UserList):
         self.apply_filter_column  = False
 
     def filter_columns(self, column_names: Dict[str, str]) -> None:
-        """ First tuple value is the column name at any position, second tuple value is the new column display name
+        """ The column_names is a dictionary with a set of keys as subset of TTable.column_names.
+        The values are translated names to display in output. The order of the keys represents the order in the
+        output.
         The filter is used to generate customized output. This function could also be used to reduce the number of
         visible columns
 
         :param column_names:    Map new names to a column, e.g. after translation
-        :type column_names:     Dict[column_name: alias_name]
+        :type  column_names:    Dict[column_name: alias_name]
+
+        Example:
+
+        >>> my_table.filter_columns(column_names={'Size':'Größe', 'FileName': 'Datei'})
+        >>> my_table.print()
+        Table: Directory
+        | Größe | Datei        |
+        | 4096  | .idea        |
+        | 1886  | directory.py |
+        |   37  | __init__.py  |
+        | 4096  | __pycache__  |
         """
         # Create a list of column index and a translation of the column header entry
         self.column_names_filter = list()
@@ -288,15 +291,21 @@ class TTable(UserList):
         :param table_row:   List of values
         :param attrs:       Customizable attributes
         :param row_type:    Row type used for output filter
-        :param row_id:      Unique row id
+        :param row_id:      Unique row id, which consists of pattern letters and numbers [a-zA-Z0-9]+
         :raise TableInsertException: Exception if row-id already exists
         """
         # define the type with the first line inserted
         x_inx       = len(self.data)
         x_row_descr = list(zip(table_row, self.column_descr))
 
+        # Check for a valid row_id
         if row_id == '':
             row_id = str(x_inx)
+        else:
+            if x := self.keys_syntax.match(row_id):
+                row_id = x[0]
+            else:
+                raise TTableInsertException('invalid row-id')
 
         if x_inx == 0:
             self.table_index.clear()
@@ -306,7 +315,7 @@ class TTable(UserList):
         # Check if the row-id is unique
         if self.table_index.get(row_id):
             if not exists_ok:
-                raise TTableInsertException()
+                raise TTableInsertException('row-id exists')
             return self.table_index.get(row_id)
 
         x_cells = [TTableCell(name=x_descr.header, width=len(str(x_cell)), value=x_cell, index=x_descr.index, type=x_descr.type) for x_cell, x_descr in x_row_descr]
@@ -356,31 +365,46 @@ class TTable(UserList):
                 break
         return x_filter_results
 
-    def do_select(self, select_struct: dict, get_all: bool = False) -> List[TTableRow]:
+    def do_select(self, filters: dict | str, get_all: bool = False) -> List[TTableRow]:
         """ Select table rows using column values pairs, return at maximum visible_items.
         The value could be any valid regular expression.
 
-        :param select_struct:   dictionary with column-name - column-value pairs
-        :type select_struct:    dict[column_name, value]
-        :param get_all:         If True select more than visible_items
-        :return:                List of selected rows
+        :param filters:   dictionary with column-name/value pairs \
+        or qualified string: row-id[.row-id]*, in which case the algorithm will search recursivly \
+        in TTableRow.child structure
+        :type filters:    Dict[column_name, value] or qualified string
+        :param get_all:   If True select more than visible_items
+        :return:          List of selected rows
         :rtype: List[TTableRow]
 
-        Example
-            >>> users = TTable(column_names=['CUser'], title='users')
-            >>> users.append(['paul'])
-            >>> rows  = users.do_select({'CUser': 'p*'})
-            >>> rows[0]['CUser']
-            'paul'
+        Example:
+
+        >>> rows  = my_table.do_select(filters={'FileName': '__*'})
+        >>> my_table.print(rows)
+        | FileName     | Size |
+        | __init__.py  |   37 |
+        | __pycache__  | 4096 |
+
         """
+        # in case the filters is a string, we could also handle tree access
+        if isinstance(filters, str):
+            x_ids = filters.split('.')
+            x_row = self.table_index.get(x_ids[0])
+            for x_id in x_ids[1:]:
+                node: TTable = x_row.child
+                if not node:
+                    break
+                x_row = node.table_index.get(x_id)
+            return [x_row]
+
         # columns: List[str], values: List[str]
         x_filter_results = list()
-        x_filter = {x: re.compile(y) for x, y in select_struct.items()}
+        x_filter = {x: re.compile(y) for x, y in filters.items()}
 
         # Apply the filter for column layout
         for x_row in self.data:
             try:
-                x_res = [x for x in select_struct.keys() if x_filter[x].match(x_row[x])]
+                x_res = [x for x in filters.keys() if x_filter[str(x)].match(str(x_row[x]))]
                 # combine result for all conditions are matched as true
                 if len(x_res) == len(x_filter):
                     if self.apply_filter_column:
@@ -388,19 +412,9 @@ class TTable(UserList):
                     x_filter_results.append(x_row)
                 if len(x_filter_results) >= self.visible_items and not get_all:
                     break
-            except (KeyError, ValueError):
+            except (KeyError, ValueError) as x_ex:
                 pass
         return x_filter_results
-
-    def get_child(self) -> TTableRow | None:
-        """ Returns the child table, if exists, else None
-
-        :return:    The child if exists
-        :rtype:     TTableRow | None
-        """
-        if self.selected_row:
-            return self.selected_row.child
-        return None
 
     def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:
         """ Navigate in block mode
@@ -429,8 +443,10 @@ class TTable(UserList):
         """
         super().sort(key=lambda x_row: x_row[column], reverse=reverse)
 
-    def print(self) -> None:
+    def print(self, rows: List[TTableRow] | None = None) -> None:
         """ Print ASCII formatted table
+
+        :param rows: Optional parameter to print selected rows. If not set, print the visible rows.
         """
         x_column_descr = [self.column_descr[x] for x in self.column_names_filter] if self.apply_filter_column else self.column_descr
 
@@ -439,8 +455,9 @@ class TTable(UserList):
                           '|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.header) for x_col in x_column_descr]))
 
         print(f'|{x_formatted_row}|')
+        x_rows_print = rows if rows else self.get_visible_rows()
 
-        for x_row in self.get_visible_rows():
+        for x_row in x_rows_print:
             x_cells        = [x_row.cells[x] for x in self.column_names_filter] if self.apply_filter_column else x_row.cells
             x_row_descr    = zip(x_cells, x_column_descr)
             x_format_descr = [(x_descr.type, x_descr.width, x_cell.value)

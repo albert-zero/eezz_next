@@ -1,24 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-    EezzServer: 
-    High speed application development and 
-    high speed execution based on HTML5
-    
-    Copyright (C) 2015  Albert Zedlitz
+This module implements the following classes
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+    * :py:class:`eezz.server.TWebServer` : Implementation of http.server.HTTPServer, prepares the WEB-Socket interface.
+    * :py:class:`eezz.server.THttpHandle`: Implementation of http.server.SimpleHTTPRequestHandler, allows special \
+    access on local services.
  
 """
 import os
@@ -39,7 +25,12 @@ import json
 
 
 class TWebServer(http.server.HTTPServer):
-    """ WEB Server encapsulate the WEB socket implementation """
+    """ WEB Server encapsulate the WEB socket implementation
+
+    :param a_server_address: The WEB address of this server
+    :param a_http_handler:   The HTTP handler
+    :param a_web_socket:     The socket address waiting for WEB-Socket interface
+    """
     def __init__(self, a_server_address, a_http_handler, a_web_socket):
         self.m_socket_inx  = 0
         self.m_server_addr = a_server_address
@@ -49,6 +40,7 @@ class TWebServer(http.server.HTTPServer):
         super().__init__(a_server_address, a_http_handler)
 
     def shutdown(self):
+        """ Shutdown the WEB server """
         self.m_web_socket.shutdown()
         super().shutdown()
 
@@ -156,7 +148,7 @@ if __name__ == "__main__":
     x_opt_parser.add_option("-p", "--port",      dest="http_port",  default="8000",      help="HTTP Port (default 8000")
     x_opt_parser.add_option("-w", "--webroot",   dest="web_root",   default="webroot",   help="Web-Root (path to webroot directory)")
     x_opt_parser.add_option("-x", "--websocket", dest="web_socket", default="8100",      help="Web-Socket Port (default 8100)",  type="int")
-    x_opt_parser.add_option("-t", "--translate", dest="translate",  action="store_true", help="Optional creation of POT file")
+    x_opt_parser.add_option("-t", "--translate", dest="translate",  action="store_true", help="Optional creation of POT f<<<<<<<<<<<<<<<<<ile")
 
     (x_options, x_args)         = x_opt_parser.parse_args()
 

@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-This module implements the following classes
+The module bueserv handles the bluetooth features of EEZZ.
+and implements the following classes
 
-    * **TBluetooth**:        TTable for listing bluetooth devices in range
-    * **TBluetoothService**: Communicates with bluetooth-service EEZZ on mobile device
+    * :py:class:`eezz.table.TBluetooth`:        TTable for listing bluetooth devices in range
+    * :py:class:`eezz.table.TBluetoothService`: Communicates with bluetooth-service EEZZ on mobile device
 
 """
 import select
@@ -25,17 +26,17 @@ _ = gettext.gettext
 
 @dataclass(kw_only=True)
 class TBluetoothService:
-    """ The TBluetoothService handles a connection for a specific mobile given by bt_address
+    """ The TBluetoothService handles a connection for a specific mobile given by address.
+    The class is defined as dataclass, so that the call parameters become properties.
 
-    :param address:         The address of the bluetooth device
-    :param eezz_service:    The service GUID of the eezz App
-    :param m_lock:          Lock communication for a single request/response cycle
-    :param bt_socket:       The communication socket
-    :param bt_service:      The services associated with the eezz App
-    :param connected:       Indicates that the service is active
+    :ivar eezz_service:    The service GUID of the eezz App
+    :ivar m_lock:          Lock communication for a single request/response cycle
+    :ivar bt_socket:       The communication socket
+    :ivar bt_service:      The services associated with the eezz App
+    :ivar connected:       Indicates that the service is active
     """
     address:       str
-    """ :meta private: """
+    """ Property - The address of the bluetooth device """
     eezz_service:  str        = "07e30214-406b-11e3-8770-84a6c8168ea0"
     """ :meta private: """
     m_lock:        Lock       = Lock()
@@ -48,7 +49,8 @@ class TBluetoothService:
     """ :meta private: """
 
     def open_connection(self):
-        """ Open a bluetooth connection """
+        """ Open a bluetooth connection
+        """
         if self.connected:
             return
         self.bt_service = bluetooth.find_service(uuid=self.eezz_service, address=self.address)
@@ -58,13 +60,14 @@ class TBluetoothService:
             self.connected = True
 
     def shutdown(self):
-        """ Close a bluetooth connection """
+        """ Shutdown interrupts open connections, stops the port-select and closes all open sockets.
+        """
         if self.connected:
             self.bt_socket.close()
             self.connected = False
 
     def send_request(self, command: str, args: list) -> dict:
-        """ A request is send to the device, waiting for a response.
+        """ A request is sent to the device, waiting for a response.
         The protocol use EEZZ-JSON structure:
         send ->    {message: str, args: list}
         receive -> {return: dict { code: int, value: str}, ...}
@@ -76,7 +79,7 @@ class TBluetoothService:
         if not self.open_connection():
             return {"return": {"code": 500, "value": f'Could not connect to EEZZ service on {self.address}'}}
 
-        message = {'command': command, 'argss': args}
+        message = {'command': command, 'args': args}
         try:
             with self.m_lock:
                 x_timeout: float = 1.0
@@ -112,18 +115,19 @@ class TBluetooth(TTable):
     A scan_thread is started to keep looking for new devices.
     TBluetooth service is a singleton to manage this consistently
 
-    :param bt_table_changed:    Condition triggered, if there are changes in the list of devices in range
-    :param column_names:        Fixed column names ['Address', 'Name']
+    :ivar column_names:     Constant list ['Address', 'Name']
+    :ivar title:            Constant title = bluetooth devices
+    :ivar bt_table_changed: Condition: Signals table change events
     """
-    column_names:       List[str] = None
+    column_names:      List[str] = None
+    """ :meta private: """
+    bt_table_changed = Condition()
     """ :meta private: """
 
     def __post_init__(self):
         self.column_names = ['Address', 'Name']
         self.title        = 'bluetooth devices'
         super().__post_init__()
-
-        self.bt_table_changed = Condition()
         self.scan_bluetooth   = Thread(target=self.find_devices(), daemon=True, name='find devices').start()
 
     def find_devices(self) -> None:
@@ -134,7 +138,7 @@ class TBluetooth(TTable):
         while True:
             x_result = bluetooth.discover_devices(flush_cache=True, lookup_names=True)
 
-            with self.asyc_lock:
+            with self.async_lock:
                 table_changed = False
 
                 # Step 1: Reduce the internal list to devices in range
@@ -155,7 +159,7 @@ class TBluetooth(TTable):
             time.sleep(2)
 
     def get_visible_rows(self, get_all: bool = False) -> List[TTableRow]:
-        with self.asyc_lock:
+        with self.async_lock:
             return super().get_visible_rows(get_all=get_all)
 
 

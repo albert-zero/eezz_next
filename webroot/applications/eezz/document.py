@@ -1,7 +1,17 @@
 """
-    * **TManifest**:   Document header representation.
-    * **TDocuments**:  Document management
+This module implements the following classes
 
+    * :py:class:`eezz.document.TManifest`:   Document header representation. The header is a dictionary with a given \
+    structure and a defined set of keys and sub-keys. The manifest defines the database table and access. \
+    The manifest is the structure, which is signed and which is used to identify and verify the document.
+    * :py:class:`eezz.document.TDocument`:  A document consists of more than one file and the manifest. Part of the \
+    document is encrypted. The document key could be used in combination with a mobile device to decrypt the file.
+
+The document module allows download of files in chunks and encryption/decryption.
+The method :py:meth:`eezz.document.TDocument.zip` creates a partial encrypted archive with a signed header. the
+manifest. The method unzip will check this header before unpacking.
+There is a rudimentary idea implemented to trade self-consistent multi media files, using eezz server as transaction
+platform.
 """
 import time
 import tarfile
@@ -25,7 +35,7 @@ from Crypto           import Random
 
 from Crypto.Cipher    import AES
 from Crypto.Signature import pkcs1_15
-from Crypto.Hash      import SHA1, SHA256, SHA384
+from Crypto.Hash      import SHA1, SHA256
 
 
 @dataclass(kw_only=True)
@@ -111,31 +121,20 @@ class TDocuments(TDatabaseTable):
     2. Open a document, reading the manifest. Noe you could check if you have the key on your mobile device, or you
        buy the key from EEZZ
 
-    :param files_list:      List of files
-    :param key:             Document key
-    :param vector:          Document vector
-    :param description:     Document description
-    :param manifest:        Manifest as document header
-    :type  manifest:        TManifest
-    :param eezz_path:       Document file name
-    :param name:            Document name
+    :ivar Path          path:            Document file name
+    :ivar str           name:            Document name
+    :ivar List[TFile]   files_list:      List of files
+    :ivar bytes         key:             Document key
+    :ivar bytes         vector:          Document vector
+    :ivar TManifest     manifest:        Document header
     """
-    header:       dict            = None
-    """:meta private:"""
-    files_list:   List[TEezzFile] = None
-    """:meta private:"""
-    key:          bytes           = None
-    """:meta private:"""
-    vector:       bytes           = None
-    """:meta private:"""
-    description:  dict            = None
-    """:meta private:"""
-    manifest:     TManifest       = None
-    """:meta private:"""
-    eezz_path:    Path            = None
-    """:meta private:"""
-    name:         str             = None
-    """:meta private:"""
+    column_names: List[str]         = None  #: List of column names is calculated for this class
+    files_list:   List[TEezzFile]   = None  #: :meta private:
+    key:          bytes             = None  #: :meta private:
+    vector:       bytes             = None  #: :meta private:
+    manifest:     TManifest         = None  #: :meta private:
+    path:         Path              = None  #: :meta private:
+    name:         str               = None  #: :meta private:
 
     def __post_init__(self):
         self.manifest           = TManifest()
@@ -165,7 +164,6 @@ class TDocuments(TDatabaseTable):
 
         :param request:     The json format of a WEB socket request
         """
-        self.description = request
         x_name           = request.get('name')
         x_files_descr    = request.get('files')
         x_queue          = Queue()
@@ -216,13 +214,16 @@ class TDocuments(TDatabaseTable):
 
             list(map(lambda x_segment: x_hash.update(x_segment), x_file.hash_chain))
             x_hash_digest = base64.b64encode(x_hash.digest()).decode('utf-8')
-            self.manifest.set_values(section='files',
-                                     proposed={'name':       x_file.destination.name,
-                                               'hash_chain': x_file.hash_chain,
-                                               'hash':       x_hash_digest,
-                                               'chunk_size': x_file.chunk_size,
-                                               'size':       x_file.size,
-                                               'type':       x_file.file_type})
+            self.manifest.set_values(
+                section  = 'files',
+                proposed = {
+                    'name':       x_file.destination.name,
+                    'hash_chain': x_file.hash_chain,
+                    'hash':       x_hash_digest,
+                    'chunk_size': x_file.chunk_size,
+                    'size':       x_file.size,
+                    'type':       x_file.file_type})
+
             x_files.append(x_file)
 
         # Store document header on EEZZ and sign the header
@@ -342,8 +343,8 @@ class TDocuments(TDatabaseTable):
         return x_manifest
 
     def eezz_register_document(self) -> dict:
-        """ Stores header and return signature
-        insert into TDocument (CID, RUser, CStatus, CHashDoc, CKey, CDiscount, CPrice, CCurrency, CTitle)
+        """ Registers the document header to EEZZ and returns it signed with the EEZZ key. The signed header
+        is stored as manifest in the final document.
 
         """
         # Store and sign the document header using the document-key
@@ -353,26 +354,36 @@ class TDocuments(TDatabaseTable):
         return x_json_response
 
     def eezz_buy_document(self, transaction_key: bytes):
-        """ From eezz_get_document_header you received a transaction key. You have to sign this key and send a bzy
-        request. This ensures, that the registered device is in range and the device key is accessible.
+        """ Buy transaction to get the document key.
 
-        :param transaction_key:
+        :param transaction_key: With the method :py:meth:`eezz.document.TDocument.eezz_get_document_key` you get the \
+        key, if you are owner or you get a transaction_key, which could be used in this method to buy the key. Once \
+        you own the key, you could store it in local database. \
+        The document key is encrypted with the mobile device key.
         """
         # x_key    = self.get_device_key()
         # RsaKey
         # x_signer = pkcs1_15.new(x_key)
         # x_hash   = SHA256.new(transaction_key)
         # x_sign   = x_signer.sign(x_hash)
-
         x_eezz_connection   = TSecureSocket()
         x_response          = x_eezz_connection.send_request('reqkeycommit', [transaction_key])
         x_json_response     = json.loads(x_response.decode('utf-8'))
         x_encrypted_key     = x_json_response['key']
         key_vector          = self.decrypt_key_with_device(x_encrypted_key)
-        self.manifest.set_values('document',  {'document_key': key_vector})
+        key_vector_64       = base64.b64encode(key_vector)
+
+        self.manifest.set_values('document',  {'document_key': key_vector_64})
         self.append(self.manifest.get_values())
+        self.commit()
 
     def eezz_get_document_key(self, buy_request=False) -> dict:
+        """ Get the document key from EEZZ server
+
+        :param buy_request: If True, a transaction key is created, if the called is not yet owner
+        :type  buy_request: bool = False
+        :return:
+        """
         x_device_sim        = ''
         x_eezz_connection   = TSecureSocket()
         x_response          = x_eezz_connection.send_request('reqkey', [self.session.sid, self.manifest.get_key()], int(buy_request))

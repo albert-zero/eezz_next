@@ -2,8 +2,11 @@
 """
 This module implements the following classes
 
-    * **TSession**: User session management
+    * :py:class:`eezz.session.TSession`: User session management
 
+The class is created by a call to the local browser site with SID and user-name as query parameter. This is done
+automatically in the EEZZ environment during login in autostart. The session is stored as singleton in the
+global storage of the HTTP server.
 """
 import time
 import base64
@@ -41,39 +44,22 @@ class TSession(TTable):
     After this, the user could choose to store the password on the device to allow automatic lock and unlock feature
     of the EEZZ Windows installation.
 
-    :param sid:                 Windows user SID
-    :param name:                Windows username
-    :param desktop_connected:   Connected to the desktop user
-    :type desktop_connected:    bool
-    :param device_connected:    Connected device and desktop user
-    :type device_connected:     bool
-    :param paired_device:       Data of connected device
-    :type  paired_device:       TTableRow
-    :param bt_service:          Bluetooth communication protocol
-    :type  bt_service:          TBluetoothService
-    :param bt_devices:          Table listing bluetooth devices in range
-    :type  bt_devices:          TTable
-    :param mb_devices:          Table with paired devices
-    :type  mb_devices:          TTable
+    :ivar bool                  desktop_connected:   Connected to the desktop user
+    :ivar bool                  device_connected:    Connected device and desktop user
+    :ivar TTableRow             paired_device:       Data of connected device
+    :ivar TBluetoothService     bt_service:          Bluetooth communication protocol
+    :ivar TBluetooth            bt_devices:          Table listing bluetooth devices in range
+    :ivar TMobileDevices        mb_devices:          Table with paired devices
     """
-    sid:                str     = None
-    """ :meta private: """
-    address:            str     = None
-    """ :meta private: """
-    name:               str     = None
-    """ :meta private: """
-    desktop_connected:  bool    = False
-    """ :meta private: """
-    device_connected:   bool    = False
-    """ :meta private: """
-    paired_device:      TTableRow          | None = None
-    """ :meta private: """
-    bt_service:         TBluetoothService  | None = None
-    """ :meta private: """
-    bt_devices:         TBluetooth         = None
-    """ :meta private: """
-    mb_devices:         TMobileDevices     = None
-    """ :meta private: """
+    sid:                str     = None                      #: Property - Windows login-user SID
+    name:               str     = None                      #: Property - Windows login-user name
+    address:            str     = None                      #: :meta private:
+    desktop_connected:  bool    = False                     #: :meta private:
+    device_connected:   bool    = False                     #: :meta private:
+    paired_device:      TTableRow          | None = None    #: :meta private:
+    bt_service:         TBluetoothService  | None = None    #: :meta private:
+    bt_devices:         TBluetooth         = None           #: :meta private:
+    mb_devices:         TMobileDevices     = None           #: :meta private:
 
     def __post_init__(self):
         """ Create the table header """
@@ -103,7 +89,7 @@ class TSession(TTable):
                 self.bt_devices.async_condition.wait()
                 x_bt_devices_in_range = self.bt_devices.get_visible_rows()
 
-            x_my_paired_devices   = self.mb_devices.do_select(['CSid'], [self.sid])
+            x_my_paired_devices   = self.mb_devices.do_select({'CSid': self.sid})
             x_my_paired_addresses = [x['CAddress'] for x in x_my_paired_devices]
             x_bt_device_addresses = [x['Address']  for x in x_bt_devices_in_range]
             x_pairs  = [x for x in x_bt_device_addresses if x in x_my_paired_addresses]
@@ -118,7 +104,7 @@ class TSession(TTable):
             if not self.device_connected and x_pairs:
                 self.address          = x_pairs[0]
                 self.bt_service       = TBluetoothService(address=self.address)
-                self.paired_device    = self.mb_devices.do_select([], [self.address])[0]
+                self.paired_device    = self.mb_devices.do_select({'Address': self.address})[0]
                 self.device_connected = True
 
     def connect(self, local_user: dict):
@@ -193,7 +179,7 @@ class TSession(TTable):
         """
         with self.bt_devices.async_lock:
             x_devices_to_pair  = self.bt_devices.do_select({'CAddress': address})[0]
-            x_my_devices       = self.mb_devices.do_select(['CSid', 'CAddress'], [self.sid, address])[0]
+            x_my_devices       = self.mb_devices.do_select({'CSid': self.sid, 'CAddress': address})[0]
 
         # Prepare update of password for existing pairing or create new
         if x_my_devices:
@@ -255,8 +241,6 @@ class TSession(TTable):
 
     def read_windows_registry(self):
         """ Read user data from windows registry """
-        x_profile_list_hdl = None
-        x_tcp_ip_hdl       = None
         x_profile_list_hdl = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList')
         for i in range(15):
             try:

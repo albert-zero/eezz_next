@@ -37,8 +37,22 @@ class TDirPng(TTable):
             self.append([str(x.name), x_stat.st_size, x_time], row_type='is_dir' if x.is_dir() else 'is_file')
 
 
+from icecream import ic
+def test():
+    my_table = TTable(column_names=['FileName', 'Size'], title='Directory')
+    for file in Path('.').iterdir():
+        my_table.append(table_row=[file, file.stat().st_size])
+    my_table.print()
+    rows = my_table.do_select(filters={'FileName': '__*'})
+    my_table.print(rows)
+    my_table.filter_columns(column_names={'Size':'Größe', 'FileName': 'Datei'})
+    my_table.print()
+
+
 if __name__ == '__main__':
-    xdir = TDirView(path=str(Path.cwd() / '../docs'))
+    test()
+    exit()
+    xdir = TDirPng(path=str(Path.cwd() / '../docs'))
     xdir.print()
 
     #xdir = TDirPng(path='/home/paul')

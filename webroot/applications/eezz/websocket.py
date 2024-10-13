@@ -1,27 +1,16 @@
 """
-    EezzServer: 
-    High speed application development and 
-    high speed execution based on HTML5
-    
-    Copyright (C) 2015  Albert Zedlitz
+This module implements the following classes
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    * :py:class:`eezz.websocket.TWebSocketAgent`:       The abstract class has to be implemented by the user to \
+    drive the TWebSocketClient
+    * :py:class:`eezz.websocket.TWebSocketException`:   The exception for errors on low level interface
+    * :py:class:`eezz.websocket.TWebSocketClient`:      This class interacts with the TWebSocketAgent and HTML frontend
+    * :py:class:`eezz.websocket.TWebSocket`:            Low level access to the socket interface
+    * :py:class:`eezz.websocket.TAsyncHandler`:         This class is used to interact with user defined methods
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+The TWebSocket implements the protocol according to
+`rfc 6455 <https://tools.ietf.org/html/rfc6455>`_
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-Description:
-   Implements websocket protocol according to rfc 6455 
-   https://tools.ietf.org/html/rfc6455
- 
 """
 import io
 import struct
@@ -44,11 +33,9 @@ class TWebSocketAgent:
     """ User has to implement this class to receive data.
     TWebSocketClient is called with the class type, leaving the TWebSocketClient to generate an instance
     """
-    def __init__(self):
-        pass
-
     @abstractmethod
     def setup_download(self, request_data: dict) -> str:
+        """ This method is called before a download of files starts """
         return ''
 
     @abstractmethod
@@ -76,11 +63,16 @@ class TWebSocketException(Exception):
 
 
 class TWebSocketClient:
-    """ Implements a WEB socket service thread """
-    def __init__(self, a_client_addr: tuple, a_web_addr: int, a_agent: type[TWebSocketAgent]):
+    """ Implements a WEB socket service thread. This class is created for each WebSocket connection
+
+    :param a_client_addr:   The communication socket to the web-browser
+    :type  a_client_addr:   Tuple[host, address]
+    :param a_agent:         The agent class handle to handle incoming request
+    :type  a_agent:         type[TWebSocketAgent]
+    """
+    def __init__(self, a_client_addr: tuple, a_agent: type[TWebSocketAgent]):
         self.m_headers      = None
         self.m_socket       = a_client_addr[0]
-        self.m_address      = a_web_addr
         self.m_cnt          = 0
         self.m_buffer       = None
         self.m_protocol     = str()
@@ -168,7 +160,7 @@ class TWebSocketClient:
             x_raw_data = bytes()
             while True:
                 x_final, x_opcode, x_mask_vector, x_payload_len = self.read_frame_header()
-                if x_opcode == 0x8:
+                if x_opcode   == 0x8:
                     raise TWebSocketException("closed connection")
                 elif x_opcode == 0x1:
                     x_raw_data += self.read_frame(x_opcode, x_mask_vector, x_payload_len)
@@ -206,15 +198,14 @@ class TWebSocketClient:
         if self.m_protocol != 'peezz':
             x_key = self.gen_key()
 
-        with io.StringIO() as x_handshake:
-            x_handshake.write('HTTP/1.1 101 Switching Protocols\r\n')
-            x_handshake.write('Connection: Upgrade\r\n')
-            x_handshake.write('Upgrade: websocket\r\n')
-            x_handshake.write('Sec-WebSocket-Accept: {}\r\n'.format(x_key))
-            x_handshake.write('\r\n')
-            x_result = x_handshake.getvalue()
-        return x_result
-    
+        x_handshake = io.StringIO()
+        x_handshake.write('HTTP/1.1 101 Switching Protocols\r\n')
+        x_handshake.write('Connection: Upgrade\r\n')
+        x_handshake.write('Upgrade: websocket\r\n')
+        x_handshake.write('Sec-WebSocket-Accept: {}\r\n'.format(x_key))
+        x_handshake.write('\r\n')
+        return x_handshake.getvalue()
+
     def gen_key(self):
         """ Generates a key to establish a secure connection
 
@@ -229,7 +220,8 @@ class TWebSocketClient:
     def read_frame_header(self):
         """ Interpret the incoming data stream, starting with analysis of the first bytes
 
-        :return: A tuple of all attributes, which enable the program to read the pay-load
+        :return: A tuple of all attributes, which enable the program to read the payload: \
+        final(byte), opcode(data-type), mask(encryption), len(payload size)
         """
         x_bytes = self.m_socket.recv(2)
         
@@ -292,14 +284,17 @@ class TWebSocketClient:
                                 
         return self.m_buffer[:a_payload_len]
 
-    def write_frame(self, a_data: bytes, a_opcode: hex = 0x1, a_final: hex = (1 << 7), a_mask_vector: list = None) -> None:
+    def write_frame(self, a_data: bytes, a_opcode: hex = 0x1, a_final: hex = (1 << 7), a_mask_vector: list | None = None) -> None:
         """ Write single frame
 
-        :param a_data:          Data to send to browser
-        :param a_opcode:        Opcode defines the kind of data
-        :param a_final:         Bool set to True, if all data are written to stream
-        :param a_mask_vector:   Mask to use for secure communication
-        :return: None
+        :param a_data:      Data to send to browser
+        :type  a_data:      bytes
+        :param a_opcode:    Opcode defines the kind of data
+        :type  a_opcode:    byte
+        :param a_final:     Indicates if all data are written to stream
+        :type  a_final:     byte
+        :param a_mask_vector: Mask to use for secure communication
+        :type  a_mask_vector: List[byte,byte,byte,byte]
         """
         x_payload_len = len(a_data)
         x_bytes       = bytearray(10)
@@ -345,8 +340,15 @@ class TWebSocketClient:
 
 
 class TWebSocket(Thread):
-    """ Manage connections to the WEB socket interface """
-    def __init__(self, a_web_address, a_agent_class: type[TWebSocketAgent]):
+    """ Manage connections to the WEB socket interface.
+    TWebSocket implements the socket of a http.server.HTTPServer
+
+    :param a_web_address: The connection information
+    :type  a_web_address: Tupel[host, address]
+    :param a_agent_class: The implementation of the EEZZ protocol
+    :type  a_agent_class: type[TWebSocketAgent]
+    """
+    def __init__(self, a_web_address: tuple, a_agent_class: type[TWebSocketAgent]):
         self.m_web_socket: socket = None
         self.m_web_addr    = a_web_address
         self.m_clients     = dict()
@@ -390,7 +392,7 @@ class TWebSocket(Thread):
             for x_socket in x_rd:
                 if x_socket is self.m_web_socket:
                     x_clt_addr = self.m_web_socket.accept()
-                    self.m_clients[x_clt_addr[0]] = TWebSocketClient(x_clt_addr, self.m_web_addr, self.m_agent_class)
+                    self.m_clients[x_clt_addr[0]] = TWebSocketClient(x_clt_addr, self.m_agent_class)
                     x_read_list.append(x_clt_addr[0])
                 else:
                     x_client: TWebSocketClient = self.m_clients.get(x_socket)
@@ -404,19 +406,26 @@ class TWebSocket(Thread):
 
 
 class TAsyncHandler(Thread):
-    """ Execute method in background task """
+    """ Execute method in background task.
+    This class is designed to be put into an async thread to execute a user method, without blocking the websocket.
+    After the method returns, the AsyncHandler creates the websocket response.
+    It's also possible to specify a loop counter for successive calls to the same method. The loop count is
+    given with the "_metha.loop" attribute. Some minimal time interval has to be calculated by the user method.
+    This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.
+
+    :param method:          The method to be executed
+    :type  method:          Callable
+    :param args:            The arguments for this method as key/value pairs plus meta-arguments with the reserved key\
+    _meta, here with a loop request: ``{'_meta': {'loop': 100,...}}``. \
+    The loop continues until the user method returns None
+    :type  args:            Dict[name, value]
+    :param socket_server:   The server to send the result
+    :type  socket_server:   TWebSocketClient
+    :param request:         The request, which is waiting for the method to return
+    :type  request:         dict[eezz-lark-key:value]
+    :param description:     The name of the thread
+    """
     def __init__(self, method: Callable, args: dict, socket_server: TWebSocketClient, request: dict, description: str):
-        """
-        :param method:          The method to be called
-        :type method:           Callable
-        :param args:            The arguments for this method as key/value pairs
-        :type args:             dict[name, value]
-        :param socket_server:   The server to send the result
-        :type socket_server:    TWebSocketClient
-        :param request:         The request, which is waiting for the method to return
-        :type request:          dict[eezz-lark-key:value]
-        :param description:     The name of the thread
-        """
         super().__init__(daemon=True, name=description)
         self.method         = method
         self.args           = args
@@ -424,13 +433,21 @@ class TAsyncHandler(Thread):
         self.request        = request
 
     def run(self):
-        self.request['result'] = self.method(**self.args)
-        self.socket_server.handle_aync_request(self.request)
+        try:
+            x_meta_args = self.args.pop('_meta')
+            x_loop      = x_meta_args['loop'] if x_meta_args and 'loop' in x_meta_args else 1
+        except KeyError:
+            x_loop      = 1
+
+        for i in range(x_loop):
+            self.request['result'] = self.method(**self.args)
+            self.socket_server.handle_aync_request(self.request)
 
 
 # ---- Module test section:
 def test_tcm():
-    """ simulate a time consuming method (tcm)"""
+    """ :meta private:
+    simulate a time consuming method (tcm)"""
     for i in range(10):
         time.sleep(1)
         print('.', end='')
@@ -438,16 +455,18 @@ def test_tcm():
 
 
 class TestSocketServer(TWebSocketClient):
-    """ Simulate a request handler, waiting for a method to finish"""
+    """ :meta private:
+    Simulate a request handler, waiting for a method to finish"""
     def handle_aync_request(self, request: dict):
         print(request)
 
 
 def test_async_hadler():
-    """ Test for TAsyncHandler thread """
+    """ :meta private:
+    Test for TAsyncHandler thread """
     print('Test TAsyncHandler: async method call and socket server output \n')
     x_req    = {'test': 'threads'}
-    x_ss     = TestSocketServer(a_client_addr=('',), a_web_addr=0, a_agent=TWebSocketAgent)
+    x_ss     = TestSocketServer(a_client_addr=('',), a_agent=TWebSocketAgent)
     x_thread = TAsyncHandler(method=test_tcm, args={}, socket_server=x_ss, request=x_req, description='test')
     x_thread.start()
     print('Main thread waiting for the method to return')
@@ -455,5 +474,6 @@ def test_async_hadler():
 
 
 if __name__ == '__main__':
+    """:meta private:"""
     test_async_hadler()
 

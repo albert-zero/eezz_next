@@ -12,12 +12,9 @@ import urllib
 import urllib.request
 import base64
 import struct
-from   Crypto.PublicKey  import RSA
-from   Crypto.Cipher     import PKCS1_v1_5
-# from   Crypto.Signature import PKCS1_v1_5
-from   Crypto.Hash       import SHA256, SHA
-from   Crypto.Cipher     import AES
-from   Crypto            import Random
+from   crypto.Cipher     import PKCS1_v1_5
+from   crypto.Cipher     import AES
+from   crypto            import Random
 import service
 
 

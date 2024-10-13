@@ -238,7 +238,6 @@ class TServiceCompiler(Transformer):
         x_function, x_args = item[0].children
         x_json_obj = {'call': {'function': x_function, 'args': x_args, 'id': self.m_id}}
         self.m_tag['data-eezz-init'] = json.dumps(x_json_obj)
-        print(self.m_tag)
         return x_json_obj
 
     def table_assignment(self, item):
