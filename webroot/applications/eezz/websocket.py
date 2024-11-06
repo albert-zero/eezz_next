@@ -136,8 +136,8 @@ class TWebSocketClient:
             x_thread  = TAsyncHandler(socket_server=self, request=x_json_obj, method=x_method, args=x_args, description=x_descr)
             self.m_threads[x_method] = x_thread
             x_thread.start()
-        # - x_response = self.m_agent_client.handle_request(x_json_obj)
-        # - self.write_frame(x_response.encode('utf-8'))
+            # - x_response = self.m_agent_client.handle_request(x_json_obj)
+            # - self.write_frame(x_response.encode('utf-8'))
 
     def handle_aync_request(self, request: dict) -> None:
         """ This method is called after each method call request by user interface. The idea of an async call is,
@@ -391,8 +391,10 @@ class TWebSocket(Thread):
 
             for x_socket in x_rd:
                 if x_socket is self.m_web_socket:
-                    x_clt_addr = self.m_web_socket.accept()
-                    self.m_clients[x_clt_addr[0]] = TWebSocketClient(x_clt_addr, self.m_agent_class)
+                    x_clt_addr  = self.m_web_socket.accept()
+                    x_ws_client = TWebSocketClient(x_clt_addr, self.m_agent_class)
+                    x_ws_client.upgrade()
+                    self.m_clients[x_clt_addr[0]] = x_ws_client
                     x_read_list.append(x_clt_addr[0])
                 else:
                     x_client: TWebSocketClient = self.m_clients.get(x_socket)

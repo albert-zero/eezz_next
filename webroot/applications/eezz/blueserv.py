@@ -20,6 +20,7 @@ import gettext
 from   dataclasses      import dataclass
 from   itertools        import filterfalse
 from   typing           import List
+import asyncio
 
 _ = gettext.gettext
 
@@ -27,26 +28,27 @@ _ = gettext.gettext
 @dataclass(kw_only=True)
 class TBluetoothService:
     """ The TBluetoothService handles a connection for a specific mobile given by address.
-    The class is defined as dataclass, so that the call parameters become properties.
 
-    :ivar eezz_service:    The service GUID of the eezz App
-    :ivar m_lock:          Lock communication for a single request/response cycle
-    :ivar bt_socket:       The communication socket
-    :ivar bt_service:      The services associated with the eezz App
-    :ivar connected:       Indicates that the service is active
+    :param address:         The address of the bluetooth device to pair (using find_devices)
     """
     address:       str
-    """ Property - The address of the bluetooth device """
+    """ :meta private: """
     eezz_service:  str        = "07e30214-406b-11e3-8770-84a6c8168ea0"
-    """ :meta private: """
+    """ :meta private: service GUID of the eezz App """
     m_lock:        Lock       = Lock()
-    """ :meta private: """
+    """ :meta private: Sync communication with bluetooth service """
     bt_socket                 = None
-    """ :meta private: """
+    """ :meta private: The communication socket once established """
     bt_service:    list       = None
-    """ :meta private: """
+    """ :meta private: List of eezz service App for establishing a connection """
     connected:     bool       = False
-    """ :meta private: """
+    """ :meta private: Indicates whether connection to eezz service is established """
+
+    def __post_init__(self):
+        self.error_codes = {'open_connection':   (500, 'Could not connect to EEZZ service on address={address}'),
+                            'timeout':           (501, 'EEZZ service timeout on address={address}'),
+                            'connection_closed': (502, 'Connection closed by peer'),
+                            'communication':     (503, 'Connection closed during communication with exception {exception}')}
 
     def open_connection(self):
         """ Open a bluetooth connection
@@ -69,15 +71,20 @@ class TBluetoothService:
     def send_request(self, command: str, args: list) -> dict:
         """ A request is sent to the device, waiting for a response.
         The protocol use EEZZ-JSON structure:
-        send ->    {message: str, args: list}
-        receive -> {return: dict { code: int, value: str}, ...}
+
+        * send ->    {command: str, args: list}
+        * receive -> {return: { code: <int>, value: <str>}, ...}
 
         :param command: The command to execute
-        :param args: The arguments for the given command
+        :type  command: str
+        :param args:    The arguments for the given command
+        :type  args:    list
         :return: JSON structure send by device
+        :rtype: dict
         """
         if not self.open_connection():
-            return {"return": {"code": 500, "value": f'Could not connect to EEZZ service on {self.address}'}}
+            x_code, x_text = self.error_codes['open_connection']
+            return {"return": {"code": x_code, "value": x_text.format(address=self.address)}}
 
         message = {'command': command, 'args': args}
         try:
@@ -86,7 +93,8 @@ class TBluetoothService:
                 # Send request: Wait for writer and send message
                 x_rd, x_wr, x_err = select.select([], [self.bt_socket], [], x_timeout)
                 if not x_wr:
-                    return {"return": {"code": 500, "value": f'EEZZ service timeout on {self.address}'}}
+                    x_code, x_text = self.error_codes['timeout']
+                    return {"return": {"code": x_code, "value": x_text.format(address=self.address)}}
 
                 for x_writer in x_wr:
                     x_writer.send(json.dumps(message).encode('utf8'))
@@ -95,40 +103,41 @@ class TBluetoothService:
                 # receive an answer
                 x_rd, x_wr, x_err = select.select([self.bt_socket], [], [self.bt_socket], x_timeout)
                 if x_err:
-                    return {"return": {"code": 514, "value": ''}}
+                    x_code, x_text = self.error_codes['connection_closed']
+                    return {"return": {"code": x_code, "value": x_text}}
 
                 for x_reader in x_rd:
                     x_result   = x_reader.recv(1024)
                     x_result   = x_result.decode('utf8').split('\n')[-2]
                     return json.loads(x_result)
 
-                return {"return": {"code": 500, "value": f'EEZZ service timeout on {self.address}'}}
+                x_code, x_text = self.error_codes['timeout']
+                return {"return": {"code": x_code, "value": x_text.format(address=self.address)}}
         except OSError as xEx:
             self.connected = False
             self.bt_socket.close()
-            return {"return": {"code": 514, "value": xEx}}
+            x_code, x_text = self.error_codes['communication']
+            return {"return": {"code": x_code, "value": x_text.format(exception=repr(xEx))}}
 
 
 @dataclass(kw_only=True)
 class TBluetooth(TTable):
     """ The bluetooth class manages bluetooth devices in range
     A scan_thread is started to keep looking for new devices.
-    TBluetooth service is a singleton to manage this consistently
-
-    :ivar column_names:     Constant list ['Address', 'Name']
-    :ivar title:            Constant title = bluetooth devices
-    :ivar bt_table_changed: Condition: Signals table change events
+    If there are any changes, self.async_condition.notif_all is triggered.
+    The inherited attributes for column_names and title are fixed to constant values
     """
-    column_names:      List[str] = None
-    """ :meta private: """
-    bt_table_changed = Condition()
-    """ :meta private: """
+    column_names:       List[str] = None
+    """ :meta private: Constant list ['Address', 'Name'] """
+    title:              str       = None
+    """ :meta private: Constant title 'bluetooth devices' """
 
     def __post_init__(self):
         self.column_names = ['Address', 'Name']
         self.title        = 'bluetooth devices'
         super().__post_init__()
-        self.scan_bluetooth   = Thread(target=self.find_devices(), daemon=True, name='find devices').start()
+        self.scan_bluetooth = Thread(target=self.find_devices, daemon=True, name='find devices')
+        self.scan_bluetooth.start()
 
     def find_devices(self) -> None:
         """ This method is called frequently by thread `self.scan:bluetooth` to keep track of devices in range.
@@ -167,10 +176,17 @@ class TBluetooth(TTable):
 def test_bluetooth_table():
     """:meta private:"""
     """ Test the access to the bluetooth environment """
-    pass
+    bt = TBluetooth()
+
+    # Wait for the table to change
+    with bt.async_condition:
+        bt.async_condition.wait()
+    bt.print()
 
 
 if __name__ == '__main__':
     """:meta private:"""
     """ Main entry point for module tests """
     test_bluetooth_table()
+    # xdev = bluetooth.discover_devices(flush_cache=True, lookup_names=True)
+    # print("ready")
