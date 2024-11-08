@@ -30,4 +30,4 @@ class TMobileDevices(TDatabaseTable):
         self.column_descr[0].options     = 'not null'
         self.column_descr[0].primary_key = True
         super().prepare_statements()
-        super().db_create()
+        super().create_database()

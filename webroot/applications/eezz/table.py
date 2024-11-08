@@ -22,6 +22,7 @@
     * :py:class:`eezz.table.TSort`:         Enumeration for method :py:meth:`eezz.table.TTable.do_sort`
 
 """
+import itertools
 import  os
 import  re
 from    collections.abc  import Callable
@@ -42,7 +43,6 @@ import  sqlite3
 class TTableInsertException(Exception):
     """ The table exception: trying to insert a double row-id
     """
-
     def __init__(self, message: str = "entry already exists, row-id has to be unique"):
         super().__init__(message)
 
@@ -53,18 +53,18 @@ class TNavigation(Enum):
     :ref:`TTable.visible_items <ttable_parameter_list>`:
 
     """
-    ABS         = 0, 'Request an absolute position in the dataset'
-    NEXT        = 1, 'Set the cursor to show the next chunk of rows'
-    PREV        = 2, 'Set the cursor to show the previous chunk of rows'
-    TOP         = 3, 'Set the cursor to the first row'
-    LAST        = 4, 'Set the cursor to show the last chunk of rows'
+    ABS     = 0, 'Request an absolute position in the dataset'
+    NEXT    = 1, 'Set the cursor to show the next chunk of rows'
+    PREV    = 2, 'Set the cursor to show the previous chunk of rows'
+    TOP     = 3, 'Set the cursor to the first row'
+    LAST    = 4, 'Set the cursor to show the last chunk of rows'
 
 
 class TSort(Enum):
     """ Sorting control enum to define sort on columns """
-    NONE        = 0
-    ASCENDING   = 1
-    DESCENDING  = 2
+    NONE    = 0
+    ASC     = 1
+    DESC    = 2
 
 
 @dataclass(kw_only=True)
@@ -72,16 +72,17 @@ class TTableCell:
     """ The cell is the smallest unit of a table. This class is a dataclass, so all
     parameters become properties
 
-    :param value: Display value of a cell
-    :param type:  Type of the value used for format output.
-    :param attrs: User defined attributes
+    :param name:  Name of the corresponding column
+    :type  name:  str
+    :param value: Content of the cell
+    :type  type:  str
     """
-    name:       str                 #: :meta private: - Name of the column
-    value:      Any                 #: :meta private: - Value of the cell
-    width:      int     = 10        #: :meta private:
-    index:      int     = 0         #: :meta private:
-    type:       str     = 'str'     #: :meta private:
-    attrs:      dict    = None      #: :meta private:
+    name:       str                 #: :meta private: Name of the column
+    value:      Any                 #: :meta private: Value of the cell
+    width:      int     = 10        #: :meta private: calculated width of a cell
+    index:      int     = 0         #: :meta private: calculated index of a cell
+    type:       str     = 'str'     #: :meta private: calculated type (could also be user defined)
+    attrs:      dict    = None      #: :meta private: user attributes
 
 
 @dataclass(kw_only=True)
@@ -89,18 +90,19 @@ class TTableColumn:
     """ Summarize the cell properties in a column, which includes sorting and formatting.
     This class is a dataclass, so all parameters become properties.
 
-    :param alias:   Visible name for output
-    :param type:    Value type (class name)
+    :param header:  Display name for the column
+    :type  header:  str
+    :param attrs:   User attributes
+    :type  attrs:   dict
     """
-    header:     str                 #: :meta private: Property - Name of the column
-    attrs:      dict    = None      #: :meta private: Property - Customizable attributes of the column
-    index:      int     = 0         #: :meta private:
-    width:      int     = 10        #: :meta private:
-    alias:      str     = ''        #: :meta private:
-    sort:       bool    = True      #: :meta private:
-    type:       str     = 'str'     #: :meta private:
-    filter:     str     = None      #: :meta private:
-    """  :meta private: """
+    header:     str                 #: :meta private: Name of the column
+    attrs:      dict    = None      #: :meta private: Customizable attributes of the column
+    index:      int     = 0         #: :meta private: Calculated index of the column
+    width:      int     = 10        #: :meta private: Calculated width of the column
+    alias:      str     = ''        #: :meta private: Alias name for output
+    sort:       bool    = True      #: :meta private: Sort direction of the column
+    type:       str     = 'str'     #: :meta private: Type of the column
+    filter:     str     = None      #: :meta private: Filter string
 
 
 # forward declaration
@@ -109,30 +111,21 @@ TTable = NewType('TTable', None)
 
 @dataclass(kw_only=True)
 class TTableRow:
-    """ This structure is created for each row in a table. It allows also to specify a sub-structure table.
-    This class is a dataclass, so all parameters become properties
-    TTable row implements methods to access values like an array
+    """ This structure is created for each row in a table.
 
-    * __getitem__ : value = row[column-name]
-    * __setitem__ : row[column-name] = value
-
-    :ivar List[str] cells_filter:    A list of cells with filtered attributes. Used for example for translation or re-ordering.
-    :ivar List[str] column_descr:    The column descriptor holds the name of the column
-    :ivar int       index:           Unique address for the column
-    :ivar str       row_id:          Unique row id for the entire table
-    :ivar TTable    child:           The row could handle recursive data structures
-    :ivar str       type:            Customizable type used for triggering template output
-    :ivar dict      attrs:           Customizable row attributes
+    :param cells:   List of row values. If specified as list of string values of the
+                    column descriptor are calculated to default.
+                    If specified as list of TTableCell you could set specific values during creation
+    :type  cells:   List[TTableCell | str]
     """
-    row_filter: str        = None
     cells: List[TTableCell] | List[str]  #: Property - A list of strings are converted to a list of TTableCells
-    cells_filter: List[TTableCell] | None = None  #: :meta private:
-    column_descr: List[str] = None      #: :meta private:
-    index:      int         = None      #: :meta private:
-    row_id:     str         = None      #: :meta private:
-    child:      TTable      = None      #: :meta private:
-    type:       str         = 'body'    #: :meta private:
-    attrs:      dict        = None      #: :meta private:
+    cells_filter: List[TTableCell] = None  #: :meta private: Filtered cells used for re-ordering and alias names.
+    column_descr: List[str] = None      #: :meta private: The column descriptor holds the attributes of the columns
+    index:      int         = None      #: :meta private: Unique address for the columns
+    row_id:     str         = None      #: :meta private: Unique row id of the row, valid for the entire table
+    child:      TTable      = None      #: :meta private: A row could handle recursive data structures
+    type:       str         = 'body'    #: :meta private: Customizable type used for triggering template output
+    attrs:      dict        = None      #: :meta private: Customizable row attributes
 
     def __post_init__(self):
         """ Create a row, converting the values to :py:obj:`eezz.table.TTableCell` """
@@ -145,32 +138,17 @@ class TTableRow:
             for x, y in self.attrs.items():
                 setattr(self, x, y)
 
-    def get_values_list(self, index: int | None = None) -> list:
-        """ Get all values in a row as a list
-
-        :return: value of each cell
-        :rtype:  List[any]
-        """
-        if index is None:
-            return [x.value for x in self.cells]
-        else:
-            return [index] + [x.value for x in self.cells]
+    def get_values_list(self) -> list:
+        """ Get all values in a row as a list """
+        return [x.value for x in self.cells]
 
     def __getitem__(self, column: int | str) -> Any:
-        """ Allows field access: value = row[column]
-
-        :param column:  Specify the cell either by index or name
-        :return:        The value of the cell
-        """
+        """ Allows field access: value = row[column] """
         x_inx = column if type(column) is int else self.column_descr.index(column)
         return self.cells[x_inx].value
 
     def __setitem__(self, column: int | str, value: Any) -> None:
-        """ Allows field access: r[column] = value
-
-        :param column:  Specify the cell either by index or name
-        :param value:   Value to set
-        """
+        """ Allows field access: r[column] = value """
         x_inx = column if type(column) is int else self.column_descr.index(column)
         self.cells[x_inx].value = value
 
@@ -182,26 +160,25 @@ class TTable(UserList):
 
     .. _ttable_parameter_list:
 
-    :ivar Dict[str, TTableCell] column_names_map:    Map names for output to re-arrange order
-    :ivar Dict[str, str]        column_names_alias:  Map alias names to column names. This could be used to translate the table header\
-    without changing the select statements.
-    :ivar List[int]             column_names_filter: Map columns for output, allows selecting a subset and rearanging, without touching\
-    the internal structure of the table
-    :ivar List[TTableColumn]    column_descr:        Contains all attributes of a column like type and width
-    :ivar Dict[str, TTableRow]  table_index:         Managing an index for row-id
-    :ivar int                   visible_items:       Number of visible items: default is 20
-    :ivar int                   offset:              Cursor position in data set
-    :ivar TTableRow             header_row:          Header row
-    :ivar bool                  apply_filter_column: Choose between a filtered setup or the original header
-    :ivar Dict[str, Callable]   format_types:        Maps a column type to a formatter for ASCII output
+    :param column_names:    List of names for each column
+    :type  column_names:    List[str]
+    :param title:           Table name and title
+    :type  title:           str
+
+    :ivar Dict[str, Callable[size, value]] format_types: A map for types and format rules.
+        The callable takes two variables, the width and the value.
 
     Examples:
         Table instance:
 
         >>> from table import TTable
         >>> my_table = TTable(column_names=['FileName', 'Size'], title='Directory')
-        >>> for file in Path('.').iterdir():
-        >>>     my_table.append(table_row=[file, file.stat().st_size])
+        >>> # for file in Path('.').iterdir():
+        >>> #    my_table.append(table_row=[file, file.stat().st_size])
+        >>> row = my_table.append(table_row=['.idea',        4096])
+        >>> row = my_table.append(table_row=['directory.py', 1699])
+        >>> row = my_table.append(table_row=['__init__.py',    37])
+        >>> row = my_table.append(table_row=['__pycache__',  4096])
         >>> my_table.print()
         Table: Directory
         | FileName     | Size |
@@ -213,27 +190,29 @@ class TTable(UserList):
         This is a possible extension of a format for type iban, breaking the string into chunks of 4:
 
         >>> iban = 'de1212341234123412'
-        >>> format_types['iban'] = lambda x_size, x_val: ' '.join(['{}' for x in range(6)]).format(* re.findall('.{1,4}', iban))
-        de12 1234 1234 1234 1234 12
+        >>> my_table.format_types['iban'] = lambda x_size, x_val: f"{(' '.join(re.findall('.{1,4}', x_val))):>{x_size}}"
+        >>> print(f"{my_table.format_types['iban'](30, iban)}")
+                de12 1234 1234 1234 12
     """
-    column_names:       List[str]                   #: Property - List of column names
-    title:              str         = 'Table'       #: Property - Table title name
-    column_names_map:   Dict[str, TTableCell] | None = None  #: :meta private:
-    column_names_alias: Dict[str, str]  | None  = None  #: :meta private:
-    column_names_filter: List[int]      | None  = None  #: :meta private:
-    column_descr:       List[TTableColumn]      = None  #: :meta private:
-    table_index:        Dict[str, TTableRow]    = None  #: :meta private:
-    attrs:              dict        = None          #: :meta private:
-    visible_items:      int         = 20            #: :meta private:
-    offset:             int         = 0             #: :meta private:
-    selected_row:       TTableRow   = None          #: :meta private:
-    header_row:         TTableRow   = None          #: :meta private:
-    apply_filter_column: bool       = False         #: :meta private:
-    format_types:       dict        = None          #: :meta private:
-    async_condition:    Condition   = Condition()   #: :meta private:
-    async_lock:         Lock        = Lock()        #: :meta private:
-    database_path:      str         = ':memory:'    #: :meta private:
-    row_filter:         List[List]  = None          #: :meta private:
+    column_names:       List[str]                       #: :meta private: Property - List of column names
+    title:              str         = 'TTable'          #: :meta private: Property - Table title name
+    column_names_map:   Dict[str, TTableCell]   = None  #: :meta private: Map name to columns
+    column_names_alias: Dict[str, str]          = None  #: :meta private: Translated column names
+    column_names_filter: List[int]              = None  #: :meta private: Index for shuffle columns
+    column_descr:       List[TTableColumn]      = None  #: :meta private: Describes each column
+    table_index:        Dict[str, TTableRow]    = None  #: :meta private: Table unique row index
+    attrs:              dict        = None              #: :meta private: User attributes
+    visible_items:      int         = 20                #: :meta private: Number of items to show
+    offset:             int         = 0                 #: :meta private: Offset for sequence reading
+    selected_row:       TTableRow   = None              #: :meta private: Selected row
+    header_row:         TTableRow   = None              #: :meta private: Header row of the table
+    apply_filter_column: bool       = False             #: :meta private: If true columns are reordered and translated
+    format_types:       dict        = None              #: :meta private: Map output format for value type
+    async_condition:    Condition   = Condition()       #: :meta private: Used for async access to table
+    async_lock:         Lock        = Lock()            #: :meta private: Used for async access to table values
+    database_path:      str         = ':memory:'        #: :meta private: The database path
+    row_filter_descr:   List[List]  = None              #: :meta private: The row filter combines column values
+    is_synchron:        bool        = False             #: :meta private: Used to reduce calls to do_select
 
     def __post_init__(self):
         """ Post init for a data class
@@ -245,12 +224,10 @@ class TTable(UserList):
         if not self.column_descr:
             self.column_descr = [TTableColumn(index=x_inx, header=x_str, alias=x_str, width=len(x_str), sort=False)
                                  for x_inx, x_str in enumerate(self.column_names)]
-        x_cells = [TTableCell(name=x_str, value=x_str, index=x_inx, width=len(x_str))
-                   for x_inx, x_str in enumerate(self.column_names)]
 
-        self.header_row = TTableRow(cells=x_cells, type='header')
-        self.column_names_map = {x.value: x for x in x_cells}
-        self.keys_syntax = re.compile('[.a-zA-Z0-9]+')
+        x_cells               = [TTableCell(name=x_str, value=x_str, index=x_inx, width=len(x_str)) for x_inx, x_str in enumerate(self.column_names)]
+        self.header_row       = TTableRow(cells=x_cells, type='header')
+        self.column_names_map = {x_cell.value: x_cell for x_cell in x_cells}
 
         if not self.format_types:
             self.format_types = {
@@ -260,11 +237,18 @@ class TTable(UserList):
                 'datetime': lambda x_size, x_val: ' {{:>{}}} '.format(x_size).format(x_val.strftime("%m/%d/%Y, %H:%M:%S"))}
 
     def get_column(self, column_name: str) -> TTableColumn | None:
+        """:meta private:"""
         return next(filterfalse(lambda x_cd: x_cd.header != column_name, self.column_descr), None)
 
     def filter_clear(self):
-        """ Clear the filters and return to original output """
+        """:meta private: Clear the filters and return to original output """
         self.apply_filter_column = False
+
+    def filter_rows(self, row_filter_descr: List[List[str]]):
+        """ Set the row filter: Each inner list is joined with 'AND'.
+        The outer list joins the inner lists with 'OR' """
+        self.row_filter_descr = row_filter_descr
+        self.is_synchron      = False
 
     def filter_columns(self, column_names: Dict[str, str]) -> None:
         """ The column_names is a dictionary with a set of keys as subset of TTable.column_names.
@@ -278,45 +262,49 @@ class TTable(UserList):
 
         Example:
 
-        >>> my_table = TTable(column_names=['FileName', 'Size'])
+        >>> my_table = TTable(column_names=['FileName', 'Size'], title='Directory')
         >>> my_table.filter_columns(column_names={'Size':'Größe', 'FileName': 'Datei'})
-        >>> my_table.append(['.idea',        4096])
-        >>> my_table.append(['directory.py', 1886])
-        >>> my_table.append(['__init__.py',    37])
-        >>> my_table.append(['__pycache__',  4096])
+        >>> row = my_table.append(['.idea',        4096])
+        >>> row = my_table.append(['directory.py', 1886])
+        >>> row = my_table.append(['__init__.py',    37])
+        >>> row = my_table.append(['__pycache__',  4096])
         >>> my_table.print()
         Table: Directory
         | Größe | Datei        |
-        | 4096  | .idea        |
-        | 1886  | directory.py |
-        |   37  | __init__.py  |
-        | 4096  | __pycache__  |
+        |  4096 | .idea        |
+        |  1886 | directory.py |
+        |    37 | __init__.py  |
+        |  4096 | __pycache__  |
         """
         # Create a list of column index and a translation of the column header entry
         self.column_names_filter = list()
-        self.column_names_alias = column_names
+        self.column_names_alias  = column_names
         for x, y in column_names.items():
             try:
                 x_inx = self.column_names_map[x].index
                 self.column_names_filter.append(x_inx)
                 self.column_descr[x_inx].alias = y
-                self.apply_filter_column = True
+                self.column_descr[x_inx].width = max(len(y), self.column_descr[x_inx].width)
+                self.apply_filter_column       = True
             except KeyError:
                 pass
 
-    def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '', exists_ok=True) -> TTableRow:
+    def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '', exists_ok=False) -> TTableRow:
         """ Append a row into the table
         This procedure also defines the column type and the width
 
-        :param exists_ok:   Try to append, but do not throw exception, if key exists
         :param table_row:   List of values
+        :type  table_row:   List[str]
         :param attrs:       Customizable attributes
         :param row_type:    Row type used for output filter
         :param row_id:      Unique row id, which consists of pattern letters and numbers [a-zA-Z0-9]+
+        :param exists_ok:   Try to append, but do not throw exception, if key exists
+        :return:            The generated row object
+        :rtype:             TTableRow
         :raise TableInsertException: Exception if row-id already exists
         """
         # define the type with the first line inserted
-        x_inx = len(self.data)
+        x_inx       = len(self.data)
         x_row_descr = list(zip(table_row, self.column_descr))
 
         # Check for a valid row_id
@@ -370,43 +358,57 @@ class TTable(UserList):
             if search_filter(x_row):
                 yield tuple(x_value for x_value in x_row.get_values_list())
 
-    def do_select(self, get_all: bool = False, filter_descr: list | None = None) -> list | None:
+    def do_select(self, get_all: bool = False, filter_descr: list = None) -> list:
+        """ Create and execute a select statement on the given database.
+        For a :memory: database this method achieves a complex search combining multiple columns
+        returning the values and the row index of the internal data
+        """
+        sqlite3.register_adapter(datetime, lambda x_val: x_val.isoformat())
+        sqlite3.register_converter("datetime", lambda x_val: datetime.fromisoformat(x_val.decode()))
+        self.is_synchron = True
+
         logger      = logging.getLogger()
         x_database  = sqlite3.connect(self.database_path)
         x_cursor    = x_database.cursor()
         x_ty_map    = {'int': 'integer', 'str': 'text', 'float': 'real'}
-        x_create_stm = f"""
-            create table {self.title}  
-                ({', '.join(f"{x.header} " f"{x_ty_map.get(x.type) 
-                    if x_ty_map.get(x.type) else 'text'}" 
-                        for x in self.column_descr)}, index_key integer)"""
+        x_options   = '' if get_all else f' limit {self.visible_items} offset {self.offset}'
+        x_sorted    = list(itertools.filterfalse(lambda x: not x.sort, self.column_descr))
+        x_sort_stm  = ''
 
-        logger.debug(msg=f'{x_create_stm}')
-        x_cursor.execute(x_create_stm)
+        for x in x_sorted:
+            x_sort_stm = f' order by {x.header} ASC'
+            break
 
-        #x_cursor.executemany(f"""
-        #    insert into {self.title} values (1, {','.join(['?']*len(self.column_names))}))""",
-        #                     [x.get_values_list() for x in self.data] )
-        x_cursor.executemany(f"""
-            insert into {self.title} values ({('?,' * len(self.column_names))} ?)""",
-                             [x.get_values_list() + [i] for i, x in enumerate(self.data)])
+        if self.database_path == ':memory:':
+            x_create_stm = f"""create table {self.title}  ({', '.join(f"{x.header}  {x_ty_map.get(x.type)  if x_ty_map.get(x.type) else 'text'}" for x in self.column_descr)}, index_key integer)"""
+            logger.debug(msg=f'TTable.do_select: {x_create_stm}')
+            x_cursor.execute(x_create_stm)
+
+            x_insert_stm = f"""insert into {self.title} values ({('?,' * len(self.column_names))} ?)"""
+            logger.debug(msg=f'TTable.do_select: {x_insert_stm}')
+
+            x_row: TTableRow
+            for i, x_row in enumerate(self.data):
+                x_cursor.execute(x_insert_stm, tuple(x_row.get_values_list() + [i]))
+            x_database.commit()
 
         if filter_descr:
             x_where, x_args = self.create_filter(filter_descr)
-            x_where_stm  = f"""where {x_where} """
-            x_cursor.execute(f"""select * from {self.title} {x_where_stm}""", x_args)
+            x_select_stm = f"""select * from {self.title} where {x_where} {x_sort_stm} {x_options}"""
+            logger.debug(msg=f'TTable.do_select: {x_select_stm}')
+            x_cursor.execute(x_select_stm, tuple(x_args))
         else:
-            x_cursor.execute(f"""select * from {self.title}""")
-        return x_cursor.fetchall()
+            x_cursor.execute(f"""select * from {self.title} {x_options}""")
+        yield from x_cursor.fetchall()
 
     def create_filter(self, filter_descr: List[List[str]]) -> tuple:
-        """ Return a database select where statement
+        """ :meta private: Return a database select where statement
 
         :param filter_descr: An OR array containing AND arrays. Each AND array is evaluated and then
                             the result is combined to an OR expression. See the following array and the resulting string
-                            |br| [['id > 100', 'num < 10], ['id < 10']]
-                            |br| '(id > 100 and num < 10) or (id < 10)'
-        :return:             A list of values, which meets the filter criteria
+                |br| list[list['id > 100', 'num < 10], list['id < 10']] ->
+                |br| tuple('(id > ? and num < ?) or (id < ?)', tuple('100',10,10))
+        :return: Valid SQL part as string for a 'where' clause and the value list
         """
         x_where     = list()
         x_args      = list()
@@ -421,9 +423,6 @@ class TTable(UserList):
             x_where.clear()
         return ' or '.join(x_or_list), x_args
 
-    def get_visible_rows_1(self, get_all: bool = False) -> List[TTableRow]:
-        pass
-
     def get_visible_rows(self, get_all: bool = False) -> List[TTableRow]:
         """ Select table rows using column values pairs, return at maximum visible_items.
         The value could be any valid regular expression.
@@ -434,19 +433,22 @@ class TTable(UserList):
 
         Example:
 
-        >>> my_table = TTable(column_names=['Filename', 'Size'])
-        >>> my_table.append(['__init__.py',   37])
-        >>> my_table.append(['__pycache__', 4096])
-        >>> my_table.append(['main.py',      214])
-        >>> my_table.append(['test.py',     1246])
-        >>> my_table.get_column().filter = '^__\\w*'
+        >>> my_table = TTable(column_names=['FileName', 'Size'], title='Directory')
+        >>> row = my_table.append(['__init__.py',   37])
+        >>> row = my_table.append(['__pycache__', 4096])
+        >>> row = my_table.append(['test.py',     1246])
+        >>> my_table.get_column('FileName').filter = '^__[a-zA-Z]*__.py'
         >>> my_table.print()
-        | FileName     | Size |
-        | __init__.py  |   37 |
-        | __pycache__  | 4096 |
-
+        Table: Directory
+        | FileName    | Size |
+        | __init__.py |   37 |
         """
         # in case the filters is a string, we could also handle tree access
+        if self.row_filter_descr and not self.is_synchron:
+            for x_selected in self.do_select(get_all=get_all, filter_descr=self.row_filter_descr):
+                yield self.data[x_selected[-1]]
+            return None
+
         x_filter_row = dict()
         for x in filterfalse(lambda xx_col: not xx_col.filter, self.column_descr):
             x_filter_row.update({x.header: re.compile(x.filter)})
@@ -455,7 +457,6 @@ class TTable(UserList):
         # Apply the filter for column layout
         x_count: int  = 0
         x_start: int  = self.offset
-        x_match: bool = True
 
         for x_row in self.data[x_start:]:
             x_match = True
@@ -470,9 +471,6 @@ class TTable(UserList):
             if not x_match:
                 continue
 
-            if self.apply_filter_column:
-                x_row.cells_filter = \
-                    [x_row.cells[x] for x in self.column_names_filter] if self.apply_filter_column else x_row
             x_count += 1
             yield x_row
 
@@ -494,39 +492,30 @@ class TTable(UserList):
                 self.offset = 0
             case TNavigation.LAST:
                 self.offset = max(0, len(self) - self.visible_items)
+        self.is_synchron = False
 
     def do_sort(self, column: int | str, reverse: bool = False) -> None:
-        """ Toggle sort on a given column index
-
-        :param column:      The column to sort for
-        :param reverse:     Sort direction reversed
-        """
+        """ :meta private: Toggle sort on a given column index """
         super().sort(key=lambda x_row: x_row[column], reverse=reverse)
 
-    def print(self, rows: List[TTableRow] | None = None) -> None:
+    def print(self) -> None:
         """ Print ASCII formatted table
 
         :param rows: Optional parameter to print selected rows. If not set, print the visible rows.
         """
-        logger = logging.getLogger()
-
-        x_column_descr = [self.column_descr[x] for x in
-                          self.column_names_filter] if self.apply_filter_column else self.column_descr
+        x_column_descr  = [self.column_descr[x] for x in self.column_names_filter] if self.apply_filter_column \
+                      else self.column_descr
 
         print(f'Table: {self.title}')
-        x_formatted_row = '|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.alias) for x_col in
-                                    x_column_descr]) if self.apply_filter_column else (
-            '|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.header) for x_col in x_column_descr]))
-
+        x_formatted_row = '|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.alias)  for x_col in x_column_descr])  if self.apply_filter_column \
+                    else ('|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.header) for x_col in x_column_descr]))
         print(f'|{x_formatted_row}|')
-        x_rows_print = rows if rows else self.get_visible_rows()
 
-        for x_row in x_rows_print:
-            x_cells = [x_row.cells[x] for x in self.column_names_filter] if self.apply_filter_column else x_row.cells
-            x_row_descr = zip(x_cells, x_column_descr)
-            x_format_descr = [(x_descr.type, x_descr.width, x_cell.value)
-                              if x_descr.type in self.format_types else ('str', x_descr.width, str(x_cell.value))
-                              for x_cell, x_descr in x_row_descr]
+        for x_row in self.get_visible_rows():
+            x_cells         = [x_row.cells[x] for x in self.column_names_filter] if self.apply_filter_column else x_row.cells
+            x_row_descr     = zip(x_cells, x_column_descr)
+            x_format_descr  = [(x_descr.type, x_descr.width,     x_cell.value) if x_descr.type in self.format_types
+                          else ('str',        x_descr.width, str(x_cell.value)) for x_cell, x_descr in x_row_descr]
 
             x_formatted_row = '|'.join([self.format_types[x_type](x_width, x_value) for x_type, x_width, x_value in x_format_descr])
             print(f'|{x_formatted_row}|')
@@ -573,23 +562,13 @@ def test_table():
     x_table.navigate(where_togo=TNavigation.NEXT)
     x_table.print()
 
-    x_where, x_args = x_table.create_filter([['Size > 6000'],['File like %py']])
-    logger.debug(msg=f"--- where  {x_where}, {x_args}")
-
-    x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[['Size > 6000'],['File like %py']])]
+    # x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[['Size > 20000'],['File like %py']])]
+    x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[["Size > 10000"],["File like %.py"]])]
     logger.debug(msg=f'--- result = {x_result}')
 
-    for x in x_result:
-        print(f'table row sorted = {x_table[int(x[-1])]}')
-
-    x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[['Size > 6000'],['File like %py']])]
-    logger.debug(msg=f'--- result = {x_result}')
-
-    logger.debug(msg='--- Filter *.py')
-    x_table.visible_items = 15
-    x_table.navigate(where_togo=TNavigation.TOP)
-    # x_table.get_column('File').filter = TColumnFilter(rel='=', value=r'\w*.py')
-    # x_table.print()
+    x_table.visible_items = 100
+    x_table.filter_rows([["Size > 10000" ],["File like %.py"]])
+    x_table.print()
 
 
 if __name__ == '__main__':

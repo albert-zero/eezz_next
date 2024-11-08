@@ -155,7 +155,7 @@ class TDocuments(TDatabaseTable):
             self.column_descr[x].primary_key = True
 
         super().prepare_statements()
-        super().db_create()
+        super().create_database()
 
     def prepare_download(self, request: dict):
         """ Prepares the download of several files to include to an EEZZ document.

@@ -13,15 +13,17 @@ The database is created in sqlite3 in the first call of the class.
 import sqlite3
 import logging
 import itertools
-from   collections.abc  import Callable
+import os
+from   datetime         import datetime, timezone
 
-from   Crypto.Hash      import SHA256
+from   Crypto.Hash       import SHA256
+from   typing_extensions import override
 
-from   service          import TService
-from   dataclasses      import dataclass
-from   table            import TTable, TNavigation, TTableRow, TTableColumn, TColumnFilter
-from   typing           import List
-from   pathlib          import Path
+from   service           import TService
+from   dataclasses       import dataclass
+from   table             import TTable, TNavigation, TTableRow, TTableColumn
+from   typing            import List
+from   pathlib           import Path
 
 
 @dataclass(kw_only=True)
@@ -30,19 +32,12 @@ class TDatabaseColumn(TTableColumn):
 
     :param primary_key: Makes the column part of the primary key
     :type  primary_key: bool
-    :param options:     Options for the database "create table" statement like "not null"
+    :param options:     Options for the database columns in "create table" statement like "not null"
     :type  options:     str
-    :param alias:       The alias name of the column in prepared statement
-    :type  alias:       str
     """
-    primary_key: bool = False
-    """ :meta private: Property - Makes a column a primary key. 
-    In TTable the row-id is calculated as SHA256 hash on primary key values """
-    options:     str  = ''
-    """ :meta private: Property - Database option for column creation (e.g. not null). |br| 
-    ``create table ... column text not null`` """
-    alias:       str  = ''
-    """ :meta private: Property - Name for the column  """
+    primary_key: bool = False  #: :meta private:
+    options:     str  = ''     #: :meta private:
+    alias:       str  = ''     #: :meta private:
 
 
 @dataclass(kw_only=True)
@@ -60,20 +55,6 @@ class TDatabaseTable(TTable):
 
     The following variables could be used to overwrite special actions on automated database actions.
     You would need to overwrite the values after the creation of the class
-
-    :ivar statement_select: (str):   Default select statement, which is |br| ``select * from table``
-    :ivar statement_count: (str):    Evaluates the number of elements in the database |br|
-        ``select count (*) from table``
-    :ivar statement_create: (str):    Create statement for database table:|br|
-        ``create <TTable.title> <[List of TTable.column_names]> ... primary keys <[list of TDatabaseColumn.primary_key]>``
-    :ivar column_de-scr: (List[TDatabaseColumn]): Properties for each column for creation like "not null" or "primary key"
-
-    The following variables are useful at runtime
-
-    :ivar is_synchron:  (bool): If True, select data from cache, else select from database. The value is changed to
-                                True after each database select.
-    :ivar virtual_len:  (int):  The number of entries in the database, in contrast to elements in cache,
-                                which might be less.
     """
     column_names:     list      = None
     database_name:    str       = 'default.db'      #: :meta private:
@@ -84,8 +65,7 @@ class TDatabaseTable(TTable):
     statement_where:  list      = None              #: :meta private:
     database_path:    str       = None              #: :meta private:
     virtual_len:      int       = 0                 #: :meta private: 
-    is_synchron:      bool      = False             #: :meta private: 
-    column_descr:     List[TDatabaseColumn] = None  #: :meta private: 
+    column_descr:     List[TDatabaseColumn] = None  #: :meta private:
 
     def __post_init__(self):
         """ Setup select options to restrict the data volume and sort directive.
@@ -127,10 +107,11 @@ class TDatabaseTable(TTable):
         self.format_types['real']    = self.format_types['float']
 
         self.prepare_statements()
-        self.db_create()
+        self.create_database()
 
     def prepare_statements(self):
-        """ Generate a set of consistent database statements, used to select and navigate in database
+        """ :meta private:
+        Generate a set of consistent database statements, used to select and navigate in database
         and to sync with TTable buffers
         """
         x_sections = list()
@@ -148,21 +129,21 @@ class TDatabaseTable(TTable):
         self.statement_insert = ' '.join([x_sections[0], f' values ({x_sections[1]})'])
 
     def __len__(self):
-        """ Returns the result for a request: select count(*) ..."""
+        """ :meta private: Returns the result for a request: select count(*) ..."""
         return self.virtual_len
 
-    def db_create(self) -> None:
-        """ Create the table on the database using :py:attr:`eezz.table.TTable.column_names` and
+    def create_database(self) -> None:
+        """ Create the table on the database using
+        :py:attr:`eezz.table.TTable.column_names` and
         :py:attr:`eezz.table.TTable.title`
         """
+        sqlite3.register_adapter(datetime, lambda x_val: x_val.isoformat())
+        sqlite3.register_converter("datetime", lambda x_val: datetime.fromisoformat(x_val.decode()))
         x_connection = sqlite3.connect(self.database_path)
 
         with x_connection:
             x_cursor = x_connection.cursor()
-            # x_cursor.execute("create table if not exists TNumbers  (id integer , num integer, primary key ( id ))")
-            logger.debug(msg=f'TDatabase::db_create: {self.statement_create}')
             x_cursor.execute(self.statement_create)
-        # x_connection.close()
 
     def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '', exists_ok: bool = True) -> TTableRow:
         """ Append data to the internal table, creating a unique row-key
@@ -185,7 +166,6 @@ class TDatabaseTable(TTable):
             x_primary   = itertools.filterfalse(lambda x: not x[1].primary_key, x_row_descr)
             row_id      = SHA256.new(','.join(str(x[0]) for x in x_primary).encode('utf8')).hexdigest()
 
-        # if the row already exists, we ignore the rest:
         if not attrs:
             attrs = dict()
         attrs['_database'] = 'new'
@@ -196,15 +176,13 @@ class TDatabaseTable(TTable):
         """ Write all new entries to database, which have been added using method
         :py:meth:`~eezz.database.TDatabaseTable.append`
         """
-        x: TTableRow
-        x_connection = sqlite3.connect(self.database_path)
-        with x_connection:
-            x_cursor = x_connection.cursor()
-            x_cursor.executemany(self.statement_insert.format(*self.column_names),
-                                 self.get_next_values(
-                                     lambda xx_row: xx_row.attrs.pop('_database') == 'new'
-                                     if xx_row.attrs.get('_database') else False))
-        # x_connection.close()
+        x_row: TTableRow
+        with sqlite3.connect(self.database_path) as x_connection:
+            x_cursor  = x_connection.cursor()
+            x_new_row = itertools.filterfalse(lambda xf_row: xf_row.attrs.get('_database', None) != 'new', self.data)
+            for x_row in x_new_row:
+                x_row.attrs.pop('_database', None)
+                x_cursor.execute(self.statement_insert.format(*self.column_names), tuple(x_row.get_values_list()))
 
     def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:
         """ Navigate in block mode
@@ -218,70 +196,42 @@ class TDatabaseTable(TTable):
         if position == 0:
             self.is_synchron = False
 
-    def get_visible_rows(self, get_all=False) -> List[TTableRow]:
+    @override
+    def get_visible_rows(self, get_all=False) -> list:
         """ Get visible rows. Works on local buffer for :py:attr:`eezz.database.TDatabaseTable.is_synchron`
 
         :param get_all: Ignore TTable.visible_items for this call
         """
-        return super().get_visible_rows(get_all=get_all)
+        if not self.is_synchron:
+            self.is_synchron = True
+            self.data.clear()
+            x_result = super().do_select(get_all=get_all, filter_descr=self.row_filter_descr)
+            for x in x_result:
+                self.append(list(x))
+        yield from super().get_visible_rows(get_all=get_all)
 
-    def do_select(self, get_all: bool = False, filter_descr: list | None = None) -> list | None:
-        x_result = super().do_select(get_all, filter_descr)
-        for x_row in x_result:
-            self.append([x for x in x_row], exists_ok=True)
-        return None
 
-    def do_select_1(self, get_all: bool = False, is_synchron: bool = True, filter_descr: list | None = None) -> list | None:
-        """ Selects data from database.
+def test_database():
+    """:meta private:"""
+    x_table  = TDatabaseTable(
+            database_name = 'test.db',
+            title         = 'Directory',
+            column_descr  = [
+                TDatabaseColumn(header='File',       type='text',   primary_key=True),
+                TDatabaseColumn(header='Size',       type='integer'),
+                TDatabaseColumn(header='AccessTime', type='text')])
 
-        :param get_all: Ignore TTable.visible_items for this call
-        :param is_synchron: If set to true, the select will address the internal table,
-                        else a database request is generated and the internal table is
-                        filled with new values.
-        :param filter_descr: A list of compare statement
-        :type filter_descr: bool
-        :return: List of selected entries
-        """
-        logger.debug(msg=f'TDatabase::do_select ...')
-        if self.is_synchron and is_synchron:
-            return
+    logging.debug(msg=f'database.py::main: insert elements and commit')
+    x_path = Path.cwd()
+    for x_item in x_path.iterdir():
+        x_stat = os.stat(x_item.name)
+        x_time = datetime.fromtimestamp(x_stat.st_atime, tz=timezone.utc)
+        x_table.append([str(x_item.name), x_stat.st_size, x_time], attrs={'path': x_item}, row_id=x_item.name)
+    x_table.commit()
 
-        x_filter_stm = list()
-        x_where_stm  = None
-        x_args_list  = list()
-
-        for x_column in itertools.filterfalse(lambda x: not x.filter, self.column_descr):
-            x_filter_stm.append(f'{x_column.header} {x_column.filter.rel} ?')
-            x_args_list.append(x_column.filter.value)
-
-        if x_filter_stm:
-            x_where_stm = ' where ' + ' and '.join(x_filter_stm)
-
-        for x_column in itertools.filterfalse(lambda x: not x.filter, self.column_descr):
-            x_column.filter = None
-
-        # The following lines would strip all invalid input to the select string
-        # 1. The filter have to address a valid column name
-        # 2. The filter is restricted to a few comparison operators: <, >, =, like
-        self.data.clear()
-        x_connection = sqlite3.connect(self.database_path)
-        with x_connection:
-            x_cursor    = x_connection.cursor()
-            x_options   = '' if get_all else self.select_option.format(**{'limit': self.visible_items, 'offset': self.offset})
-
-            if x_where_stm:
-                x_select_stm = f'{self.statement_select} {x_where_stm} {x_options}'
-                logger.debug(msg=f'TDatabase::do_select {x_select_stm}, {x_args_list}')
-                x_cursor.execute(x_select_stm, x_args_list)
-            else:
-                x_select_stm = f'{self.statement_select} {x_options}'
-                logger.debug(msg=f'TDatabase::do_select {x_select_stm}')
-                x_cursor.execute(x_select_stm)
-
-            for x_row in x_cursor.fetchall():
-                self.append([x for x in x_row], exists_ok=True)
-
-        self.is_synchron = True
+    logging.debug(msg=f'database.py::main: select elements and print table')
+    x_table.filter_rows([['Size > 20000'],['File like %py']])
+    x_table.print()
 
 
 # --- section for module tests
@@ -299,22 +249,4 @@ if __name__ == '__main__':
     logger.setLevel(logging.DEBUG)
 
     logging.debug(msg=f'database.py::main: create database {x_database}')
-    x_test_db  = TDatabaseTable(
-            database_name = 'test.sqldb',
-            title         = 'TNumbers',
-            column_descr  = [
-                TDatabaseColumn(header='id',  type='integer', primary_key=True),
-                TDatabaseColumn(header='num', type='integer')])
-
-    logging.debug(msg=f'database.py::main: insert elements and commit')
-    for i in range(10):
-        x_test_db.append([i, i])
-    x_test_db.commit()
-
-    logging.debug(msg=f'database.py::main: select elements and print table')
-    # x_test_db.get_column('id').filter = TColumnFilter(rel='>', value='5')
-    # x_test_db.get_column('num').filter = TColumnFilter(rel='>', value='6')
-    x_test_db.do_select(filter_descr=[['id > 5']])
-    # x_test_db.do_select(is_synchron=False)
-    x_test_db.print()
-
+    test_database()

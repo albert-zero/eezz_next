@@ -31,28 +31,23 @@ class TBluetoothService:
 
     :param address:         The address of the bluetooth device to pair (using find_devices)
     """
-    address:       str
-    """ :meta private: """
-    eezz_service:  str        = "07e30214-406b-11e3-8770-84a6c8168ea0"
-    """ :meta private: service GUID of the eezz App """
-    m_lock:        Lock       = Lock()
-    """ :meta private: Sync communication with bluetooth service """
-    bt_socket                 = None
-    """ :meta private: The communication socket once established """
-    bt_service:    list       = None
-    """ :meta private: List of eezz service App for establishing a connection """
-    connected:     bool       = False
-    """ :meta private: Indicates whether connection to eezz service is established """
+    address:       str                  #: :meta private:
+    eezz_service:  str        = "07e30214-406b-11e3-8770-84a6c8168ea0"  # :meta private: service GUID of the eezz App
+    m_lock:        Lock       = Lock()  #: :meta private: Sync communication with bluetooth service
+    bt_socket                 = None    #: :meta private: The communication socket once established
+    bt_service:    list       = None    #: :meta private: List of eezz service App for establishing a connection
+    connected:     bool       = False   #: :meta private: Indicates whether connection to eezz service is established
 
     def __post_init__(self):
-        self.error_codes = {'open_connection':   (500, 'Could not connect to EEZZ service on address={address}'),
-                            'timeout':           (501, 'EEZZ service timeout on address={address}'),
-                            'connection_closed': (502, 'Connection closed by peer'),
-                            'communication':     (503, 'Connection closed during communication with exception {exception}')}
+        """ :meta private: """
+        self.error_codes = {'open_connection':   (700, 'Could not connect to EEZZ service on address={address}'),
+                            'timeout':           (701, 'EEZZ service timeout on address={address}'),
+                            'connection_closed': (702, 'Connection closed by peer'),
+                            'communication':     (703, 'Connection closed during communication with exception {exception}')}
 
     def open_connection(self):
-        """ Open a bluetooth connection
-        """
+        """ :meta private:
+        Open a bluetooth connection """
         if self.connected:
             return
         self.bt_service = bluetooth.find_service(uuid=self.eezz_service, address=self.address)
@@ -62,8 +57,8 @@ class TBluetoothService:
             self.connected = True
 
     def shutdown(self):
-        """ Shutdown interrupts open connections, stops the port-select and closes all open sockets.
-        """
+        """ :meta private:
+        Shutdown interrupts open connections, stops the port-select and closes all open sockets. """
         if self.connected:
             self.bt_socket.close()
             self.connected = False
@@ -79,8 +74,8 @@ class TBluetoothService:
         :type  command: str
         :param args:    The arguments for the given command
         :type  args:    list
-        :return: JSON structure send by device
-        :rtype: dict
+        :return:        JSON structure send by device
+        :rtype:         dict
         """
         if not self.open_connection():
             x_code, x_text = self.error_codes['open_connection']
@@ -127,10 +122,8 @@ class TBluetooth(TTable):
     If there are any changes, self.async_condition.notif_all is triggered.
     The inherited attributes for column_names and title are fixed to constant values
     """
-    column_names:       List[str] = None
-    """ :meta private: Constant list ['Address', 'Name'] """
-    title:              str       = None
-    """ :meta private: Constant title 'bluetooth devices' """
+    column_names:       List[str] = None    #: :meta private: Constant list ['Address', 'Name']
+    title:              str       = None    #: :meta private: Constant title 'bluetooth devices'
 
     def __post_init__(self):
         self.column_names = ['Address', 'Name']
@@ -188,5 +181,3 @@ if __name__ == '__main__':
     """:meta private:"""
     """ Main entry point for module tests """
     test_bluetooth_table()
-    # xdev = bluetooth.discover_devices(flush_cache=True, lookup_names=True)
-    # print("ready")

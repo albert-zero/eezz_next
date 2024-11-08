@@ -34,31 +34,24 @@ class TFileMode(Enum):
     :param ENCRYPT:     Encrypt and write
     :param ENCRYPT:     Decrypt and write
     """
-    NORMAL  = 0
-    """ :meta private: """
-    ENCRYPT = 1
-    """ :meta private: """
-    DECRYPT = 2
-    """ :meta private: """
+    NORMAL  = 0         #: :meta private:
+    ENCRYPT = 1         #: :meta private:
+    DECRYPT = 2         #: :meta private:
 
 
 @dataclass(kw_only=True)
 class TFile:
     """ Class to be used as file download handler. It accepts chunks of data in separate calls
 
-    :param file_type: User defined file type
+    :param file_type:   User defined file type
     :param destination: Path to store the file
-    :param size: The size of the file
-    :param chunk_size: Fixed size for each chunk of data, except the last element
+    :param size:        The size of the file
+    :param chunk_size:  Fixed size for each chunk of data, except the last element
     """
-    file_type:   str
-    """ :meta private:  """
-    destination: Path
-    """ :meta private:  """
-    size:        int
-    """ :meta private:  """
-    chunk_size:  int
-    """ :meta private:  """
+    file_type:   str    #: :meta private:
+    destination: Path   #: :meta private:
+    size:        int    #: :meta private:
+    chunk_size:  int    #: :meta private:
 
     def __post_init__(self):
         self.chunk_count = divmod(self.size, self.chunk_size)[0] + 1
@@ -113,14 +106,10 @@ class TEezzFile(TFile):
     :param hash_chain:      A list of hash values for each chunk
     :type hash_chain:       List[SHA256.hexdigest]
     """
-    key:          bytes
-    """ :meta private:  """
-    vector:       bytes
-    """ :meta private:  """
-    response:     Queue = None
-    """ :meta private:  """
-    hash_chain:   dict  = None
-    """ :meta private:  """
+    key:          bytes         #: :meta private:
+    vector:       bytes         #: :meta private:
+    response:     Queue = None  #: :meta private:
+    hash_chain:   dict  = None  #: :meta private:
 
     def __post_init__(self):
         super().__post_init__()
@@ -269,10 +258,7 @@ def test_eezzfile_reader():
     x_file = TEezzFile(destination=x_decr, size=x_size, chunk_size=1024, file_type='main', response=x_queue, key=x_key, vector=x_vector)
     with x_dest.open('rb+') as x_input:
         x_sequence = 0
-        while True:
-            x_chunk = x_input.read(1024)
-            if len(x_chunk) == 0:
-                break
+        while x_chunk := x_input.read(1024):
             x_file.write(raw_data=x_chunk, sequence_nr=x_sequence, mode=TFileMode.DECRYPT)
             x_sequence += 1
     logger.debug(f'hash-list = {x_file.hash_chain}')
