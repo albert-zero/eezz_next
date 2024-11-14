@@ -61,51 +61,67 @@ function eezz_connect() {
 
         // The main response is an update request
         if (x_json.update) {
-           console.log('update  ');
+            console.log('update  ');
             var x_array_descr = x_json.update;
+            var x_element_map = new Map();
+
             for (var i = 0; i < x_array_descr.length; i++) {
-                var x_descr = x_array_descr[i];
-                var x_elem  = document.getElementById(x_descr.id);
-                dynamic_update(x_elem, x_descr.html, x_descr.attrs);
+                console.log("update " + x_array_descr[i]);
+                var x_update_json = x_array_descr[i];
 
                 try { // Abstract function to overwrite for user callback
-                   eezz.on_update(x_elem);
+                    var x_dest = x_update_json.target.split('.'); 
+                    if (!x_element_map.has(x_dest[0])) {
+                        x_element_map.set(x_dest[0], x_dest[0]);
+                    }
+                    dynamic_update(x_update_json);
                 } catch(err) {
                     console.log("error " + err);
                 }
             }
+
+            // call update once per affected root element
+            x_element_map.forEach((_value, key) => {
+                eezz.on_update(key);
+            })
         }
 
         // The backend might send events. The main event is the init-event, which is the response to the
         // initialization request. The idea is to put all long lasting methods into this loop, so that the
         // HTML page is not blocked at the first call.
-        if (x_json.event) {
-            if (x_json.event == 'init') {
-                for (x_element in x_list) {
-                g_eezz_web_socket.send(x_element.getAttribute('data-eezz-init'));
-            }
-        }
+        //if (x_json.event) {
+        //    if (x_json.event == 'init') {
+        //        for (x_element in x_list) {
+        //        g_eezz_web_socket.send(x_element.getAttribute('data-eezz-init'));
+        //    }
+        //}
     }
 }
 
 // Dynamic update: The inner-HTML of the element is calculated by the server
 // The result is send via WEB socket as json = {tag-name: html, ...}
-function dynamic_update(a_element, a_json, a_attrs) {
-    for (var x in a_json) {
-        if (x == '.') {
-            a_element.innerHTML = a_json[x];
-            continue;
-        }
-        var x_child  = a_element.querySelector(x);
-        if (x_child == null)
-            continue;
+function dynamic_update(a_update_json) {
+    var x_dest      = a_update_json.target.split('.'); 
+    var x_attr      = x_dest.pop();
+    var x_elem_root = document.getElementById(x_dest[0]);
+    var x_elem      = x_elem_root;
 
-        // In a tree node only the tbody will be updated
-        if (a_element,getAttribute('class') == 'clzz_tree_node' && x != 'tbody') {
-            continue;
-        }
-        x_child.innerHTML = a_json[x];
+    // The following makes sense for table.tbody and table.tfooter etc...
+    // In any other cases the update should be more specific
+    for (var i = 1; i < x_dest.length && x_elem != null; i++) {
+        x_elem = x_elem.getElementsByTagName(x_dest[i])[0];
+    } 
+    
+    if (x_elem == null) { 
+        return;
     }
+     
+    if (x_attr == 'innerHTML') {
+        x_elem.innerHTML = a_update_json.value;
+    }
+    else {
+        x_elem.setAttribute(x_attr, a_update_json.value);
+    }    
 }
 
 // Collapse a tree element

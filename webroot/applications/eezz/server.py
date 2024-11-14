@@ -17,10 +17,10 @@ from   optparse       import OptionParser
 from   websocket      import TWebSocket
 from   pathlib        import Path
 from   http_agent     import THttpAgent
-from   service        import TService, TGlobal
+from   service        import TService
 from   session        import TSession
 import time
-import logging
+from   loguru         import logger
 import json
 
 
@@ -70,8 +70,6 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
     def handle_request(self):
         """ handle GET and POST requests """
         x_cookie    = http.cookies.SimpleCookie()
-        x_service   = TService.get_instance()
-
         if 'eezzAgent' not in x_cookie:
             x_cookie['eezzAgent'] = 'AgentName'
 
@@ -79,7 +77,7 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
         x_result     = urlparse(self.path)
         x_query      = parse_qs(x_result.query)
         x_query_path = x_result.path
-        x_resource   = TService().root_path / f'public/.{x_query_path}'
+        x_resource   = TService().public_path / f'.{x_query_path}'
 
         if self.m_client[0] in ('localhost', '127.0.0.1'):
             # Administration commands possible only on local machine
@@ -88,8 +86,8 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
                 return
             if x_query_path == '/system/eezzyfree':
                 # Polling request for an existing connection
-                x_session = TGlobal.get_instance(TSession)
-                x_result  = x_session.get_user_pwd(x_query)
+                x_session = TSession()
+                x_result  = x_session.get_user_pwd()
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.end_headers()
@@ -97,8 +95,7 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
                 return
             if x_query_path == '/eezzyfree':
                 # Assign a user to the administration page
-                x_session = TGlobal.get_instance(TSession)
-                x_session.connect(x_query)
+                TSession().connect(x_query)
 
         if x_resource.is_dir():
             x_resource = TService().root_path / 'public/index.html'
@@ -148,26 +145,21 @@ if __name__ == "__main__":
     x_opt_parser.add_option("-p", "--port",      dest="http_port",  default="8000",      help="HTTP Port (default 8000")
     x_opt_parser.add_option("-w", "--webroot",   dest="web_root",   default="webroot",   help="Web-Root (path to webroot directory)")
     x_opt_parser.add_option("-x", "--websocket", dest="web_socket", default="8100",      help="Web-Socket Port (default 8100)",  type="int")
-    x_opt_parser.add_option("-t", "--translate", dest="translate",  action="store_true", help="Optional creation of POT f<<<<<<<<<<<<<<<<<ile")
+    x_opt_parser.add_option("-t", "--translate", dest="translate",  action="store_true", help="Optional creation of POT file")
 
-    (x_options, x_args)         = x_opt_parser.parse_args()
+    (x_options, x_args) = x_opt_parser.parse_args()
+    TService.set_environment(x_options.web_root, x_options.http_host, x_options.web_socket)
 
-    main_service                = TGlobal.get_instance(TService)
-    main_service.root_path      = Path(x_options.web_root)
-    main_service.host           = x_options.http_host
-    main_service.websocket_addr = x_options.web_socket
-    main_service.translate      = x_options.translate
-
-    if main_service.public_path.is_dir():
-        os.chdir(main_service.public_path)
+    if TService().public_path.is_dir():
+        os.chdir(TService().public_path)
     else:
         x_opt_parser.print_help()
-        logging.critical(f'webroot not found. Given path "{main_service.root_path}"\nterminating')
+        logger.critical(f'webroot not found. Specify path using option "--webroot <path>"')
         exit(0)
 
     x_httpd   = TWebServer((x_options.http_host, int(x_options.http_port)), THttpHandler, x_options.web_socket)
-    logging.info(f"serving {x_options.http_host} at port {x_options.http_port} ...")
+    logger.info(f"serving {x_options.http_host} at port {x_options.http_port} ...")
 
     x_httpd.serve_forever()
-    logging.info('shutdown')
+    logger.info('shutdown')
     exit(os.EX_OK)

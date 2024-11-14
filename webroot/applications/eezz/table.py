@@ -6,7 +6,7 @@
     * :py:class:`eezz.table.TTableRow`:    Defines properties of a table row, containing a list of TTableCells
     * :py:class:`eezz.table.TTableColumn`: Defines properties of a table column
     * :py:class:`eezz.table.TTable`:       Defines properties of a table, containing a list of TTableRows
-    * :py:class:`eezz.table.TTableInsertException`: Exception on checking the row-id, which has to be unique
+    * :py:class:`eezz.table.TTableException`: Exception on checking the row-id, which has to be unique
 
     TTable is used for formatted ASCII output of a table structure.
     It allows to access the table data for further processing e.g. for HTML output. The class handles an
@@ -37,13 +37,33 @@ from    copy        import deepcopy
 from    service     import TService
 from    threading   import Condition, Lock
 import  logging
+import  logging.config
 import  sqlite3
 
+logger = logging.getLogger('table')
+logging_config = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(levelname)s: %(message)s',
+        }
+    },
+    'handlers': {
+        'stdout': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'stream': 'ext://sys.stdout',
+        }
+    },
+    'loggers': {
+        'root': {'level': 'DEBUG', 'handlers':['stdout']}
+    }
+}
 
-class TTableInsertException(Exception):
-    """ The table exception: trying to insert a double row-id
-    """
-    def __init__(self, message: str = "entry already exists, row-id has to be unique"):
+class TTableException(Exception):
+    """ The table exception: trying to insert a double row-id """
+    def __init__(self, message: str):
         super().__init__(message)
 
 
@@ -319,7 +339,7 @@ class TTable(UserList):
         # Check if the row-id is unique
         if self.table_index.get(row_id):
             if not exists_ok:
-                raise TTableInsertException(f'row-id exists {row_id}')
+                raise TTableException(f'InsertException: row-id already exists {row_id}')
             return self.table_index.get(row_id)
 
         x_cells = [TTableCell(name=x_descr.header, width=len(str(x_cell)), value=x_cell, index=x_descr.index, type=x_descr.type) for x_cell, x_descr in x_row_descr]
@@ -357,6 +377,14 @@ class TTable(UserList):
         for x_row in self.data:
             if search_filter(x_row):
                 yield tuple(x_value for x_value in x_row.get_values_list())
+
+    def on_select(self, index: str) -> TTableRow:
+        """ Select a row from cache """
+        if selected_row := self.table_index.get(index):
+            self.selected_row = selected_row
+            return self.selected_row
+        else:
+            raise TTableException(f'Selected row does not exist: {index}')
 
     def do_select(self, get_all: bool = False, filter_descr: list = None) -> list:
         """ Create and execute a select statement on the given database.
@@ -537,7 +565,7 @@ def test_table():
             x_stat = os.stat(x_item.name)
             x_time = datetime.fromtimestamp(x_stat.st_atime, tz=timezone.utc)
             x_table.append([str(x_item.name), x_stat.st_size, x_time], attrs={'path': x_item}, row_id=x_item.name)
-        except TTableInsertException as x_except:
+        except TTableException as x_except:
             logger.debug(msg='Check row-id: Add entries with same row-id should be rejected')
             logger.debug(msg=f'TableInsertException {x_item.name}: {x_except}')
             break
@@ -575,8 +603,10 @@ if __name__ == '__main__':
     """:meta private:"""
     x_service = TService(root_path=Path(r'C:\Users\alzer\Projects\github\eezz_full\webroot'))
     x_log_path = x_service.logging_path / 'table.log'
-    logging.basicConfig(filename=x_log_path, filemode='w', style='{', format='{name} - {levelname} - {message}')
-    logger = logging.getLogger()
+
+    #logging.basicConfig(filename=x_log_path, filemode='w', style='{', format='{name} - {levelname} - {funcName} - {message}')
+    #logger = logging.getLogger()
+    logging.config.dictConfig(logging_config)
     logger.setLevel(logging.DEBUG)
 
     # print = logger.debug

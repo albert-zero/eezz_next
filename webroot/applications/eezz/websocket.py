@@ -27,6 +27,7 @@ from   abc         import abstractmethod
 from   threading   import Thread, Lock
 from   typing      import Any, Callable, Dict
 from   service     import TService
+from   loguru      import logger
 
 
 class TWebSocketAgent:
@@ -87,6 +88,7 @@ class TWebSocketClient:
 
     def upgrade(self):
         """ Upgrade HTTP connection to WEB socket """
+        logger.debug('establish web socket')
         x_bin_data = self.m_socket.recv(1024)
         if len(x_bin_data) == 0:
             raise TWebSocketException('no data received')
@@ -105,6 +107,7 @@ class TWebSocketClient:
         x_json_str = self.read_websocket()
         x_json_obj = json.loads(x_json_str.decode('utf-8'))
 
+        logger.debug(f'handle request {x_json_obj}')
         if 'download' in x_json_obj:
             x_response = self.m_agent_client.setup_download(x_json_obj)
             self.write_frame(x_response.encode('utf-8'))
@@ -125,6 +128,8 @@ class TWebSocketClient:
             x_request = x_json_obj['call']
             x_args    = x_request['args']
             x_name    = x_request['function']
+
+            logger.debug(f'websocket call {x_name}( {x_args} )')
             x_obj, x_method, x_tag, x_descr = TService().get_method(x_request['id'], x_name)
             x_thread  = self.m_threads.get(x_method)
 

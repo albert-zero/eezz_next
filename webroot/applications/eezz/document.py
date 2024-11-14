@@ -22,7 +22,7 @@ import logging
 from io               import BufferedReader, BytesIO
 from queue            import Queue
 from filesrv          import TEezzFile, TFile, TFileMode
-from service          import TService, TGlobal
+from service          import TService
 from database         import TDatabaseTable
 from pathlib          import Path
 from seccom           import TSecureSocket

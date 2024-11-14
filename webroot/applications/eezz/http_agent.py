@@ -10,6 +10,7 @@ import uuid
 import copy
 import re
 
+from loguru    import logger
 from pathlib   import Path
 from typing    import Any, Callable
 from bs4       import Tag, BeautifulSoup, NavigableString
@@ -17,8 +18,9 @@ from itertools import product, chain
 from table     import TTable, TTableCell, TTableRow
 from websocket import TWebSocketAgent
 from service   import TService, TServiceCompiler, TTranslate
-from lark      import Lark, UnexpectedCharacters, Tree
-from document  import  TDocuments
+from lark      import Lark, UnexpectedCharacters, Tree, UnexpectedEOF
+from document  import TDocuments
+from loguru    import logger
 
 
 class THttpAgent(TWebSocketAgent):
@@ -28,6 +30,7 @@ class THttpAgent(TWebSocketAgent):
         super().__init__()
         self.documents: TDocuments | None = None
 
+    @logger.catch
     def handle_request(self, request_data: dict) -> str | None:
         """ Handle WEB socket requests
 
@@ -40,8 +43,11 @@ class THttpAgent(TWebSocketAgent):
         x_updates  = list()
         if 'initialize' in request_data:
             x_soup   = BeautifulSoup(request_data['initialize'], 'html.parser', multi_valued_attributes=None)
-            x_updates.extend([self.generate_html_table(x) for x in  x_soup.css.select('table[data-eezz-compiled]')])
-            x_updates.extend([self.generate_html_grid(x)  for x in  x_soup.css.select('select[data-eezz-compiled], .clzz_grid[data-eezz-compiled]')])
+            for x in x_soup.css.select('table[data-eezz-compiled]'):
+                x_updates.extend(self.generate_html_table(x))
+
+            for x in  x_soup.css.select('select[data-eezz-compiled], .clzz_grid[data-eezz-compiled]'):
+                x_updates.extend(self.generate_html_grid(x))
 
             # manage translation if service started with command line option --translate:
             if TService().translate:
@@ -59,31 +65,17 @@ class THttpAgent(TWebSocketAgent):
                 # Only interested in the x_tag object, which is stored as key(object, method-name) in the TService database
                 # The method itself is executed in module TWebSocketClient
                 x_event = request_data['call']
-                x_obj, x_method, x_tag  = TService().get_method(x_event['id'], x_event['function'])
+                x_obj, x_method, x_tag, descr  = TService().get_method(x_event['id'], x_event['function'])
 
                 for x_key, x_value in x_event['update'].items():
                     if x_key == 'this.tbody':
                         # A table might update its body, for example after navigation input (page up/down)
                         x_updates.append(self.generate_html_table(x_tag))
-                    elif x_key == 'this':
-                        # A Grid might update all its children after navigation
-                        x_updates.append(self.generate_html_grid(x_tag))
-                    elif x_value.startswith('table.'):
-                        # Update specific attributes of a table, e.g. {table.name} or {table.id} etc...
-                        x_attr_list = x_key.split('.')
-                        x_attr      = '.' if len(x_attr_list) < 2 else '.'.join(x_attr_list[1:])
-                        x_res_v     = str('{' + x_value + '}').format(table=x_obj)
-                        x_res_d     = {'id': x_attr_list[0], 'attrs': {'result': 'todo:add result'}, 'html': {x_attr: x_res_v}}
-                        x_updates.append(x_res_d)
-                    elif re.match(r'"\w+"', x_value):
-                        # Update elements on the page, given an element-id and a value
-                        x_attr_list = x_key.split('.')
-                        x_attr      = '.' if len(x_attr_list) < 2 else '.'.join(x_attr_list[1:])
-                        x_res_d     = {'id': x_attr_list[0], 'attrs': {'result': 'todo:add result'}, 'html': {x_attr: x_value.strip('"')}}
-                        x_updates.append(x_res_d)
+                    else:
+                        x_json_obj = {'target': x_key, 'value': x_value.format(object=request_data['result'])}
+                        x_updates.append(x_json_obj)
             except KeyError as ex:
-                logging.error(f'key-error in handle_request: {request_data} ')
-                # print(f'key-error in handle_request: {request_data} ')
+                logger.debug(f'KeyError {ex.args}')
 
             x_result = {'update': x_updates}
             return json.dumps(x_result)
@@ -168,6 +160,7 @@ class THttpAgent(TWebSocketAgent):
         :param a_query: The query of the HTML request
         :return: None
         """
+        logger.debug(f'compile data {a_tag_list[0]}')
         x_service = TService()
         for x_tag in a_tag_list:
             x_id   = a_id
@@ -200,15 +193,15 @@ class THttpAgent(TWebSocketAgent):
                     with x_path.open('r') as f:
                         x_ws_descr += f.read()
                     x_tag.string = x_ws_descr
-            except UnexpectedCharacters as ex:
-                x_tag['data-eezz-compiled'] = f'allowed: {ex.allowed} at {ex.pos_in_stream} \n{x_data}'
-                print(f'allowed: {ex.allowed} at {ex.pos_in_stream} \n{x_data}')
+            except (UnexpectedCharacters,  UnexpectedEOF) as ex:
+                logger.error(f'{repr(ex)}  position = {ex.pos_in_stream} in {x_data=}')
 
-    def format_attributes(self, a_key: str, a_value: str, a_fmt_funct: Callable) -> str:
+    @staticmethod
+    def format_attributes(a_key: str, a_value: str, a_fmt_funct: Callable) -> str:
         """ Eval template tag-attributes, diving deep into data-eezz-json
 
-        :param a_key: Thw key string to pick the items in an HTML tag
-        :param a_value: The dictionary in string format to be formatted
+        :param a_key:       Thw key string to pick the items in an HTML tag
+        :param a_value:     The dictionary in string format to be formatted
         :param a_fmt_funct: The function to be called to format the values
         :return: The formatted string
         """
@@ -226,8 +219,8 @@ class THttpAgent(TWebSocketAgent):
         """ Generate HTML cells
         Input for the lamda is a string and output is formatted according to the TTableCell object
 
-        :param a_tag: The parent tag to generate the table cells
-        :param a_cell: The template cell to format to HTML
+        :param a_tag:   The parent tag to generate the table cells
+        :param a_cell:  The template cell to format to HTML
         :return: The formatted HTML tag
         """
         x_fmt_attrs = {x: self.format_attributes(x, y, lambda z: z.format(cell=a_cell)) for x, y in a_tag.attrs.items()}
@@ -262,16 +255,16 @@ class THttpAgent(TWebSocketAgent):
                 if x.has_attr('reference') and x['reference'] == 'row':
                     for x_child in x.descendends:
                         if isinstance(x_child, NavigableString):
-                            x.parent.string = x.format(row=TTableRow)
+                            x.parent.string = x.format(row=a_row)
         except AttributeError as ex:
-            logging.error(f'Cannot format cell: {ex}')
+            logger.exception(ex)
 
-        x_new_tag    = Tag(name=a_tag.name, attrs=x_fmt_attrs)
+        x_new_tag = Tag(name=a_tag.name, attrs=x_fmt_attrs)
         for x in x_html_cells:
             x_new_tag.append(x)
         return x_new_tag
 
-    def generate_html_table(self, a_table_tag: Tag) -> dict:
+    def generate_html_table(self, a_table_tag: Tag) -> list:
         """ Generates a table structure in four steps
 
         1. Get the column order and the viewport
@@ -281,17 +274,18 @@ class THttpAgent(TWebSocketAgent):
 
         :param a_table_tag: The parent table tag to produce the output
         """
+        logger.debug('generate table')
         x_table_obj: TTable = TService().get_object(a_table_tag.attrs['id'])
         x_row_template = a_table_tag.css.select('tr[data-eezz-compiled]')
-        x_row_viewport = x_table_obj.get_visible_rows()
+        x_row_viewport = list(x_table_obj.get_visible_rows())
         x_table_header = x_table_obj.get_header_row()
 
         # insert the header, so that we could manage header and body in a single stack
         x_row_viewport.insert(0, x_table_header)
 
-        # Evaluate the range and re-arrange
-        x_range       = list(range(len(x_table_header.cells)))
-        x_range_cells = [[x_row.cells[index] for index in x_range] for x_row in x_row_viewport]
+        # Re-arrange the cells for output
+        x_range           = list(range(len(x_table_header.cells)))
+        x_range_cells     = [[x_row.cells[index] for index in x_range] for x_row in x_row_viewport]
         for x_row, x_cells in zip(x_row_viewport, x_range_cells):
             x_row.cells = x_cells
 
@@ -304,21 +298,23 @@ class THttpAgent(TWebSocketAgent):
         x_list_html_rows  = [(self.generate_html_rows(x_html_cells, x_tag_tr, x_row)) for x_html_cells, x_tag_tr, x_row in x_list_html_cells]
 
         # separate header and body again for the result {a_table_tag["id"]}
+        x_tbl_id = a_table_tag["id"]
         x_html = dict()
-        x_html['caption'] = a_table_tag.caption.string.format(table=x_table_obj)
-        x_html['thead']   = ''.join([str(x) for x in x_list_html_rows[:1]]) if len(x_list_html_rows) > 0 else ''
-        x_html['tbody']   = ''.join([str(x) for x in x_list_html_rows[1:]]) if len(x_list_html_rows) > 1 else ''
+        x_html[f'{x_tbl_id}.caption.innerHTML'] = a_table_tag.caption.string.format(table=x_table_obj)
+        x_html[f'{x_tbl_id}.thead.innerHTML']   = ''.join([str(x) for x in x_list_html_rows[:1]]) if len(x_list_html_rows) > 0 else ''
+        x_html[f'{x_tbl_id}.tbody.innerHTML']   = ''.join([str(x) for x in x_list_html_rows[1:]]) if len(x_list_html_rows) > 1 else ''
+        return [{'target': x_key, 'value': x_value} for x_key, x_value in x_html.items()]
 
-        return {'id': a_table_tag["id"], 'attrs': {}, 'html': x_html}
-
-    def generate_html_grid(self, a_tag: Tag) -> dict:
+    def generate_html_grid(self, a_tag: Tag) -> list:
         """ Besides the table, supported display is grid (via class clzz_grid or select """
-        x_template      = a_tag.css.select('[data-eezz-compiled]')
+        x_row_template  = a_tag.css.select('[data-eezz-compiled]')
         x_table         = TService().get_object(a_tag.attrs['id'])
         x_row_viewport  = x_table.get_visible_rows()
         x_table_header  = x_table.get_header_row()
-        x_list_children = [self.generate_html_grid_item(x_template, x, x_table_header) for x in x_row_viewport]
-        return {'id': a_tag['id'], 'attrs': {}, 'html': {'.': ''.join([str(x) for x in x_list_children])}}
+        x_format_row    = [([x_tag for x_tag in x_row_template if x_tag.has_attr('data-eezz-match') and x_tag['data-eezz-match'] in x_row.type], x_row) for x_row in x_row_viewport]
+
+        x_list_children = [self.generate_html_grid_item(x_tag[0], x_row, x_table_header) for x_tag, x_row in x_format_row]
+        return [{'target': f"{a_tag['id']}.innerHTML", 'value': ''.join([str(x) for x in x_list_children])}]
 
     def generate_html_grid_item(self, a_tag: Tag, a_row: TTableRow, a_header: TTableRow) -> Tag:
         """ Generates elements of the same kind, derived from a template and update content
@@ -338,23 +334,20 @@ class THttpAgent(TWebSocketAgent):
 
 if __name__ == '__main__':
     """:meta private:"""
-    text2 = """
-    <h1 data-eezz='assign: examples.directory.Database()'>header</h1>
-    <table data-eezz='name: directory, assign: examples.directory.TDirView(path="/home/paul")'> </table>
-    
-    <div class="clzz_grid" data-eezz=""></div>
-    """
+    text2 = f"""
+    <table id='directory' data-eezz='name: directory, assign: examples.directory.TDirView(path="{Path.cwd()}")'> </table>
+        """
 
     # list_table = aSoup.css.select('table[data-eezz]')
-    TService(root_path=Path('/home/paul/Projects/github/EezzServer2/webroot'))
-    xx_gen  = THttpAgent()
-    xx_html = xx_gen.do_get(text2, dict())
-    xx_soup = BeautifulSoup(xx_html, 'html.parser', multi_valued_attributes=None)
+    x_service = TService(root_path=Path(r'C:\Users\alzer\Projects\github\eezz_full\webroot'))
+    xx_gen    = THttpAgent()
+    xx_html   = xx_gen.do_get(text2, dict())
+    xx_soup   = BeautifulSoup(xx_html, 'html.parser', multi_valued_attributes=None)
 
-    xx_h1_set = xx_soup.css.select('h1')
-    xx_h1     = xx_h1_set[0]
-    xx_str    = xx_h1.string
-    print(xx_str.parent)
+    # xx_h1_set = xx_soup.css.select('h1')
+    # xx_h1     = xx_h1_set[0]
+    # xx_str    = xx_h1.string
+    # print(xx_str.parent)
 
     list_table = xx_soup.css.select('table[data-eezz-compiled]')
     for xx in list_table:
