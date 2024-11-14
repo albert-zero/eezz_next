@@ -67,12 +67,13 @@ class THttpAgent(TWebSocketAgent):
                 x_event = request_data['call']
                 x_obj, x_method, x_tag, descr  = TService().get_method(x_event['id'], x_event['function'])
 
-                for x_key, x_value in x_event['update'].items():
+                for x_key, x_value in request_data['update'].items():
                     if x_key == 'this.tbody':
                         # A table might update its body, for example after navigation input (page up/down)
                         x_updates.append(self.generate_html_table(x_tag))
                     else:
-                        x_json_obj = {'target': x_key, 'value': x_value.format(object=request_data['result'])}
+                        x_json_obj = {'target': x_key, 'value': x_value.format(row=request_data['result'])}
+
                         x_updates.append(x_json_obj)
             except KeyError as ex:
                 logger.debug(f'KeyError {ex.args}')

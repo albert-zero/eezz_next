@@ -18,11 +18,34 @@ import service
 
 
 class TSecureSocket:
-    """ """
+    """
+    Secure socket class to handle encrypted communication using AES and RSA encryption.
+
+    This class provides mechanisms to send requests securely by encrypting the request data with
+    AES encryption and then using RSA encryption to secure the AES key and initialization vector.
+    The response is then decrypted and parsed.
+
+    :ivar service: Service instance to fetch the RSA private key.
+    :type service: TService
+    """
     def __init__(self):
         pass
         
     def send_request(self, a_action, a_header = None, a_data = None):
+        """
+        Send a secured request using AES and RSA encryption.
+
+        The method encrypts the provided action, header, and data using AES encryption. It packages
+        the AES encryption key and initialization vector in an RSA encrypted packet. Sends the
+        encrypted request to a predefined URL and processes the encrypted response.
+
+        :param a_action: Action to be sent in the request. This parameter is required and should be a string.
+        :param a_header: Optional header data to be sent in the request. Each header element can be a
+                         string or bytes.
+        :param a_data:   Optional body data to be sent in the request as a string. If provided, this data
+                         will be encrypted.
+        :return: The decrypted response body as bytes.
+        """
         # AES encryption with vector and key of AES
         # xVector   = Random.new().read(AES.block_size)
         x_vector   = Random.new().read(AES.block_size)
@@ -84,6 +107,7 @@ class TSecureSocket:
 
 
 if __name__ == '__main__':
+    """:meta private:"""
     os.chdir(os.path.join('/', 'Users', 'Paul', 'production', 'webroot', 'public'))
     aSecSock = TSecureSocket()
     aResp    = aSecSock.send_request('test', [12345678, 2345], 'some data')

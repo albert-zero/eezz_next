@@ -27,16 +27,33 @@ _ = gettext.gettext
 
 @dataclass(kw_only=True)
 class TBluetoothService:
-    """ The TBluetoothService handles a connection for a specific mobile given by address.
-
-    :param address:         The address of the bluetooth device to pair (using find_devices)
     """
-    address:       str                  #: :meta private:
-    eezz_service:  str        = "07e30214-406b-11e3-8770-84a6c8168ea0"  # :meta private: service GUID of the eezz App
-    m_lock:        Lock       = Lock()  #: :meta private: Sync communication with bluetooth service
-    bt_socket                 = None    #: :meta private: The communication socket once established
-    bt_service:    list       = None    #: :meta private: List of eezz service App for establishing a connection
-    connected:     bool       = False   #: :meta private: Indicates whether connection to eezz service is established
+    This class is responsible for managing Bluetooth connections and communication with the EEZZ service.
+
+    The TBluetoothService class encapsulates the functionality for establishing, maintaining, and terminating
+    Bluetooth connections. It uses the EEZZ service for communication, indicated by a specific GUID. Apart from
+    managing connections, it provides mechanisms for sending requests and handling responses from the EEZZ service.
+    It also includes error handling for various connection states and exceptions.
+
+    :ivar address:      Address of the Bluetooth device to connect to.
+    :type address:      str
+    :ivar eezz_service: Service GUID of the EEZZ app.
+    :type eezz_service: str
+    :ivar m_lock:       A lock to synchronize communication with the Bluetooth service.
+    :type m_lock:       Lock
+    :ivar bt_socket:    The communication socket once established.
+    :type bt_socket:    BluetoothSocket
+    :ivar bt_service:   List of EEZZ services for establishing a connection.
+    :type bt_service:   list
+    :ivar connected:    Indicates whether the connection to the EEZZ service is established.
+    :type connected:    bool
+    """
+    address:        str                  #: :meta private:
+    eezz_service:   str        = "07e30214-406b-11e3-8770-84a6c8168ea0"  # :meta private: service GUID of the eezz App
+    m_lock:         Lock       = Lock()  #: :meta private: Sync communication with bluetooth service
+    bt_service:     list       = None    #: :meta private: List of eezz service App for establishing a connection
+    connected:      bool       = False   #: :meta private: Indicates whether connection to eezz service is established
+    bt_socket:      BluetoothSocket  = None    #: :meta private: The communication socket once established
 
     def __post_init__(self):
         """ :meta private: """
@@ -64,17 +81,20 @@ class TBluetoothService:
             self.connected = False
 
     def send_request(self, command: str, args: list) -> dict:
-        """ A request is sent to the device, waiting for a response.
-        The protocol use EEZZ-JSON structure:
+        """
+        Sends a request to a remote server via a Bluetooth socket.
 
-        * send ->    {command: str, args: list}
-        * receive -> {return: { code: <int>, value: <str>}, ...}
+        This function attempts to open a connection, format the request message,
+        send the message through a Bluetooth socket, and wait for a response. If
+        any issue occurs during these steps, it handles the errors appropriately
+        and returns a corresponding error message.
 
-        :param command: The command to execute
-        :type  command: str
-        :param args:    The arguments for the given command
-        :type  args:    list
-        :return:        JSON structure send by device
+        :param command: The command to be sent to the remote server
+        :type command:  str
+        :param args:    List of arguments associated with the command
+        :type args:     list
+        :return:        A dictionary with the result of the operation, containing either
+                        the server's response or an error code and description
         :rtype:         dict
         """
         if not self.open_connection():
@@ -133,9 +153,12 @@ class TBluetooth(TTable):
         self.scan_bluetooth.start()
 
     def find_devices(self) -> None:
-        """ This method is called frequently by thread `self.scan:bluetooth` to keep track of devices in range.
-        The table is checked for new devices or devices which went out of range. Only if the list changes the
-        condition TTable.async_condition is triggered with notify_all.
+        """
+        Manages discovery of nearby Bluetooth devices and maintains an internal list
+        of these devices, notifying when there are changes.
+
+        This is a time-consuming function and should run in a separate thread.
+        The caller may wait for changes on TTable.async_condition.
         """
         while True:
             x_result = bluetooth.discover_devices(flush_cache=True, lookup_names=True)
@@ -161,6 +184,16 @@ class TBluetooth(TTable):
             time.sleep(2)
 
     def get_visible_rows(self, get_all: bool = False) -> List[TTableRow]:
+        """
+        Retrieves the visible rows from the table. If `get_all` is set to True,
+        it retrieves all the rows regardless of their visibility.
+
+        :param get_all: Boolean flag to indicate whether to retrieve all rows
+                        or only visible rows, defaults to False
+        :type get_all:  bool
+        :return:        List of visible rows or all rows depending on the `get_all` flag
+        :rtype:         List[TTableRow]
+        """
         with self.async_lock:
             return super().get_visible_rows(get_all=get_all)
 

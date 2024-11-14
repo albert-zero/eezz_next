@@ -184,7 +184,7 @@ class TWebSocketClient:
                     return x_raw_data
         except Exception as xEx:
             if self.m_agent_client:
-                print("communication: connection closed: " + str(xEx))
+                logger.info(f'{str(xEx)} : shutdown')
                 self.m_agent_client.shutdown()
                 self.m_agent_client = None
             raise

@@ -13,11 +13,30 @@ from typing      import List
 
 @dataclass(kw_only=True)
 class TMobileDevices(TDatabaseTable):
-    """ Manage mobile device data for auto-login and document-key management
+    """
+    TMobileDevices class handles the configuration and initialization of a mobile devices table in a database.
+    It sets up the necessary table columns, types, and primary keys before finalizing the table creation.
+
+    The class is primarily used to manage mobile device records and their associated information by inheriting
+    from TDatabaseTable and setting additional parameters specific to mobile devices.
+
+    :ivar column_names: List of column names for the database table.
+    :type column_names: List[str]
     """
     column_names: List[str] = None    #: :meta private:
 
     def __post_init__(self):
+        """
+        TUser class manages the setup and initialization of user-related database
+        table configurations including column names, types, and primary key.
+
+        :ivar title:        The title of the table.
+        :ivar column_names: The list of column names in the table.
+        :ivar column_descr: A list of column descriptions containing metadata for
+                            each column.
+
+        :return: None
+        """
         # Set the title and the columns before initializing the TDatabaseTable
         self.title              = 'TUser'
         self.column_names       = ['CAddr', 'CDevice', 'CSid', 'CUser', 'CVector', 'CKey']

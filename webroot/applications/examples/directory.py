@@ -18,7 +18,7 @@ class TDirView(TTable):
         for x in a_path.iterdir():
             x_stat = os.stat(x)
             x_time = datetime.fromtimestamp(x_stat.st_atime, tz=timezone.utc)
-            self.append([str(x.name), x_stat.st_size, x_time], attrs={'is_dir': x.is_dir()})
+            self.append([str(x.name), x_stat.st_size, x_time], attrs={'is_dir': x.is_dir(), 'path': str(a_path / x.name)})
 
 
 class TDirPng(TTable):
