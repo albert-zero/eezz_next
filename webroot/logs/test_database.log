@@ -1,0 +1,4 @@
+root - DEBUG - database.py::main: create database C:\Users\alzer\Projects\github\eezz_full\webroot\database\test.db
+root - DEBUG - database.py::main: insert elements and commit
+root - DEBUG - database.py::main: select elements and print table
+root - DEBUG - TTable.do_select: select * from Directory where (Size > ?) or (File like ?)  order by File ASC  limit 20 offset 0

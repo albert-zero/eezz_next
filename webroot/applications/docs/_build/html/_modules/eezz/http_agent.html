@@ -1,0 +1,498 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eezz.http_agent &mdash; EEZZ 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            EEZZ
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">eezz</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">EEZZ</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">eezz.http_agent</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for eezz.http_agent</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    * **THttpAgent**: Handle WEB-Socket requests</span>
+
+<span class="sd">    The interaction with the JavaScript via WEB-Socket includes generation of HTML parts for user interface updates</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">from</span> <span class="nn">loguru</span>    <span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span> <span class="nn">pathlib</span>   <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span>    <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">from</span> <span class="nn">bs4</span>       <span class="kn">import</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">BeautifulSoup</span><span class="p">,</span> <span class="n">NavigableString</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">product</span><span class="p">,</span> <span class="n">chain</span>
+<span class="kn">from</span> <span class="nn">table</span>     <span class="kn">import</span> <span class="n">TTable</span><span class="p">,</span> <span class="n">TTableCell</span><span class="p">,</span> <span class="n">TTableRow</span>
+<span class="kn">from</span> <span class="nn">websocket</span> <span class="kn">import</span> <span class="n">TWebSocketAgent</span>
+<span class="kn">from</span> <span class="nn">service</span>   <span class="kn">import</span> <span class="n">TService</span><span class="p">,</span> <span class="n">TServiceCompiler</span><span class="p">,</span> <span class="n">TTranslate</span>
+<span class="kn">from</span> <span class="nn">lark</span>      <span class="kn">import</span> <span class="n">Lark</span><span class="p">,</span> <span class="n">UnexpectedCharacters</span><span class="p">,</span> <span class="n">Tree</span><span class="p">,</span> <span class="n">UnexpectedEOF</span>
+<span class="kn">from</span> <span class="nn">document</span>  <span class="kn">import</span> <span class="n">TDocuments</span>
+<span class="kn">from</span> <span class="nn">loguru</span>    <span class="kn">import</span> <span class="n">logger</span>
+
+
+<div class="viewcode-block" id="THttpAgent">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent">[docs]</a>
+<span class="k">class</span> <span class="nc">THttpAgent</span><span class="p">(</span><span class="n">TWebSocketAgent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Agent handles WEB socket events &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">documents</span><span class="p">:</span> <span class="n">TDocuments</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="THttpAgent.handle_request">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.handle_request">[docs]</a>
+    <span class="nd">@logger</span><span class="o">.</span><span class="n">catch</span>
+    <span class="k">def</span> <span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Handle WEB socket requests</span>
+
+<span class="sd">        * **initialize**: The browser sends the complete HTML for analysis.</span>
+<span class="sd">        * **call**: The request issues a method call and the result is sent back to the browser</span>
+
+<span class="sd">        :param request_data: The request send by the browser</span>
+<span class="sd">        :return: Response in JSON stream, containing valid HTML parts for the browser</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_updates</span>  <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s1">&#39;initialize&#39;</span> <span class="ow">in</span> <span class="n">request_data</span><span class="p">:</span>
+            <span class="n">x_soup</span>   <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">request_data</span><span class="p">[</span><span class="s1">&#39;initialize&#39;</span><span class="p">],</span> <span class="s1">&#39;html.parser&#39;</span><span class="p">,</span> <span class="n">multi_valued_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_soup</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;table[data-eezz-compiled]&#39;</span><span class="p">):</span>
+                <span class="n">x_updates</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">generate_html_table</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span>  <span class="n">x_soup</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;select[data-eezz-compiled], .clzz_grid[data-eezz-compiled]&#39;</span><span class="p">):</span>
+                <span class="n">x_updates</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">generate_html_grid</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+            <span class="c1"># manage translation if service started with command line option --translate:</span>
+            <span class="k">if</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">translate</span><span class="p">:</span>
+                <span class="n">x_translate</span> <span class="o">=</span> <span class="n">TTranslate</span><span class="p">()</span>
+                <span class="n">x_translate</span><span class="o">.</span><span class="n">generate_pot</span><span class="p">(</span><span class="n">x_soup</span><span class="p">,</span> <span class="n">request_data</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">])</span>
+            <span class="n">x_result</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;update&#39;</span><span class="p">:</span> <span class="n">x_updates</span><span class="p">,</span> <span class="s1">&#39;event&#39;</span><span class="p">:</span> <span class="s1">&#39;init&#39;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">x_result</span><span class="p">)</span>
+
+        <span class="c1"># A call request consists of a method to call and a set ot tags to update (updates might be an empty list)</span>
+        <span class="c1"># The update is a list of key-value pairs separated by a colon</span>
+        <span class="c1"># The key is the html-element-id and the attribute separated by dot</span>
+        <span class="c1"># The value is a valid HTML string to replace either the attribute value or part of the element (for example table.body)</span>
+        <span class="k">if</span> <span class="s1">&#39;call&#39;</span> <span class="ow">in</span> <span class="n">request_data</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Only interested in the x_tag object, which is stored as key(object, method-name) in the TService database</span>
+                <span class="c1"># The method itself is executed in module TWebSocketClient</span>
+                <span class="n">x_event</span> <span class="o">=</span> <span class="n">request_data</span><span class="p">[</span><span class="s1">&#39;call&#39;</span><span class="p">]</span>
+                <span class="n">x_obj</span><span class="p">,</span> <span class="n">x_method</span><span class="p">,</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">descr</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">get_method</span><span class="p">(</span><span class="n">x_event</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">],</span> <span class="n">x_event</span><span class="p">[</span><span class="s1">&#39;function&#39;</span><span class="p">])</span>
+
+                <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_value</span> <span class="ow">in</span> <span class="n">x_event</span><span class="p">[</span><span class="s1">&#39;update&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">x_key</span> <span class="o">==</span> <span class="s1">&#39;this.tbody&#39;</span><span class="p">:</span>
+                        <span class="c1"># A table might update its body, for example after navigation input (page up/down)</span>
+                        <span class="n">x_updates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">generate_html_table</span><span class="p">(</span><span class="n">x_tag</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">x_json_obj</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;target&#39;</span><span class="p">:</span> <span class="n">x_key</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">x_value</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">object</span><span class="o">=</span><span class="n">request_data</span><span class="p">[</span><span class="s1">&#39;result&#39;</span><span class="p">])}</span>
+                        <span class="n">x_updates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_json_obj</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;KeyError </span><span class="si">{</span><span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="n">x_result</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;update&#39;</span><span class="p">:</span> <span class="n">x_updates</span><span class="p">}</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">x_result</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.setup_download">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.setup_download">[docs]</a>
+    <span class="k">def</span> <span class="nf">setup_download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">documents</span> <span class="o">=</span> <span class="n">TDocuments</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">documents</span><span class="o">.</span><span class="n">prepare_download</span><span class="p">(</span><span class="n">request</span><span class="o">=</span><span class="n">request_data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">request_data</span><span class="p">[</span><span class="s1">&#39;update&#39;</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.handle_download">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.handle_download">[docs]</a>
+    <span class="k">def</span> <span class="nf">handle_download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Handle file downloads: The browser slices the file into chunks and the agent has to</span>
+<span class="sd">         re-arrange the stream using the file name and the sequence number</span>
+
+<span class="sd">         :param request_data: The request data are encoded in dictionary format</span>
+<span class="sd">         :param raw_data: The rae data chunk to download</span>
+<span class="sd">         :return: Progress information to the update destination of the event</span>
+<span class="sd">         &quot;&quot;&quot;</span>
+        <span class="n">x_event</span>  <span class="o">=</span> <span class="n">request_data</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">]</span>
+        <span class="n">x_update</span> <span class="o">=</span> <span class="n">request_data</span><span class="p">[</span><span class="s1">&#39;update&#39;</span><span class="p">]</span>
+        <span class="n">x_update</span><span class="p">[</span><span class="s1">&#39;progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">documents</span><span class="o">.</span><span class="n">handle_download</span><span class="p">(</span><span class="n">x_event</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">x_update</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.do_get">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.do_get">[docs]</a>
+    <span class="k">def</span> <span class="nf">do_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_resource</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="n">a_query</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Response to an HTML GET command</span>
+
+<span class="sd">        The agent reads the source, compiles the data-eezz sections and adds the web-socket component</span>
+<span class="sd">        It returns the enriched document</span>
+
+<span class="sd">        :param a_resource: The path to the HTML document, containing EEZZ extensions</span>
+<span class="sd">        :type a_resource: pathlib.Path</span>
+<span class="sd">        :param a_query: The query string of the URL</span>
+<span class="sd">        :return: The compiled version of the HTML file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_html</span>    <span class="o">=</span> <span class="n">a_resource</span>
+        <span class="n">x_service</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a_resource</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">a_resource</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">x_html</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+        <span class="n">x_parser</span>     <span class="o">=</span> <span class="n">Lark</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">x_service</span><span class="o">.</span><span class="n">resource_path</span><span class="p">)</span> <span class="o">/</span> <span class="s1">&#39;eezz.lark&#39;</span><span class="p">))</span>
+        <span class="n">x_soup</span>       <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">x_html</span><span class="p">,</span> <span class="s1">&#39;html.parser&#39;</span><span class="p">,</span> <span class="n">multi_valued_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># The template table is used to add missing structures as default</span>
+        <span class="n">x_templ_path</span> <span class="o">=</span> <span class="n">x_service</span><span class="o">.</span><span class="n">resource_path</span> <span class="o">/</span> <span class="s1">&#39;template.html&#39;</span>
+        <span class="k">with</span> <span class="n">x_templ_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">x_template</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="s1">&#39;html.parser&#39;</span><span class="p">,</span> <span class="n">multi_valued_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="n">x_templ_table</span> <span class="o">=</span> <span class="n">x_template</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">table</span>
+        <span class="k">for</span> <span class="n">x_chrom</span> <span class="ow">in</span> <span class="n">x_soup</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;table[data-eezz]&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x_chrom</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;caption&#39;</span><span class="p">):</span>
+                <span class="n">x_chrom</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">x_templ_table</span><span class="o">.</span><span class="n">caption</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x_chrom</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;thead&#39;</span><span class="p">):</span>
+                <span class="n">x_chrom</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">x_templ_table</span><span class="o">.</span><span class="n">thead</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x_chrom</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;tbody&#39;</span><span class="p">):</span>
+                <span class="n">x_chrom</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">x_templ_table</span><span class="o">.</span><span class="n">tbody</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x_chrom</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;tfoot&#39;</span><span class="p">):</span>
+                <span class="c1"># x_chrom.append(copy.deepcopy(x_temp_table.tfoot))</span>
+                <span class="k">pass</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x_chrom</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">):</span>
+                <span class="n">x_chrom</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid1</span><span class="p">())[:</span><span class="mi">8</span><span class="p">]</span>
+            <span class="c1"># Compile subtree using the current table id for events</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compile_data</span><span class="p">(</span><span class="n">x_parser</span><span class="p">,</span> <span class="n">x_chrom</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;[data-eezz]&#39;</span><span class="p">),</span> <span class="n">x_chrom</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">x_chrom</span> <span class="ow">in</span> <span class="n">x_soup</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;select[data-eezz], .clzz_grid[data-eezz]&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x_chrom</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">):</span>
+                <span class="n">x_chrom</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid1</span><span class="p">())[:</span><span class="mi">8</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compile_data</span><span class="p">(</span><span class="n">x_parser</span><span class="p">,</span> <span class="n">x_chrom</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;[data-eezz]&#39;</span><span class="p">),</span> <span class="n">x_chrom</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Compiling the reset of the document</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compile_data</span><span class="p">(</span><span class="n">x_parser</span><span class="p">,</span> <span class="n">x_soup</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;[data-eezz]&#39;</span><span class="p">),</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">a_query</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_soup</span><span class="o">.</span><span class="n">prettify</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.compile_data">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.compile_data">[docs]</a>
+    <span class="k">def</span> <span class="nf">compile_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_parser</span><span class="p">:</span> <span class="n">Lark</span><span class="p">,</span> <span class="n">a_tag_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">a_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">a_query</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Compile data-eezz-json to data-eezz-compile,</span>
+<span class="sd">        create tag attributes and generate tag-id to manage incoming requests</span>
+
+<span class="sd">        :param a_parser: The Lark parser to compile EEZZ to json</span>
+<span class="sd">        :param a_tag_list: HTML-Tag to compile</span>
+<span class="sd">        :param a_id: The ID of the tag to be identified for update</span>
+<span class="sd">        :param a_query: The query of the HTML request</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;compile data </span><span class="si">{</span><span class="n">a_tag_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">x_service</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">x_tag</span> <span class="ow">in</span> <span class="n">a_tag_list</span><span class="p">:</span>
+            <span class="n">x_id</span>   <span class="o">=</span> <span class="n">a_id</span>
+            <span class="n">x_data</span> <span class="o">=</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data-eezz&#39;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">x_data</span><span class="p">:</span>
+                    <span class="k">return</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">x_id</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">):</span>
+                        <span class="n">x_id</span> <span class="o">=</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
+
+                <span class="n">x_syntax_tree</span> <span class="o">=</span> <span class="n">a_parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">x_data</span><span class="p">)</span>
+                <span class="n">x_transformer</span> <span class="o">=</span> <span class="n">TServiceCompiler</span><span class="p">(</span><span class="n">x_tag</span><span class="p">,</span> <span class="n">x_id</span><span class="p">,</span> <span class="n">a_query</span><span class="p">)</span>
+                <span class="n">x_tree</span>        <span class="o">=</span> <span class="n">x_transformer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">x_syntax_tree</span><span class="p">)</span>
+                <span class="n">x_json</span>        <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+                <span class="n">x_list_items</span>  <span class="o">=</span> <span class="n">x_tree</span><span class="o">.</span><span class="n">children</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x_tree</span><span class="p">,</span> <span class="n">Tree</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">x_tree</span><span class="p">]</span>
+                <span class="n">x_tag</span><span class="p">[</span><span class="s1">&#39;data-eezz-compiled&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ok&quot;</span>
+
+                <span class="k">for</span> <span class="n">x_part</span> <span class="ow">in</span> <span class="n">x_list_items</span><span class="p">:</span>
+                    <span class="n">x_part_json</span> <span class="o">=</span> <span class="p">{</span><span class="n">x_part_key</span><span class="p">:</span> <span class="n">x_part_val</span> <span class="k">for</span> <span class="n">x_part_key</span><span class="p">,</span> <span class="n">x_part_val</span> <span class="ow">in</span> <span class="n">x_part</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">x_part_key</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;update&#39;</span><span class="p">,</span> <span class="s1">&#39;call&#39;</span><span class="p">)}</span>
+                    <span class="n">x_json</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">x_part_json</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">x_json</span><span class="p">:</span>
+                    <span class="n">x_tag</span><span class="p">[</span><span class="s1">&#39;data-eezz-json&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">x_json</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;data-eezz-template&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x_tag</span><span class="p">[</span><span class="s1">&#39;data-eezz-template&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;websocket&#39;</span><span class="p">:</span>
+                    <span class="n">x_path</span>      <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">x_service</span><span class="o">.</span><span class="n">resource_path</span> <span class="o">/</span> <span class="s1">&#39;websocket.js&#39;</span><span class="p">)</span>
+                    <span class="n">x_ws_descr</span>  <span class="o">=</span> <span class="s2">&quot;&quot;&quot;var g_eezz_socket_addr = &quot;ws://</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">&quot;;</span><span class="se">\n</span><span class="s2"> &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">websocket_addr</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+                    <span class="n">x_ws_descr</span> <span class="o">+=</span> <span class="s2">&quot;&quot;&quot;var g_eezz_arguments   = &quot;</span><span class="si">{args}</span><span class="s2">&quot;;</span><span class="se">\n</span><span class="s2"> &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+                    <span class="k">with</span> <span class="n">x_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                        <span class="n">x_ws_descr</span> <span class="o">+=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                    <span class="n">x_tag</span><span class="o">.</span><span class="n">string</span> <span class="o">=</span> <span class="n">x_ws_descr</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">UnexpectedCharacters</span><span class="p">,</span>  <span class="n">UnexpectedEOF</span><span class="p">)</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">repr</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span><span class="si">}</span><span class="s1">  position = </span><span class="si">{</span><span class="n">ex</span><span class="o">.</span><span class="n">pos_in_stream</span><span class="si">}</span><span class="s1"> in </span><span class="si">{</span><span class="n">x_data</span><span class="si">=}</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.format_attributes">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.format_attributes">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">format_attributes</span><span class="p">(</span><span class="n">a_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">a_value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">a_fmt_funct</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Eval template tag-attributes, diving deep into data-eezz-json</span>
+
+<span class="sd">        :param a_key:       Thw key string to pick the items in an HTML tag</span>
+<span class="sd">        :param a_value:     The dictionary in string format to be formatted</span>
+<span class="sd">        :param a_fmt_funct: The function to be called to format the values</span>
+<span class="sd">        :return: The formatted string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">a_key</span> <span class="o">==</span> <span class="s1">&#39;data-eezz-json&#39;</span><span class="p">:</span>
+            <span class="n">x_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">a_value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;call&#39;</span> <span class="ow">in</span> <span class="n">x_json</span><span class="p">:</span>
+                <span class="n">x_args</span> <span class="o">=</span> <span class="n">x_json</span><span class="p">[</span><span class="s1">&#39;call&#39;</span><span class="p">][</span><span class="s1">&#39;args&#39;</span><span class="p">]</span>
+                <span class="n">x_json</span><span class="p">[</span><span class="s1">&#39;call&#39;</span><span class="p">][</span><span class="s1">&#39;args&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">x_key</span><span class="p">:</span> <span class="n">a_fmt_funct</span><span class="p">(</span><span class="n">x_val</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_val</span> <span class="ow">in</span> <span class="n">x_args</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="n">x_fmt_val</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">x_json</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x_fmt_val</span> <span class="o">=</span> <span class="n">a_fmt_funct</span><span class="p">(</span><span class="n">a_value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_fmt_val</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.generate_html_cells">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.generate_html_cells">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_html_cells</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">:</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">a_cell</span><span class="p">:</span> <span class="n">TTableCell</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tag</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Generate HTML cells</span>
+<span class="sd">        Input for the lamda is a string and output is formatted according to the TTableCell object</span>
+
+<span class="sd">        :param a_tag:   The parent tag to generate the table cells</span>
+<span class="sd">        :param a_cell:  The template cell to format to HTML</span>
+<span class="sd">        :return: The formatted HTML tag</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_fmt_attrs</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_attributes</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">z</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">a_cell</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">x_new_tag</span>   <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">a_tag</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_new_tag</span><span class="o">.</span><span class="n">descendants</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Tag</span><span class="p">):</span>
+                <span class="n">x</span><span class="o">.</span><span class="n">string</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">a_cell</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">x_new_tag</span><span class="o">.</span><span class="n">string</span><span class="p">:</span>
+            <span class="n">x_new_tag</span><span class="o">.</span><span class="n">string</span> <span class="o">=</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">a_cell</span><span class="p">)</span>
+        <span class="n">x_new_tag</span><span class="o">.</span><span class="n">attrs</span>  <span class="o">=</span> <span class="n">x_fmt_attrs</span>
+
+        <span class="c1"># store the date-time in attribute, so it could be used for in-place formatting:</span>
+        <span class="k">if</span> <span class="n">a_cell</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;datetime&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">):</span>
+            <span class="n">x_new_tag</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">a_cell</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">timestamp</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">x_new_tag</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.generate_html_rows">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.generate_html_rows">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_html_rows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_html_cells</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">:</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">a_row</span><span class="p">:</span> <span class="n">TTableRow</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tag</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; This operation add fixed cells to the table.</span>
+<span class="sd">        Cells which are not included as template for table data are used to add a constant info to the row</span>
+
+<span class="sd">        :param a_html_cells: A list of cells to build up a row</span>
+<span class="sd">        :param a_tag: The parent containing the templates for the row</span>
+<span class="sd">        :param a_row: The table row values to insert</span>
+<span class="sd">        :return: The row with values rendered to HZML</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_fmt_attrs</span>  <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_attributes</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">z</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="n">a_row</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="c1"># x_html_cells = a_html_cells</span>
+        <span class="n">x_html_cells</span> <span class="o">=</span> <span class="p">[[</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;data-eezz-compiled&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">a_html_cells</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;th,td&#39;</span><span class="p">)]</span>
+        <span class="n">x_html_cells</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="n">x_html_cells</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_html_cells</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;reference&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;reference&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;row&#39;</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">x_child</span> <span class="ow">in</span> <span class="n">x</span><span class="o">.</span><span class="n">descendends</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x_child</span><span class="p">,</span> <span class="n">NavigableString</span><span class="p">):</span>
+                            <span class="n">x</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">string</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="n">a_row</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
+
+        <span class="n">x_new_tag</span> <span class="o">=</span> <span class="n">Tag</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">a_tag</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="n">x_fmt_attrs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_html_cells</span><span class="p">:</span>
+            <span class="n">x_new_tag</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_new_tag</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.generate_html_table">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.generate_html_table">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_html_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_table_tag</span><span class="p">:</span> <span class="n">Tag</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Generates a table structure in four steps</span>
+
+<span class="sd">        1. Get the column order and the viewport</span>
+<span class="sd">        2. Get the row templates</span>
+<span class="sd">        3. Evaluate the table cells</span>
+<span class="sd">        4. Send the result separated by table main elements</span>
+
+<span class="sd">        :param a_table_tag: The parent table tag to produce the output</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;generate table&#39;</span><span class="p">)</span>
+        <span class="n">x_table_obj</span><span class="p">:</span> <span class="n">TTable</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span><span class="n">a_table_tag</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span>
+        <span class="n">x_row_template</span> <span class="o">=</span> <span class="n">a_table_tag</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;tr[data-eezz-compiled]&#39;</span><span class="p">)</span>
+        <span class="n">x_row_viewport</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">x_table_obj</span><span class="o">.</span><span class="n">get_visible_rows</span><span class="p">())</span>
+        <span class="n">x_table_header</span> <span class="o">=</span> <span class="n">x_table_obj</span><span class="o">.</span><span class="n">get_header_row</span><span class="p">()</span>
+
+        <span class="c1"># insert the header, so that we could manage header and body in a single stack</span>
+        <span class="n">x_row_viewport</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">x_table_header</span><span class="p">)</span>
+
+        <span class="c1"># Re-arrange the cells for output</span>
+        <span class="n">x_range</span>           <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x_table_header</span><span class="o">.</span><span class="n">cells</span><span class="p">)))</span>
+        <span class="n">x_range_cells</span>     <span class="o">=</span> <span class="p">[[</span><span class="n">x_row</span><span class="o">.</span><span class="n">cells</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">x_range</span><span class="p">]</span> <span class="k">for</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_row_viewport</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">x_row</span><span class="p">,</span> <span class="n">x_cells</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x_row_viewport</span><span class="p">,</span> <span class="n">x_range_cells</span><span class="p">):</span>
+            <span class="n">x_row</span><span class="o">.</span><span class="n">cells</span> <span class="o">=</span> <span class="n">x_cells</span>
+
+        <span class="c1"># Evaluate match: It&#39;s possible to have a template for each row type (header and body):</span>
+        <span class="n">x_format_row</span>      <span class="o">=</span> <span class="p">[([</span><span class="n">x_tag</span> <span class="k">for</span> <span class="n">x_tag</span> <span class="ow">in</span> <span class="n">x_row_template</span> <span class="k">if</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;data-eezz-match&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x_tag</span><span class="p">[</span><span class="s1">&#39;data-eezz-match&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">x_row</span><span class="o">.</span><span class="n">type</span><span class="p">],</span> <span class="n">x_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_row_viewport</span><span class="p">]</span>
+        <span class="n">x_format_cell</span>     <span class="o">=</span> <span class="p">[(</span><span class="nb">list</span><span class="p">(</span><span class="n">product</span><span class="p">(</span><span class="n">x_tag</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;td[data-eezz-compiled],th[data-eezz-compiled]&#39;</span><span class="p">),</span> <span class="n">x_row</span><span class="o">.</span><span class="n">cells</span><span class="p">)),</span> <span class="n">x_tag</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_format_row</span> <span class="k">if</span> <span class="n">x_tag</span><span class="p">]</span>
+
+        <span class="c1"># Put all together and create HTML</span>
+        <span class="n">x_list_html_cells</span> <span class="o">=</span> <span class="p">[([</span><span class="bp">self</span><span class="o">.</span><span class="n">generate_html_cells</span><span class="p">(</span><span class="n">x_tag</span><span class="p">,</span> <span class="n">x_cell</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">x_cell</span> <span class="ow">in</span> <span class="n">x_row_templates</span><span class="p">],</span> <span class="n">x_tag_tr</span><span class="p">,</span> <span class="n">x_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_row_templates</span><span class="p">,</span> <span class="n">x_tag_tr</span><span class="p">,</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_format_cell</span><span class="p">]</span>
+        <span class="n">x_list_html_rows</span>  <span class="o">=</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">generate_html_rows</span><span class="p">(</span><span class="n">x_html_cells</span><span class="p">,</span> <span class="n">x_tag_tr</span><span class="p">,</span> <span class="n">x_row</span><span class="p">))</span> <span class="k">for</span> <span class="n">x_html_cells</span><span class="p">,</span> <span class="n">x_tag_tr</span><span class="p">,</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_list_html_cells</span><span class="p">]</span>
+
+        <span class="c1"># separate header and body again for the result {a_table_tag[&quot;id&quot;]}</span>
+        <span class="n">x_tbl_id</span> <span class="o">=</span> <span class="n">a_table_tag</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span>
+        <span class="n">x_html</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">x_html</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_tbl_id</span><span class="si">}</span><span class="s1">.caption.innerHTML&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">a_table_tag</span><span class="o">.</span><span class="n">caption</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">table</span><span class="o">=</span><span class="n">x_table_obj</span><span class="p">)</span>
+        <span class="n">x_html</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_tbl_id</span><span class="si">}</span><span class="s1">.thead.innerHTML&#39;</span><span class="p">]</span>   <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_list_html_rows</span><span class="p">[:</span><span class="mi">1</span><span class="p">]])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_list_html_rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
+        <span class="n">x_html</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_tbl_id</span><span class="si">}</span><span class="s1">.tbody.innerHTML&#39;</span><span class="p">]</span>   <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_list_html_rows</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_list_html_rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">return</span> <span class="p">[{</span><span class="s1">&#39;target&#39;</span><span class="p">:</span> <span class="n">x_key</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">x_value</span><span class="p">}</span> <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_value</span> <span class="ow">in</span> <span class="n">x_html</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.generate_html_grid">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.generate_html_grid">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_html_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">:</span> <span class="n">Tag</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Besides the table, supported display is grid (via class clzz_grid or select &quot;&quot;&quot;</span>
+        <span class="n">x_row_template</span>  <span class="o">=</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;[data-eezz-compiled]&#39;</span><span class="p">)</span>
+        <span class="n">x_table</span>         <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span><span class="n">a_tag</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span>
+        <span class="n">x_row_viewport</span>  <span class="o">=</span> <span class="n">x_table</span><span class="o">.</span><span class="n">get_visible_rows</span><span class="p">()</span>
+        <span class="n">x_table_header</span>  <span class="o">=</span> <span class="n">x_table</span><span class="o">.</span><span class="n">get_header_row</span><span class="p">()</span>
+        <span class="n">x_format_row</span>    <span class="o">=</span> <span class="p">[([</span><span class="n">x_tag</span> <span class="k">for</span> <span class="n">x_tag</span> <span class="ow">in</span> <span class="n">x_row_template</span> <span class="k">if</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;data-eezz-match&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x_tag</span><span class="p">[</span><span class="s1">&#39;data-eezz-match&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">x_row</span><span class="o">.</span><span class="n">type</span><span class="p">],</span> <span class="n">x_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_row_viewport</span><span class="p">]</span>
+
+        <span class="n">x_list_children</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">generate_html_grid_item</span><span class="p">(</span><span class="n">x_tag</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x_row</span><span class="p">,</span> <span class="n">x_table_header</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_format_row</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[{</span><span class="s1">&#39;target&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">a_tag</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">.innerHTML&quot;</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_list_children</span><span class="p">])}]</span></div>
+
+
+<div class="viewcode-block" id="THttpAgent.generate_html_grid_item">
+<a class="viewcode-back" href="../../eezz.html#eezz.http_agent.THttpAgent.generate_html_grid_item">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_html_grid_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">:</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">a_row</span><span class="p">:</span> <span class="n">TTableRow</span><span class="p">,</span> <span class="n">a_header</span><span class="p">:</span> <span class="n">TTableRow</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tag</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Generates elements of the same kind, derived from a template and update content</span>
+<span class="sd">        according the row values</span>
+
+<span class="sd">        :param a_tag:       Template</span>
+<span class="sd">        :param a_row:       Row with data to parse</span>
+<span class="sd">        :param a_header:    Row meta information</span>
+<span class="sd">        :return:            Generated HTML tag</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_fmt_attrs</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_attributes</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">z</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="n">a_row</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">x_fmt_row</span>   <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">y</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">a_header</span><span class="o">.</span><span class="n">cells</span><span class="p">,</span> <span class="n">a_row</span><span class="o">.</span><span class="n">cells</span><span class="p">)}</span>
+        <span class="n">x_new_tag</span>   <span class="o">=</span> <span class="n">Tag</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">a_tag</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="n">x_fmt_attrs</span><span class="p">)</span>
+        <span class="n">x_new_tag</span><span class="o">.</span><span class="n">string</span> <span class="o">=</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">x_fmt_row</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_new_tag</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
+    <span class="n">text2</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    &lt;table id=&#39;directory&#39; data-eezz=&#39;name: directory, assign: examples.directory.TDirView(path=&quot;</span><span class="si">{</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;)&#39;&gt; &lt;/table&gt;</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+    <span class="c1"># list_table = aSoup.css.select(&#39;table[data-eezz]&#39;)</span>
+    <span class="n">x_service</span> <span class="o">=</span> <span class="n">TService</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;C:\Users\alzer\Projects\github\eezz_full\webroot&#39;</span><span class="p">))</span>
+    <span class="n">xx_gen</span>    <span class="o">=</span> <span class="n">THttpAgent</span><span class="p">()</span>
+    <span class="n">xx_html</span>   <span class="o">=</span> <span class="n">xx_gen</span><span class="o">.</span><span class="n">do_get</span><span class="p">(</span><span class="n">text2</span><span class="p">,</span> <span class="nb">dict</span><span class="p">())</span>
+    <span class="n">xx_soup</span>   <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">xx_html</span><span class="p">,</span> <span class="s1">&#39;html.parser&#39;</span><span class="p">,</span> <span class="n">multi_valued_attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="c1"># xx_h1_set = xx_soup.css.select(&#39;h1&#39;)</span>
+    <span class="c1"># xx_h1     = xx_h1_set[0]</span>
+    <span class="c1"># xx_str    = xx_h1.string</span>
+    <span class="c1"># print(xx_str.parent)</span>
+
+    <span class="n">list_table</span> <span class="o">=</span> <span class="n">xx_soup</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;table[data-eezz-compiled]&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">xx</span> <span class="ow">in</span> <span class="n">list_table</span><span class="p">:</span>
+        <span class="n">xx_table</span> <span class="o">=</span> <span class="n">xx_gen</span><span class="o">.</span><span class="n">generate_html_table</span><span class="p">(</span><span class="n">xx</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">xx_table</span><span class="p">)</span>
+
+        <span class="n">xx_result</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;update&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">xx_table</span><span class="p">]}</span>
+        <span class="n">xx_str</span>    <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">xx_result</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">xx_str</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Albert Zedlitz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

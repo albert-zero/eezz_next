@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<head>
+    <script data-eezz="template:websocket"></script>
+    <link rel="stylesheet" href="/css/eezz.css">
+</head>
+<html lang="en">
+<body>
+    <h2 id="eezz-status"></h2>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <h1>Simple table</h1>
+
+    <table id="Directory" data-eezz='assign: examples.directory.TDirView(path="/Users/alzer/Projects/github/eezz_full/webroot")'> 
+        <tbody>
+            <tr data-eezz="template: row, match: is_file,
+                            event  : on_select(index={row.row_id}),
+                            update : path_label.innerHTML={row.path}">
+                <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
+            <tr data-eezz="template: row, match: is_dir,
+                            event  : opendir(path={row.path}),
+                            update : this.subtree, path_label.innerHTML={table.path}">
+                <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
+        </tbody>
+    </table>
+
+    <lable style="border: 2px solid black" id="path_label">path</lable>
+</body>
+</html>

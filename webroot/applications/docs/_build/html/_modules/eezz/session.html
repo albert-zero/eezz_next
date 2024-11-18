@@ -1,0 +1,395 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eezz.session &mdash; EEZZ 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            EEZZ
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">eezz</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">EEZZ</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">eezz.session</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for eezz.session</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module implements the following classes</span>
+
+<span class="sd">    * :py:class:`eezz.session.TSession`: User session management</span>
+
+<span class="sd">The class is created by a call to the local browser site with SID and user-name as query parameter. This is done</span>
+<span class="sd">automatically in the EEZZ environment during login in autostart. The session is stored as singleton in the</span>
+<span class="sd">global storage of the HTTP server.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">winreg</span>
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">gettext</span>
+
+
+<span class="kn">from</span> <span class="nn">dataclasses</span>        <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">blueserv</span>           <span class="kn">import</span> <span class="n">TBluetooth</span><span class="p">,</span> <span class="n">TBluetoothService</span>
+<span class="kn">from</span> <span class="nn">threading</span>          <span class="kn">import</span> <span class="n">Thread</span>
+<span class="kn">from</span> <span class="nn">mobile</span>             <span class="kn">import</span> <span class="n">TMobileDevices</span>
+<span class="kn">from</span> <span class="nn">table</span>              <span class="kn">import</span> <span class="n">TTable</span><span class="p">,</span> <span class="n">TTableRow</span>
+
+<span class="kn">from</span> <span class="nn">itertools</span>          <span class="kn">import</span> <span class="n">zip_longest</span>
+
+<span class="kn">from</span> <span class="nn">Crypto.PublicKey</span>   <span class="kn">import</span> <span class="n">RSA</span>
+<span class="kn">from</span> <span class="nn">Crypto.Cipher</span>      <span class="kn">import</span> <span class="n">PKCS1_v1_5</span>
+<span class="kn">from</span> <span class="nn">Crypto</span>             <span class="kn">import</span> <span class="n">Random</span>
+<span class="kn">from</span> <span class="nn">Crypto.Hash</span>        <span class="kn">import</span> <span class="n">MD5</span>
+
+<span class="n">_</span> <span class="o">=</span> <span class="n">gettext</span><span class="o">.</span><span class="n">gettext</span>
+
+
+<div class="viewcode-block" id="TSession">
+<a class="viewcode-back" href="../../eezz.html#eezz.session.TSession">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">TSession</span><span class="p">(</span><span class="n">TTable</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; TSession implements the interface to Windows users. In a first step the user connects to the HTTP server with</span>
+<span class="sd">    SID and NAME.</span>
+<span class="sd">    Within the connect call a thread is started to sync with bluetooth device search, with the intention to connect</span>
+<span class="sd">    to the EEZZ-App on this device.</span>
+<span class="sd">    Pairing is supported with standard UI interfaces to select the device from GUI and register the user.</span>
+<span class="sd">    After this, the user could choose to store the password on the device to allow automatic lock and unlock feature</span>
+<span class="sd">    of the EEZZ Windows installation.</span>
+
+<span class="sd">    :ivar bool                  desktop_connected:   Connected to the desktop user</span>
+<span class="sd">    :ivar bool                  device_connected:    Connected device and desktop user</span>
+<span class="sd">    :ivar TTableRow             paired_device:       Data of connected device</span>
+<span class="sd">    :ivar TBluetoothService     bt_service:          Bluetooth communication protocol</span>
+<span class="sd">    :ivar TBluetooth            bt_devices:          Table listing bluetooth devices in range</span>
+<span class="sd">    :ivar TMobileDevices        mb_devices:          Table with paired devices</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sid</span><span class="p">:</span>                <span class="nb">str</span>     <span class="o">=</span> <span class="kc">None</span>                      <span class="c1">#: Property - Windows login-user SID</span>
+    <span class="n">name</span><span class="p">:</span>               <span class="nb">str</span>     <span class="o">=</span> <span class="kc">None</span>                      <span class="c1">#: Property - Windows login-user name</span>
+    <span class="n">address</span><span class="p">:</span>            <span class="nb">str</span>     <span class="o">=</span> <span class="kc">None</span>                      <span class="c1">#: :meta private:</span>
+    <span class="n">desktop_connected</span><span class="p">:</span>  <span class="nb">bool</span>    <span class="o">=</span> <span class="kc">False</span>                     <span class="c1">#: :meta private:</span>
+    <span class="n">device_connected</span><span class="p">:</span>   <span class="nb">bool</span>    <span class="o">=</span> <span class="kc">False</span>                     <span class="c1">#: :meta private:</span>
+    <span class="n">paired_device</span><span class="p">:</span>      <span class="n">TTableRow</span>          <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private:</span>
+    <span class="n">bt_service</span><span class="p">:</span>         <span class="n">TBluetoothService</span>  <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private:</span>
+    <span class="n">bt_devices</span><span class="p">:</span>         <span class="n">TBluetooth</span>         <span class="o">=</span> <span class="kc">None</span>           <span class="c1">#: :meta private:</span>
+    <span class="n">mb_devices</span><span class="p">:</span>         <span class="n">TMobileDevices</span>     <span class="o">=</span> <span class="kc">None</span>           <span class="c1">#: :meta private:</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Create the table header &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">column_names</span>  <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;User&#39;</span><span class="p">,</span> <span class="s1">&#39;SID&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span>         <span class="o">=</span> <span class="s1">&#39;Users&#39;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_kw</span>      <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;CEmail&#39;</span><span class="p">,</span> <span class="s1">&#39;CNameAlias&#39;</span><span class="p">,</span> <span class="s1">&#39;CNameFirst&#39;</span><span class="p">,</span> <span class="s1">&#39;CNameLast&#39;</span><span class="p">,</span> <span class="s1">&#39;CIban&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span>   <span class="o">=</span> <span class="n">TMobileDevices</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span>   <span class="o">=</span> <span class="n">TBluetooth</span><span class="p">()</span>
+
+<div class="viewcode-block" id="TSession.send_bt_request">
+<a class="viewcode-back" href="../../eezz.html#eezz.session.TSession.send_bt_request">[docs]</a>
+    <span class="k">def</span> <span class="nf">send_bt_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="n">command</span><span class="o">=</span><span class="n">command</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span></div>
+
+
+<div class="viewcode-block" id="TSession.handle_bt_devices">
+<a class="viewcode-back" href="../../eezz.html#eezz.session.TSession.handle_bt_devices">[docs]</a>
+    <span class="k">def</span> <span class="nf">handle_bt_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Interact with the bluetooth search :py:meth:`eezz.blueserv.TBluetooth.find_devices`. This</span>
+<span class="sd">        method is called as thread target in :py:meth:eezz.session.TSession.connect` and keeps loop</span>
+<span class="sd">        as long as the connection to desktop user is established &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Wait for desktop connection</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">desktop_connected</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="c1"># wait for bluetooth status and fetch all devices in range</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">async_condition</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">async_condition</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                <span class="n">x_bt_devices_in_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">get_visible_rows</span><span class="p">()</span>
+
+            <span class="n">x_my_paired_devices</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">({</span><span class="s1">&#39;CSid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">})</span>
+            <span class="n">x_my_paired_addresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;CAddress&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_my_paired_devices</span><span class="p">]</span>
+            <span class="n">x_bt_device_addresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;Address&#39;</span><span class="p">]</span>  <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_bt_devices_in_range</span><span class="p">]</span>
+            <span class="n">x_pairs</span>  <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_bt_device_addresses</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_my_paired_addresses</span><span class="p">]</span>
+
+            <span class="c1"># Check if a connected device lost range</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_connected</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">paired_device</span><span class="p">[</span><span class="s1">&#39;CAddress&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">x_pairs</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">paired_device</span>    <span class="o">=</span> <span class="kc">None</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">device_connected</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="c1"># Check if we could connect to a device in range</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_connected</span> <span class="ow">and</span> <span class="n">x_pairs</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">address</span>          <span class="o">=</span> <span class="n">x_pairs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span>       <span class="o">=</span> <span class="n">TBluetoothService</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">paired_device</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">({</span><span class="s1">&#39;Address&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">device_connected</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="TSession.connect">
+<a class="viewcode-back" href="../../eezz.html#eezz.session.TSession.connect">[docs]</a>
+    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local_user</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Connect a Windows user to EEZZ interface. This method is called using html:</span>
+<span class="sd">        http://localhost:&lt;port&gt;/eezzyfree?sid=&lt;user-sid&gt;,name=&lt;user-name&gt;</span>
+
+<span class="sd">        :param local_user: The user to connect to GUI</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">desktop_connected</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">desktop_connected</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">async_condition</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">async_condition</span><span class="o">.</span><span class="n">notify_all</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">local_user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sid&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">local_user</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">desktop_connected</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sid</span>  <span class="o">=</span> <span class="n">local_user</span><span class="p">[</span><span class="s1">&#39;sid&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">local_user</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">],</span> <span class="n">row_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="n">exists_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">handle_bt_devices</span><span class="p">(),</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;handle devices&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TSession.get_user_pwd">
+<a class="viewcode-back" href="../../eezz.html#eezz.session.TSession.get_user_pwd">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_user_pwd</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Called by external process to unlock workstation</span>
+
+<span class="sd">        :return: The password to unlock the workstation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_connected</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">x_address</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paired_device</span><span class="p">[</span><span class="s1">&#39;CAddress&#39;</span><span class="p">]</span>
+        <span class="n">x_rsa_key</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paired_device</span><span class="p">[</span><span class="s1">&#39;CKey&#39;</span><span class="p">]</span>
+        <span class="n">x_vector64</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paired_device</span><span class="p">[</span><span class="s1">&#39;CVector&#39;</span><span class="p">]</span>
+
+        <span class="n">x_rsa_key</span> <span class="o">=</span> <span class="n">RSA</span><span class="o">.</span><span class="n">importKey</span><span class="p">(</span><span class="n">x_rsa_key</span><span class="p">)</span>
+        <span class="n">x_vector</span>  <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">x_vector64</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x_response</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_bt_request</span><span class="p">(</span><span class="n">command</span><span class="o">=</span><span class="s1">&#39;GETUSR&#39;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">])</span>
+            <span class="n">x_jsn_pwd_enc64</span> <span class="o">=</span> <span class="n">x_response</span><span class="p">[</span><span class="s1">&#39;encrypted&#39;</span><span class="p">]</span>
+            <span class="n">x_jsn_pwd_encr</span>  <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">x_jsn_pwd_enc64</span><span class="p">)</span>
+            <span class="n">x_encryptor</span>     <span class="o">=</span> <span class="n">PKCS1_v1_5</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">x_rsa_key</span><span class="p">)</span>
+            <span class="n">x_jsn_pwd_str</span>   <span class="o">=</span> <span class="n">x_encryptor</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">x_jsn_pwd_encr</span><span class="p">,</span> <span class="n">x_vector</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span>
+
+            <span class="n">x_jsn_pwd</span>       <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x_jsn_pwd_str</span><span class="p">)</span>
+            <span class="n">x_pwd_encr64</span>    <span class="o">=</span> <span class="n">x_jsn_pwd</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="n">x_pwd_encr</span>      <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">x_pwd_encr64</span><span class="p">)</span>
+            <span class="n">x_timestamp</span>     <span class="o">=</span> <span class="n">x_jsn_pwd</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>
+
+            <span class="c1"># Define a timeout for secure communication</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">x_timestamp</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="c1"># x_result =  {&quot;return&quot;: {&quot;code&quot;: ErrorCodes.TIMEOUT.value, &quot;value&quot;: &quot;timeout&quot;}}</span>
+                <span class="k">pass</span>
+
+            <span class="n">x_pwd_clear</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">bytes</span><span class="p">([(</span><span class="n">x</span> <span class="o">^</span> <span class="n">y</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x_pwd_encr</span><span class="p">,</span> <span class="n">x_vector</span><span class="p">)])</span>
+            <span class="n">x_pwd_clear</span> <span class="o">=</span> <span class="n">x_pwd_clear</span><span class="p">[:]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="n">x_response</span>  <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;address&quot;</span><span class="p">:</span> <span class="n">x_address</span><span class="p">,</span> <span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;GETUSR&quot;</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="n">x_pwd_clear</span><span class="p">]}}</span>
+            <span class="k">return</span> <span class="n">x_response</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">x_ex</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="mi">1120</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">x_ex</span><span class="p">}}</span></div>
+
+
+<div class="viewcode-block" id="TSession.pair_device">
+<a class="viewcode-back" href="../../eezz.html#eezz.session.TSession.pair_device">[docs]</a>
+    <span class="k">def</span> <span class="nf">pair_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>  <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Stores the user password on mobile device. The password is encrypted and the key is stored in the</span>
+<span class="sd">        Windows registry. This method is called by the user interface</span>
+<span class="sd">        - The user has to be connected to eezz, which is automatically done using the TaskBar tool</span>
+<span class="sd">        - The address has to be selected via user interface</span>
+
+<span class="sd">        :param   address:</span>
+<span class="sd">        :param   password: Password will be encrypted and stored on device for unlock workstation</span>
+<span class="sd">        :return: EEZZ Confirmation message as dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">async_lock</span><span class="p">:</span>
+            <span class="n">x_devices_to_pair</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">({</span><span class="s1">&#39;CAddress&#39;</span><span class="p">:</span> <span class="n">address</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">x_my_devices</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">({</span><span class="s1">&#39;CSid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="s1">&#39;CAddress&#39;</span><span class="p">:</span> <span class="n">address</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Prepare update of password for existing pairing or create new</span>
+        <span class="k">if</span> <span class="n">x_my_devices</span><span class="p">:</span>
+            <span class="n">x_rsa_key</span>   <span class="o">=</span> <span class="n">x_my_devices</span><span class="p">[</span><span class="s1">&#39;CKey&#39;</span><span class="p">]</span>
+            <span class="n">x_vector</span>    <span class="o">=</span> <span class="n">x_my_devices</span><span class="p">[</span><span class="s1">&#39;CVector&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x_rsa_key</span>   <span class="o">=</span> <span class="n">RSA</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+            <span class="n">x_vector</span>    <span class="o">=</span> <span class="n">Random</span><span class="o">.</span><span class="n">new</span><span class="p">()</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+
+        <span class="n">x_device_name</span>   <span class="o">=</span> <span class="n">x_devices_to_pair</span><span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span>
+
+        <span class="n">x_priv_key</span>      <span class="o">=</span> <span class="n">x_rsa_key</span><span class="o">.</span><span class="n">exportKey</span><span class="p">()</span>
+        <span class="n">x_vector64</span>      <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">x_vector</span><span class="p">)</span>
+        <span class="n">x_pwd_encr</span>      <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">bytes</span><span class="p">([(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">^</span> <span class="n">y</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">zip_longest</span><span class="p">(</span><span class="n">password</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">),</span> <span class="n">x_vector</span><span class="p">,</span> <span class="n">fillvalue</span><span class="o">=</span><span class="mi">0</span><span class="p">)])</span>
+        <span class="n">x_pwd_encr64</span>    <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">x_pwd_encr</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Store the base vector in registry as alternative retrieval of password</span>
+            <span class="n">x_device_hdl</span> <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">CreateKeyEx</span><span class="p">(</span><span class="n">winreg</span><span class="o">.</span><span class="n">HKEY_LOCAL_MACHINE</span><span class="p">,</span> <span class="s1">&#39;Software</span><span class="se">\\</span><span class="s1">eezz</span><span class="se">\\</span><span class="s1">assoc&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">winreg</span><span class="o">.</span><span class="n">KEY_SET_VALUE</span><span class="p">)</span>
+            <span class="n">winreg</span><span class="o">.</span><span class="n">SetValueEx</span><span class="p">(</span><span class="n">x_device_hdl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">winreg</span><span class="o">.</span><span class="n">REG_BINARY</span><span class="p">,</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">x_vector</span><span class="p">,</span> <span class="n">byteorder</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">byteorder</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="c1"># Generate key for this couple</span>
+        <span class="c1"># Public key is send to device, private key is stored on PC</span>
+        <span class="n">x_pub_key</span>     <span class="o">=</span> <span class="n">x_rsa_key</span><span class="o">.</span><span class="n">publickey</span><span class="p">()</span><span class="o">.</span><span class="n">exportKey</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span>
+        <span class="n">x_pub_key_str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">xLine</span> <span class="k">for</span> <span class="n">xLine</span> <span class="ow">in</span> <span class="n">x_pub_key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="s1">&#39;----&#39;</span> <span class="ow">in</span> <span class="n">xLine</span><span class="p">)])</span>
+        <span class="n">x_response</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="n">command</span><span class="o">=</span><span class="s1">&#39;SETUSR&#39;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="n">x_pwd_encr64</span><span class="p">,</span> <span class="n">x_pub_key_str</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">x_response</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">][</span><span class="s1">&#39;code&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+            <span class="c1"># insert key into local database</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">address</span><span class="p">,</span> <span class="n">x_device_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">x_vector64</span><span class="p">,</span> <span class="n">x_priv_key</span><span class="p">])</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="TSession.register_user">
+<a class="viewcode-back" href="../../eezz.html#eezz.session.TSession.register_user">[docs]</a>
+    <span class="k">def</span> <span class="nf">register_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">alias</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">lname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">iban</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Register user on EEZZ server. The request is send to the mobile device, which enriches the data and then</span>
+<span class="sd">        forwards it to the eezz server page.</span>
+
+<span class="sd">        :param alias:    Display name of the user</span>
+<span class="sd">        :param fname:    First name</span>
+<span class="sd">        :param lname:    Last name</span>
+<span class="sd">        :param email:    E-Mail address</span>
+<span class="sd">        :param iban:     Payment account</span>
+<span class="sd">        :param password: Password for the service. Only the hash value is stored, not the password itself</span>
+<span class="sd">        :return:         Status message</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># get coupled user for a given address:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">email</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">iban</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">password</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">alias</span><span class="p">:</span>
+            <span class="n">x_response</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="s2">&quot;mandatory fields missing&quot;</span><span class="p">}}</span>
+            <span class="k">return</span> <span class="n">x_response</span>
+
+        <span class="n">x_hash_md5</span> <span class="o">=</span> <span class="n">MD5</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">password</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span>
+        <span class="n">x_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="n">command</span><span class="o">=</span><span class="s1">&#39;Register&#39;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="n">x_hash_md5</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">alias</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">lname</span><span class="p">,</span> <span class="n">iban</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">x_response</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">][</span><span class="s1">&#39;code&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+            <span class="c1"># self.mDatabase.setSim(x_address, x_response[&#39;TDevice&#39;][&#39;CSim&#39;])</span>
+            <span class="n">x_response</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">][</span><span class="s1">&#39;args&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">_</span><span class="p">(</span><span class="s1">&#39;Reply to verification E-Mail to accomplish registration&#39;</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">x_response</span></div>
+
+
+<div class="viewcode-block" id="TSession.read_windows_registry">
+<a class="viewcode-back" href="../../eezz.html#eezz.session.TSession.read_windows_registry">[docs]</a>
+    <span class="k">def</span> <span class="nf">read_windows_registry</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Read user data from windows registry &quot;&quot;&quot;</span>
+        <span class="n">x_profile_list_hdl</span> <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">OpenKey</span><span class="p">(</span><span class="n">winreg</span><span class="o">.</span><span class="n">HKEY_LOCAL_MACHINE</span><span class="p">,</span> <span class="s1">&#39;SOFTWARE</span><span class="se">\\</span><span class="s1">Microsoft</span><span class="se">\\</span><span class="s1">Windows NT</span><span class="se">\\</span><span class="s1">CurrentVersion</span><span class="se">\\</span><span class="s1">ProfileList&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">15</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">x_sid</span>         <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">EnumKey</span><span class="p">(</span><span class="n">x_profile_list_hdl</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                <span class="n">x_profile_key</span> <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">OpenKey</span><span class="p">(</span><span class="n">x_profile_list_hdl</span><span class="p">,</span> <span class="n">x_sid</span><span class="p">)</span>
+
+                <span class="c1"># pick only local users</span>
+                <span class="n">x_image_path</span>  <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">QueryValueEx</span><span class="p">(</span><span class="n">x_profile_key</span><span class="p">,</span> <span class="s1">&#39;ProfileImagePath&#39;</span><span class="p">)</span>
+                <span class="n">x_sid_binary</span>  <span class="o">=</span> <span class="n">winreg</span><span class="o">.</span><span class="n">QueryValueEx</span><span class="p">(</span><span class="n">x_profile_key</span><span class="p">,</span> <span class="s1">&#39;Sid&#39;</span><span class="p">)</span>
+                <span class="n">x_sid_person</span>  <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s1">&#39;qi&#39;</span><span class="p">,</span> <span class="n">x_sid_binary</span><span class="p">[</span><span class="mi">0</span><span class="p">][:</span><span class="mi">12</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">x_sid_person</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">21</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">x_parts</span> <span class="o">=</span> <span class="n">x_image_path</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="p">)</span>
+                <span class="n">x_user</span>  <span class="o">=</span> <span class="n">x_parts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">x_user</span><span class="p">,</span> <span class="n">x_sid</span><span class="p">],</span> <span class="n">row_id</span><span class="o">=</span><span class="n">x_sid</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">FileNotFoundError</span><span class="p">):</span>
+                <span class="c1"># todo log message from exception</span>
+                <span class="k">continue</span>
+
+        <span class="c1"># x_tcp_ip_hdl    = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, &#39;SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters&#39;)</span>
+        <span class="c1"># x_hostname      = winreg.QueryValueEx(x_tcp_ip_hdl, &#39;hostname&#39;)</span>
+        <span class="c1"># x_service: TService = TGlobal.get_instance(TService)</span>
+        <span class="c1"># # self.m_hostname = x_hostname[0]</span>
+        <span class="k">if</span> <span class="n">x_profile_list_hdl</span><span class="p">:</span>
+            <span class="n">x_profile_list_hdl</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Albert Zedlitz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

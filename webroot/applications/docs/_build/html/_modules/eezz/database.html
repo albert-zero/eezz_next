@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eezz.database &mdash; EEZZ 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            EEZZ
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">eezz</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">EEZZ</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">eezz.database</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for eezz.database</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module handles the database access and implements the following classes</span>
+
+<span class="sd">    * :py:class:`eezz.database.TDatabaseTable`: Create database from scratch. Encapsulate database access.</span>
+<span class="sd">    * :py:class:`eezz.database.TDatabaseColumn`: Extends the TTableColumn by parameters, which are relevant only for database access</span>
+
+<span class="sd">The TDatabaseTable allows flexible usage of database and buffer access of data by switching seamlessly</span>
+<span class="sd">and hence make standard access very easy and performant.</span>
+<span class="sd">The database is created in sqlite3 in the first call of the class.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sqlite3</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span>   <span class="nn">datetime</span>         <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+
+<span class="kn">from</span>   <span class="nn">Crypto.Hash</span>       <span class="kn">import</span> <span class="n">SHA256</span>
+<span class="kn">from</span>   <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">override</span>
+
+<span class="kn">from</span>   <span class="nn">service</span>           <span class="kn">import</span> <span class="n">TService</span>
+<span class="kn">from</span>   <span class="nn">dataclasses</span>       <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span>   <span class="nn">table</span>             <span class="kn">import</span> <span class="n">TTable</span><span class="p">,</span> <span class="n">TNavigation</span><span class="p">,</span> <span class="n">TTableRow</span><span class="p">,</span> <span class="n">TTableColumn</span>
+<span class="kn">from</span>   <span class="nn">typing</span>            <span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span>   <span class="nn">pathlib</span>           <span class="kn">import</span> <span class="n">Path</span>
+
+
+<div class="viewcode-block" id="TDatabaseColumn">
+<a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseColumn">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">TDatabaseColumn</span><span class="p">(</span><span class="n">TTableColumn</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Extension for column descriptor TTableColumn</span>
+
+<span class="sd">    :param primary_key: Makes the column part of the primary key</span>
+<span class="sd">    :type  primary_key: bool</span>
+<span class="sd">    :param options:     Options for the database columns in &quot;create table&quot; statement like &quot;not null&quot;</span>
+<span class="sd">    :type  options:     str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">primary_key</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1">#: :meta private:</span>
+    <span class="n">options</span><span class="p">:</span>     <span class="nb">str</span>  <span class="o">=</span> <span class="s1">&#39;&#39;</span>     <span class="c1">#: :meta private:</span>
+    <span class="n">alias</span><span class="p">:</span>       <span class="nb">str</span>  <span class="o">=</span> <span class="s1">&#39;&#39;</span>     <span class="c1">#: :meta private:</span></div>
+
+
+
+<div class="viewcode-block" id="TDatabaseTable">
+<a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">TDatabaseTable</span><span class="p">(</span><span class="n">TTable</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; General database management</span>
+<span class="sd">    Purpose of this class is a sophisticate work with database using an internal cache. All database</span>
+<span class="sd">    operations are mapped to TTable. The column descriptor of TTable is used to generate the database table.</span>
+<span class="sd">    The number of rows selected from database will be restricted to the visible scope by default, thus</span>
+<span class="sd">    omits performance issues for huge tables.</span>
+
+<span class="sd">    :param column_names: List of column names</span>
+<span class="sd">    :type  column_names: list[str]</span>
+<span class="sd">    :param title:        Table name</span>
+<span class="sd">    :type  title:        str</span>
+
+<span class="sd">    The following variables could be used to overwrite special actions on automated database actions.</span>
+<span class="sd">    You would need to overwrite the values after the creation of the class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">column_names</span><span class="p">:</span>     <span class="nb">list</span>      <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">database_name</span><span class="p">:</span>    <span class="nb">str</span>       <span class="o">=</span> <span class="s1">&#39;default.db&#39;</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">statement_select</span><span class="p">:</span> <span class="nb">str</span>       <span class="o">=</span> <span class="kc">None</span>              <span class="c1">#: :meta private: </span>
+    <span class="n">statement_count</span><span class="p">:</span>  <span class="nb">str</span>       <span class="o">=</span> <span class="kc">None</span>              <span class="c1">#: :meta private: </span>
+    <span class="n">statement_create</span><span class="p">:</span> <span class="nb">str</span>       <span class="o">=</span> <span class="kc">None</span>              <span class="c1">#: :meta private: </span>
+    <span class="n">statement_insert</span><span class="p">:</span> <span class="nb">str</span>       <span class="o">=</span> <span class="kc">None</span>              <span class="c1">#: :meta private:</span>
+    <span class="n">statement_where</span><span class="p">:</span>  <span class="nb">list</span>      <span class="o">=</span> <span class="kc">None</span>              <span class="c1">#: :meta private:</span>
+    <span class="n">database_path</span><span class="p">:</span>    <span class="nb">str</span>       <span class="o">=</span> <span class="kc">None</span>              <span class="c1">#: :meta private:</span>
+    <span class="n">virtual_len</span><span class="p">:</span>      <span class="nb">int</span>       <span class="o">=</span> <span class="mi">0</span>                 <span class="c1">#: :meta private: </span>
+    <span class="n">column_descr</span><span class="p">:</span>     <span class="n">List</span><span class="p">[</span><span class="n">TDatabaseColumn</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Setup select options to restrict the data volume and sort directive.</span>
+<span class="sd">         Add a new datatype  &quot;&quot;&quot;</span>
+        <span class="n">x_full_path</span>         <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">database_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">database_path</span>  <span class="o">=</span> <span class="n">x_full_path</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+        <span class="n">x_full_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">select_option</span>  <span class="o">=</span> <span class="s1">&#39;limit </span><span class="si">{limit}</span><span class="s1"> offset </span><span class="si">{offset}</span><span class="s1">&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">select_sort</span>    <span class="o">=</span> <span class="s1">&#39;order by </span><span class="si">{column_name}</span><span class="s1"> </span><span class="si">{order}</span><span class="s1">&#39;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="p">:</span>
+            <span class="c1"># extract column names from descriptor and fill defaults</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">column_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x_column</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">):</span>
+                <span class="n">x_column</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="n">x_column</span><span class="o">.</span><span class="n">alias</span> <span class="o">=</span> <span class="n">x_column</span><span class="o">.</span><span class="n">header</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x_column</span><span class="o">.</span><span class="n">alias</span> <span class="k">else</span> <span class="n">x_column</span><span class="o">.</span><span class="n">alias</span>
+                <span class="n">x_column</span><span class="o">.</span><span class="n">type</span>  <span class="o">=</span> <span class="s1">&#39;text&#39;</span>          <span class="k">if</span> <span class="ow">not</span> <span class="n">x_column</span><span class="o">.</span><span class="n">type</span>  <span class="k">else</span> <span class="n">x_column</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_column</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Create column descriptor from column names</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span> <span class="o">=</span> <span class="p">[</span><span class="n">TDatabaseColumn</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">x_name</span><span class="p">,</span> <span class="n">alias</span><span class="o">=</span><span class="n">x_name</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+                                 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x_name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="p">)]</span>
+
+        <span class="c1"># No columns descriptions</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Table needs at least one column&#39;</span><span class="p">)</span>
+
+        <span class="c1"># make sure, that there is a primary key</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">x_primary_keys</span> <span class="o">:=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">primary_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">)]):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Table needs at least one primary key&#39;</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span>
+
+        <span class="c1"># define output formats</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;text&#39;</span><span class="p">]</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;str&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;integer&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;int&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;numeric&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;int&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;real&#39;</span><span class="p">]</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;float&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">prepare_statements</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_database</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">prepare_statements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private:</span>
+<span class="sd">        Generate a set of consistent database statements, used to select and navigate in database</span>
+<span class="sd">        and to sync with TTable buffers</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_sections</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;create table if not exists </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">header</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">options</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">]))</span>
+        <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">header</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">y</span><span class="p">:</span> <span class="ow">not</span> <span class="n">y</span><span class="o">.</span><span class="n">primary_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">)]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">statement_create</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">  (</span><span class="si">{</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">, primary key (</span><span class="si">{</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s1">))&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">statement_select</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot; select * from  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2"> &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">statement_count</span>  <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot; select count(*) as Count from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2"> &quot;&quot;&quot;</span>
+
+        <span class="n">x_sections</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;insert or replace into </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;?&#39;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">statement_insert</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="sa">f</span><span class="s1">&#39; values (</span><span class="si">{</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Returns the result for a request: select count(*) ...&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">virtual_len</span>
+
+<div class="viewcode-block" id="TDatabaseTable.create_database">
+<a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.create_database">[docs]</a>
+    <span class="k">def</span> <span class="nf">create_database</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Create the table on the database using</span>
+<span class="sd">        :py:attr:`eezz.table.TTable.column_names` and</span>
+<span class="sd">        :py:attr:`eezz.table.TTable.title`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sqlite3</span><span class="o">.</span><span class="n">register_adapter</span><span class="p">(</span><span class="n">datetime</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x_val</span><span class="p">:</span> <span class="n">x_val</span><span class="o">.</span><span class="n">isoformat</span><span class="p">())</span>
+        <span class="n">sqlite3</span><span class="o">.</span><span class="n">register_converter</span><span class="p">(</span><span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x_val</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">x_val</span><span class="o">.</span><span class="n">decode</span><span class="p">()))</span>
+        <span class="n">x_connection</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">database_path</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">x_connection</span><span class="p">:</span>
+            <span class="n">x_cursor</span> <span class="o">=</span> <span class="n">x_connection</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+            <span class="n">x_cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">statement_create</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TDatabaseTable.append">
+<a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.append">[docs]</a>
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_row</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;body&#39;</span><span class="p">,</span> <span class="n">row_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">exists_ok</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Append data to the internal table, creating a unique row-key</span>
+<span class="sd">        The row key is generated using the primary key values as comma separated list. You select from list as (no spaces)</span>
+<span class="sd">        do_select(row_id = &#39;key_value1,key_value2,...&#39;)</span>
+
+<span class="sd">        :param exists_ok:   If set to True, do not raise exception, just ignore the appending silently</span>
+<span class="sd">        :param table_row:   A list of values as row to insert</span>
+<span class="sd">        :type  table_row:   List[Any]</span>
+<span class="sd">        :param attrs:       Optional attributes for this row</span>
+<span class="sd">        :type  attrs:       dict</span>
+<span class="sd">        :param row_type:    Row type used to trigger template output for HTML</span>
+<span class="sd">        :param row_id:      Unique row-id, calculated internal, if not set</span>
+<span class="sd">        :type  row_id:      SHA256 hash of primary key values</span>
+<span class="sd">        :returns:           List of rows with length of TTable.visible_items</span>
+<span class="sd">        :rtype:             List[TTableRow]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_row_descr</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">table_row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">row_id</span><span class="p">:</span>
+            <span class="n">x_primary</span>   <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="ow">not</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">primary_key</span><span class="p">,</span> <span class="n">x_row_descr</span><span class="p">)</span>
+            <span class="n">row_id</span>      <span class="o">=</span> <span class="n">SHA256</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_primary</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">attrs</span><span class="p">:</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;_database&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;new&#39;</span>
+        <span class="n">x_row</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="n">table_row</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="n">attrs</span><span class="p">,</span> <span class="n">row_type</span><span class="o">=</span><span class="n">row_type</span><span class="p">,</span> <span class="n">row_id</span><span class="o">=</span><span class="n">row_id</span><span class="p">,</span> <span class="n">exists_ok</span><span class="o">=</span><span class="n">exists_ok</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_row</span></div>
+
+
+<div class="viewcode-block" id="TDatabaseTable.commit">
+<a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.commit">[docs]</a>
+    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Write all new entries to database, which have been added using method</span>
+<span class="sd">        :py:meth:`~eezz.database.TDatabaseTable.append`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_row</span><span class="p">:</span> <span class="n">TTableRow</span>
+        <span class="k">with</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">database_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_connection</span><span class="p">:</span>
+            <span class="n">x_cursor</span>  <span class="o">=</span> <span class="n">x_connection</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+            <span class="n">x_new_row</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">xf_row</span><span class="p">:</span> <span class="n">xf_row</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;_database&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="s1">&#39;new&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_new_row</span><span class="p">:</span>
+                <span class="n">x_row</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_database&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">x_cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">statement_insert</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x_row</span><span class="o">.</span><span class="n">get_values_list</span><span class="p">()))</span></div>
+
+
+<div class="viewcode-block" id="TDatabaseTable.navigate">
+<a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.navigate">[docs]</a>
+    <span class="k">def</span> <span class="nf">navigate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">where_togo</span><span class="p">:</span> <span class="n">TNavigation</span> <span class="o">=</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Navigate in block mode</span>
+
+<span class="sd">        :param where_togo: Navigation direction</span>
+<span class="sd">        :type  where_togo: TNavigation</span>
+<span class="sd">        :param position:   Use database access if position &gt; 0, disabling absolute positioning for database cursor\</span>
+<span class="sd">        and make it easy to distinguish different access types.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">navigate</span><span class="p">(</span><span class="n">where_togo</span><span class="o">=</span><span class="n">where_togo</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="TDatabaseTable.get_visible_rows">
+<a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.get_visible_rows">[docs]</a>
+    <span class="nd">@override</span>
+    <span class="k">def</span> <span class="nf">get_visible_rows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get_all</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Get visible rows. Works on local buffer for :py:attr:`eezz.database.TDatabaseTable.is_synchron`</span>
+
+<span class="sd">        :param get_all: Ignore TTable.visible_items for this call</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">x_result</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">do_select</span><span class="p">(</span><span class="n">get_all</span><span class="o">=</span><span class="n">get_all</span><span class="p">,</span> <span class="n">filter_descr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">row_filter_descr</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_result</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_visible_rows</span><span class="p">(</span><span class="n">get_all</span><span class="o">=</span><span class="n">get_all</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">def</span> <span class="nf">test_database</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
+    <span class="n">x_table</span>  <span class="o">=</span> <span class="n">TDatabaseTable</span><span class="p">(</span>
+            <span class="n">database_name</span> <span class="o">=</span> <span class="s1">&#39;test.db&#39;</span><span class="p">,</span>
+            <span class="n">title</span>         <span class="o">=</span> <span class="s1">&#39;Directory&#39;</span><span class="p">,</span>
+            <span class="n">column_descr</span>  <span class="o">=</span> <span class="p">[</span>
+                <span class="n">TDatabaseColumn</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s1">&#39;File&#39;</span><span class="p">,</span>       <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">,</span>   <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                <span class="n">TDatabaseColumn</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s1">&#39;Size&#39;</span><span class="p">,</span>       <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;integer&#39;</span><span class="p">),</span>
+                <span class="n">TDatabaseColumn</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s1">&#39;AccessTime&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">)])</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;database.py::main: insert elements and commit&#39;</span><span class="p">)</span>
+    <span class="n">x_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">x_item</span> <span class="ow">in</span> <span class="n">x_path</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+        <span class="n">x_stat</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">x_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">x_stat</span><span class="o">.</span><span class="n">st_atime</span><span class="p">,</span> <span class="n">tz</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+        <span class="n">x_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="p">),</span> <span class="n">x_stat</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span> <span class="n">x_time</span><span class="p">],</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;path&#39;</span><span class="p">:</span> <span class="n">x_item</span><span class="p">},</span> <span class="n">row_id</span><span class="o">=</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;database.py::main: select elements and print table&#39;</span><span class="p">)</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">filter_rows</span><span class="p">([[</span><span class="s1">&#39;Size &gt; 20000&#39;</span><span class="p">],[</span><span class="s1">&#39;File like %py&#39;</span><span class="p">]])</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+
+
+<span class="c1"># --- section for module tests</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
+    <span class="n">x_service</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;C:\Users\alzer\Projects\github\eezz_full\webroot&#39;</span><span class="p">))</span>
+
+    <span class="n">x_log_path</span> <span class="o">=</span> <span class="n">x_service</span><span class="o">.</span><span class="n">logging_path</span> <span class="o">/</span> <span class="s1">&#39;test_database.log&#39;</span>
+    <span class="n">x_log_path</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">x_database</span> <span class="o">=</span> <span class="n">x_service</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="s1">&#39;test.db&#39;</span>
+    <span class="n">x_database</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">x_log_path</span><span class="p">,</span> <span class="n">filemode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;{&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">{name}</span><span class="s1"> - </span><span class="si">{levelname}</span><span class="s1"> - </span><span class="si">{message}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;database.py::main: create database </span><span class="si">{</span><span class="n">x_database</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">test_database</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Albert Zedlitz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,305 @@
+\begin{sphinxtheindex}
+\let\lettergroup\sphinxstyleindexlettergroup
+\let\lettergroupDefault\sphinxstyleindexlettergroupDefault
+\let\spxpagem\sphinxstyleindexpagemain
+\let\spxentry\sphinxstyleindexentry
+\let\spxextra\sphinxstyleindexextra
+
+
+  \lettergroup{A}
+  \item \spxentry{ABS}\spxextra{eezz.table.TNavigation attribute}, \hyperpage{21}
+  \item \spxentry{add\_document\_to\_device()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+  \item \spxentry{append()}\spxextra{eezz.database.TDatabaseTable method}, \hyperpage{6}
+  \item \spxentry{append()}\spxextra{eezz.table.TTable method}, \hyperpage{23}
+  \item \spxentry{application\_path}\spxextra{eezz.service.TService attribute}, \hyperpage{16}
+  \item \spxentry{ASCENDING}\spxextra{eezz.table.TSort attribute}, \hyperpage{21}
+  \item \spxentry{assign\_object()}\spxextra{eezz.service.TService method}, \hyperpage{16}
+  \item \spxentry{assignment()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+  \item \spxentry{async\_methods}\spxextra{eezz.service.TService attribute}, \hyperpage{16}
+  \item \spxentry{attrs}\spxextra{eezz.table.TTableCell attribute}, \hyperpage{24}
+
+  \indexspace
+
+  \lettergroup{C}
+  \item \spxentry{commit()}\spxextra{eezz.database.TDatabaseTable method}, \hyperpage{6}
+  \item \spxentry{compile\_data()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{12}
+  \item \spxentry{connect()}\spxextra{eezz.session.TSession method}, \hyperpage{19}
+  \item \spxentry{create\_document()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+
+  \indexspace
+
+  \lettergroup{D}
+  \item \spxentry{database\_path}\spxextra{eezz.service.TService attribute}, \hyperpage{16}
+  \item \spxentry{db\_create()}\spxextra{eezz.database.TDatabaseTable method}, \hyperpage{6}
+  \item \spxentry{DECRYPT}\spxextra{eezz.filesrv.TFileMode attribute}, \hyperpage{12}
+  \item \spxentry{decrypt()}\spxextra{eezz.filesrv.TEezzFile method}, \hyperpage{10}
+  \item \spxentry{decrypt\_key\_with\_device()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+  \item \spxentry{DESCENDING}\spxextra{eezz.table.TSort attribute}, \hyperpage{21}
+  \item \spxentry{do\_get()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{12}
+  \item \spxentry{do\_GET()}\spxextra{eezz.server.THttpHandler method}, \hyperpage{15}
+  \item \spxentry{do\_POST()}\spxextra{eezz.server.THttpHandler method}, \hyperpage{15}
+  \item \spxentry{do\_select()}\spxextra{eezz.database.TDatabaseTable method}, \hyperpage{6}
+  \item \spxentry{do\_select()}\spxextra{eezz.table.TTable method}, \hyperpage{23}
+  \item \spxentry{do\_sort()}\spxextra{eezz.table.TTable method}, \hyperpage{23}
+  \item \spxentry{document\_path}\spxextra{eezz.service.TService attribute}, \hyperpage{16}
+  \item \spxentry{download()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+
+  \indexspace
+
+  \lettergroup{E}
+  \item \spxentry{eezz}
+    \subitem \spxentry{module}, \hyperpage{29}
+  \item \spxentry{eezz\_buy\_document()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+  \item \spxentry{eezz\_get\_document\_key()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+  \item \spxentry{eezz\_register\_document()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+  \item \spxentry{eezz\_service\_id}\spxextra{eezz.service.TService attribute}, \hyperpage{16}
+  \item \spxentry{eezz.blueserv}
+    \subitem \spxentry{module}, \hyperpage{3}
+  \item \spxentry{eezz.database}
+    \subitem \spxentry{module}, \hyperpage{5}
+  \item \spxentry{eezz.document}
+    \subitem \spxentry{module}, \hyperpage{7}
+  \item \spxentry{eezz.filesrv}
+    \subitem \spxentry{module}, \hyperpage{10}
+  \item \spxentry{eezz.http\_agent}
+    \subitem \spxentry{module}, \hyperpage{12}
+  \item \spxentry{eezz.seccom}
+    \subitem \spxentry{module}, \hyperpage{14}
+  \item \spxentry{eezz.server}
+    \subitem \spxentry{module}, \hyperpage{15}
+  \item \spxentry{eezz.service}
+    \subitem \spxentry{module}, \hyperpage{15}
+  \item \spxentry{eezz.session}
+    \subitem \spxentry{module}, \hyperpage{19}
+  \item \spxentry{eezz.table}
+    \subitem \spxentry{module}, \hyperpage{21}
+  \item \spxentry{eezz.websocket}
+    \subitem \spxentry{module}, \hyperpage{26}
+  \item \spxentry{ENCRYPT}\spxextra{eezz.filesrv.TFileMode attribute}, \hyperpage{12}
+  \item \spxentry{encrypt()}\spxextra{eezz.filesrv.TEezzFile method}, \hyperpage{11}
+  \item \spxentry{encrypt\_key\_with\_device()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+  \item \spxentry{escaped\_str()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+
+  \indexspace
+
+  \lettergroup{F}
+  \item \spxentry{filter\_clear()}\spxextra{eezz.table.TTable method}, \hyperpage{24}
+  \item \spxentry{filter\_columns()}\spxextra{eezz.table.TTable method}, \hyperpage{24}
+  \item \spxentry{find\_devices()}\spxextra{eezz.blueserv.TBluetooth method}, \hyperpage{4}
+  \item \spxentry{format\_attributes()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{13}
+  \item \spxentry{format\_string()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+  \item \spxentry{format\_value()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+  \item \spxentry{funct\_assignment()}\spxextra{eezz.service.TServiceCompiler method}, \hyperpage{18}
+
+  \indexspace
+
+  \lettergroup{G}
+  \item \spxentry{gen\_handshake()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{27}
+  \item \spxentry{gen\_key()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{27}
+  \item \spxentry{generate\_html\_cells()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{13}
+  \item \spxentry{generate\_html\_grid()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{13}
+  \item \spxentry{generate\_html\_grid\_item()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{13}
+  \item \spxentry{generate\_html\_rows()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{13}
+  \item \spxentry{generate\_html\_table()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{14}
+  \item \spxentry{generate\_pot()}\spxextra{eezz.service.TTranslate static method}, \hyperpage{18}
+  \item \spxentry{get\_child()}\spxextra{eezz.table.TTable method}, \hyperpage{24}
+  \item \spxentry{get\_device\_key()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+  \item \spxentry{get\_header\_row()}\spxextra{eezz.table.TTable method}, \hyperpage{24}
+  \item \spxentry{get\_instance()}\spxextra{eezz.service.TGlobal class method}, \hyperpage{16}
+  \item \spxentry{get\_instance()}\spxextra{eezz.service.TService class method}, \hyperpage{16}
+  \item \spxentry{get\_key()}\spxextra{eezz.document.TManifest method}, \hyperpage{9}
+  \item \spxentry{get\_method()}\spxextra{eezz.service.TService method}, \hyperpage{16}
+  \item \spxentry{get\_object()}\spxextra{eezz.service.TService method}, \hyperpage{17}
+  \item \spxentry{get\_user\_pwd()}\spxextra{eezz.session.TSession method}, \hyperpage{20}
+  \item \spxentry{get\_values()}\spxextra{eezz.document.TManifest method}, \hyperpage{10}
+  \item \spxentry{get\_values\_list()}\spxextra{eezz.table.TTableRow method}, \hyperpage{26}
+  \item \spxentry{get\_visible\_rows()}\spxextra{eezz.blueserv.TBluetooth method}, \hyperpage{4}
+  \item \spxentry{get\_visible\_rows()}\spxextra{eezz.database.TDatabaseTable method}, \hyperpage{6}
+  \item \spxentry{get\_visible\_rows()}\spxextra{eezz.table.TTable method}, \hyperpage{24}
+  \item \spxentry{global\_objects}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+
+  \indexspace
+
+  \lettergroup{H}
+  \item \spxentry{handle\_aync\_request()}\spxextra{eezz.websocket.TestSocketServer method}, \hyperpage{28}
+  \item \spxentry{handle\_aync\_request()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{27}
+  \item \spxentry{handle\_bt\_devices()}\spxextra{eezz.session.TSession method}, \hyperpage{20}
+  \item \spxentry{handle\_download()}\spxextra{eezz.document.TDocuments method}, \hyperpage{8}
+  \item \spxentry{handle\_download()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{14}
+  \item \spxentry{handle\_download()}\spxextra{eezz.websocket.TWebSocketAgent method}, \hyperpage{27}
+  \item \spxentry{handle\_request()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{14}
+  \item \spxentry{handle\_request()}\spxextra{eezz.server.THttpHandler method}, \hyperpage{15}
+  \item \spxentry{handle\_request()}\spxextra{eezz.websocket.TWebSocketAgent method}, \hyperpage{27}
+  \item \spxentry{handle\_request()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{27}
+  \item \spxentry{host}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+
+  \indexspace
+
+  \lettergroup{I}
+  \item \spxentry{index}\spxextra{eezz.table.TTableCell attribute}, \hyperpage{24}
+  \item \spxentry{instances}\spxextra{eezz.service.TGlobal attribute}, \hyperpage{16}
+
+  \indexspace
+
+  \lettergroup{L}
+  \item \spxentry{LAST}\spxextra{eezz.table.TNavigation attribute}, \hyperpage{21}
+  \item \spxentry{list\_arguments()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+  \item \spxentry{list\_updates()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+  \item \spxentry{locales\_path}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+
+  \indexspace
+
+  \lettergroup{M}
+  \item \spxentry{module}
+    \subitem \spxentry{eezz}, \hyperpage{29}
+    \subitem \spxentry{eezz.blueserv}, \hyperpage{3}
+    \subitem \spxentry{eezz.database}, \hyperpage{5}
+    \subitem \spxentry{eezz.document}, \hyperpage{7}
+    \subitem \spxentry{eezz.filesrv}, \hyperpage{10}
+    \subitem \spxentry{eezz.http\_agent}, \hyperpage{12}
+    \subitem \spxentry{eezz.seccom}, \hyperpage{14}
+    \subitem \spxentry{eezz.server}, \hyperpage{15}
+    \subitem \spxentry{eezz.service}, \hyperpage{15}
+    \subitem \spxentry{eezz.session}, \hyperpage{19}
+    \subitem \spxentry{eezz.table}, \hyperpage{21}
+    \subitem \spxentry{eezz.websocket}, \hyperpage{26}
+
+  \indexspace
+
+  \lettergroup{N}
+  \item \spxentry{name}\spxextra{eezz.table.TTableCell attribute}, \hyperpage{25}
+  \item \spxentry{navigate()}\spxextra{eezz.database.TDatabaseTable method}, \hyperpage{6}
+  \item \spxentry{navigate()}\spxextra{eezz.table.TTable method}, \hyperpage{24}
+  \item \spxentry{NEXT}\spxextra{eezz.table.TNavigation attribute}, \hyperpage{21}
+  \item \spxentry{NONE}\spxextra{eezz.table.TSort attribute}, \hyperpage{21}
+  \item \spxentry{NORMAL}\spxextra{eezz.filesrv.TFileMode attribute}, \hyperpage{12}
+
+  \indexspace
+
+  \lettergroup{O}
+  \item \spxentry{open\_connection()}\spxextra{eezz.blueserv.TBluetoothService method}, \hyperpage{4}
+
+  \indexspace
+
+  \lettergroup{P}
+  \item \spxentry{pair\_device()}\spxextra{eezz.session.TSession method}, \hyperpage{20}
+  \item \spxentry{post\_init()}\spxextra{eezz.service.TServiceCompiler method}, \hyperpage{18}
+  \item \spxentry{prepare\_download()}\spxextra{eezz.document.TDocuments method}, \hyperpage{9}
+  \item \spxentry{prepare\_statements()}\spxextra{eezz.database.TDatabaseTable method}, \hyperpage{6}
+  \item \spxentry{PREV}\spxextra{eezz.table.TNavigation attribute}, \hyperpage{21}
+  \item \spxentry{print()}\spxextra{eezz.table.TTable method}, \hyperpage{24}
+  \item \spxentry{private\_key}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+  \item \spxentry{public\_key}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+  \item \spxentry{public\_path}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+
+  \indexspace
+
+  \lettergroup{Q}
+  \item \spxentry{qualified\_string()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+
+  \indexspace
+
+  \lettergroup{R}
+  \item \spxentry{read()}\spxextra{eezz.filesrv.TEezzFile method}, \hyperpage{11}
+  \item \spxentry{read\_document\_header()}\spxextra{eezz.document.TDocuments method}, \hyperpage{9}
+  \item \spxentry{read\_frame()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{27}
+  \item \spxentry{read\_frame\_header()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{28}
+  \item \spxentry{read\_websocket()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{28}
+  \item \spxentry{read\_windows\_registry()}\spxextra{eezz.session.TSession method}, \hyperpage{20}
+  \item \spxentry{register\_user()}\spxextra{eezz.session.TSession method}, \hyperpage{20}
+  \item \spxentry{resource\_path}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+  \item \spxentry{root\_path}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+  \item \spxentry{run()}\spxextra{eezz.websocket.TAsyncHandler method}, \hyperpage{26}
+  \item \spxentry{run()}\spxextra{eezz.websocket.TWebSocket method}, \hyperpage{26}
+
+  \indexspace
+
+  \lettergroup{S}
+  \item \spxentry{scan()}\spxextra{eezz.document.TManifest method}, \hyperpage{10}
+  \item \spxentry{send\_bt\_request()}\spxextra{eezz.session.TSession method}, \hyperpage{20}
+  \item \spxentry{send\_request()}\spxextra{eezz.blueserv.TBluetoothService method}, \hyperpage{4}
+  \item \spxentry{send\_request()}\spxextra{eezz.seccom.TSecureSocket method}, \hyperpage{14}
+  \item \spxentry{set\_instance()}\spxextra{eezz.service.TService class method}, \hyperpage{17}
+  \item \spxentry{set\_values()}\spxextra{eezz.document.TManifest method}, \hyperpage{10}
+  \item \spxentry{setup\_download()}\spxextra{eezz.http\_agent.THttpAgent method}, \hyperpage{14}
+  \item \spxentry{setup\_download()}\spxextra{eezz.websocket.TWebSocketAgent method}, \hyperpage{27}
+  \item \spxentry{shutdown()}\spxextra{eezz.blueserv.TBluetoothService method}, \hyperpage{4}
+  \item \spxentry{shutdown()}\spxextra{eezz.server.THttpHandler method}, \hyperpage{15}
+  \item \spxentry{shutdown()}\spxextra{eezz.server.TWebServer method}, \hyperpage{15}
+  \item \spxentry{shutdown()}\spxextra{eezz.websocket.TWebSocket method}, \hyperpage{26}
+  \item \spxentry{shutdown()}\spxextra{eezz.websocket.TWebSocketAgent method}, \hyperpage{27}
+  \item \spxentry{shutdown()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{28}
+  \item \spxentry{shutdown\_function()}\spxextra{in module eezz.server}, \hyperpage{15}
+  \item \spxentry{simple\_str()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+  \item \spxentry{singletons}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+
+  \indexspace
+
+  \lettergroup{T}
+  \item \spxentry{table\_assignment()}\spxextra{eezz.service.TServiceCompiler method}, \hyperpage{18}
+  \item \spxentry{TAsyncHandler}\spxextra{class in eezz.websocket}, \hyperpage{26}
+  \item \spxentry{TBluetooth}\spxextra{class in eezz.blueserv}, \hyperpage{3}
+  \item \spxentry{TBluetoothService}\spxextra{class in eezz.blueserv}, \hyperpage{4}
+  \item \spxentry{TDatabaseColumn}\spxextra{class in eezz.database}, \hyperpage{5}
+  \item \spxentry{TDatabaseTable}\spxextra{class in eezz.database}, \hyperpage{5}
+  \item \spxentry{TDocuments}\spxextra{class in eezz.document}, \hyperpage{7}
+  \item \spxentry{TEezzFile}\spxextra{class in eezz.filesrv}, \hyperpage{10}
+  \item \spxentry{template\_section()}\spxextra{eezz.service.TServiceCompiler method}, \hyperpage{18}
+  \item \spxentry{test\_async\_hadler()}\spxextra{in module eezz.websocket}, \hyperpage{28}
+  \item \spxentry{test\_file\_reader()}\spxextra{in module eezz.filesrv}, \hyperpage{12}
+  \item \spxentry{test\_parser()}\spxextra{in module eezz.service}, \hyperpage{18}
+  \item \spxentry{test\_tcm()}\spxextra{in module eezz.websocket}, \hyperpage{29}
+  \item \spxentry{TestSocketServer}\spxextra{class in eezz.websocket}, \hyperpage{28}
+  \item \spxentry{TFile}\spxextra{class in eezz.filesrv}, \hyperpage{11}
+  \item \spxentry{TGlobal}\spxextra{class in eezz.service}, \hyperpage{15}
+  \item \spxentry{THttpAgent}\spxextra{class in eezz.http\_agent}, \hyperpage{12}
+  \item \spxentry{THttpHandler}\spxextra{class in eezz.server}, \hyperpage{15}
+  \item \spxentry{TManifest}\spxextra{class in eezz.document}, \hyperpage{9}
+  \item \spxentry{TOP}\spxextra{eezz.table.TNavigation attribute}, \hyperpage{21}
+  \item \spxentry{TQuery}\spxextra{class in eezz.service}, \hyperpage{16}
+  \item \spxentry{translate}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+  \item \spxentry{TSecureSocket}\spxextra{class in eezz.seccom}, \hyperpage{14}
+  \item \spxentry{TService}\spxextra{class in eezz.service}, \hyperpage{16}
+  \item \spxentry{TServiceCompiler}\spxextra{class in eezz.service}, \hyperpage{17}
+  \item \spxentry{TSession}\spxextra{class in eezz.session}, \hyperpage{19}
+  \item \spxentry{TTable}\spxextra{class in eezz.table}, \hyperpage{21}
+  \item \spxentry{TTableCell}\spxextra{class in eezz.table}, \hyperpage{24}
+  \item \spxentry{TTableColumn}\spxextra{class in eezz.table}, \hyperpage{25}
+  \item \spxentry{TTableInsertException}, \hyperpage{25}
+  \item \spxentry{TTableRow}\spxextra{class in eezz.table}, \hyperpage{25}
+  \item \spxentry{TTranslate}\spxextra{class in eezz.service}, \hyperpage{18}
+  \item \spxentry{TWebServer}\spxextra{class in eezz.server}, \hyperpage{15}
+  \item \spxentry{TWebSocket}\spxextra{class in eezz.websocket}, \hyperpage{26}
+  \item \spxentry{TWebSocketAgent}\spxextra{class in eezz.websocket}, \hyperpage{27}
+  \item \spxentry{TWebSocketClient}\spxextra{class in eezz.websocket}, \hyperpage{27}
+  \item \spxentry{TWebSocketException}, \hyperpage{28}
+  \item \spxentry{type}\spxextra{eezz.table.TTableCell attribute}, \hyperpage{25}
+
+  \indexspace
+
+  \lettergroup{U}
+  \item \spxentry{unzip()}\spxextra{eezz.document.TDocuments method}, \hyperpage{9}
+  \item \spxentry{update\_item()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+  \item \spxentry{update\_section()}\spxextra{eezz.service.TServiceCompiler static method}, \hyperpage{18}
+  \item \spxentry{upgrade()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{28}
+
+  \indexspace
+
+  \lettergroup{V}
+  \item \spxentry{value}\spxextra{eezz.table.TTableCell attribute}, \hyperpage{25}
+
+  \indexspace
+
+  \lettergroup{W}
+  \item \spxentry{websocket\_addr}\spxextra{eezz.service.TService attribute}, \hyperpage{17}
+  \item \spxentry{width}\spxextra{eezz.table.TTableCell attribute}, \hyperpage{25}
+  \item \spxentry{write()}\spxextra{eezz.filesrv.TEezzFile method}, \hyperpage{11}
+  \item \spxentry{write()}\spxextra{eezz.filesrv.TFile method}, \hyperpage{11}
+  \item \spxentry{write\_frame()}\spxextra{eezz.websocket.TWebSocketClient method}, \hyperpage{28}
+
+  \indexspace
+
+  \lettergroup{Z}
+  \item \spxentry{zip()}\spxextra{eezz.document.TDocuments method}, \hyperpage{9}
+
+\end{sphinxtheindex}

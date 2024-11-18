@@ -1,0 +1,15 @@
+root - DEBUG - test_table - Create a table and read the directory with attribute: [File, Size, Access] and print
+root - DEBUG - test_table - Check row-id: Add entries with same row-id should be rejected
+root - DEBUG - test_table - TableInsertException .idea: row-id exists .idea
+root - DEBUG - test_table - table header = ['File', 'Size', 'Access']
+root - DEBUG - test_table - --- Output restricted on File and Size, change the position and translate the column names
+root - DEBUG - test_table - --- Sort for column Size
+root - DEBUG - test_table - --- Restrict number of visible items
+root - DEBUG - test_table - --- Navigate to next
+root - DEBUG - do_select - TTable.do_select: create table list_files  (File  text, Size  integer, Access  text, index_key integer)
+root - DEBUG - do_select - TTable.do_select: insert into list_files values (?,?,?, ?)
+root - DEBUG - do_select - TTable.do_select: select * from list_files where (Size > ?) or (File like ?)  
+root - DEBUG - test_table - --- result = [('__init__.py', 0, '2023-12-27T14:35:45.367247+00:00', 2), ('mobile.py', 1073, '2024-11-08T22:06:00.653118+00:00', 3), ('seccom.py', 3186, '2024-11-07T14:42:20.003005+00:00', 5), ('server.py', 6856, '2024-11-07T14:42:20.003005+00:00', 7), ('blueserv.py', 7953, '2024-11-08T22:06:00.640580+00:00', 8), ('filesrv.py', 11191, '2024-11-08T22:06:00.653118+00:00', 9), ('database.py', 11831, '2024-11-08T22:06:00.648743+00:00', 10), ('__pycache__', 12288, '2024-11-09T07:18:59.046134+00:00', 11), ('session.py', 13100, '2024-11-07T14:42:20.018636+00:00', 12), ('service.py', 14151, '2024-11-09T07:18:58.875046+00:00', 13), ('http_agent.py', 18428, '2024-11-07T14:42:20.003005+00:00', 14), ('websocket.py', 19008, '2024-11-07T14:42:20.065500+00:00', 15), ('document.py', 21630, '2024-11-08T22:06:00.651120+00:00', 16), ('table.py', 27709, '2024-11-09T07:18:58.827692+00:00', 17)]
+root - DEBUG - do_select - TTable.do_select: create table list_files  (File  text, Size  integer, Access  text, index_key integer)
+root - DEBUG - do_select - TTable.do_select: insert into list_files values (?,?,?, ?)
+root - DEBUG - do_select - TTable.do_select: select * from list_files where (Size > ?) or (File like ?)   limit 100 offset 6

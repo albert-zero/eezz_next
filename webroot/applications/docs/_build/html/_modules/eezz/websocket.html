@@ -1,0 +1,653 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eezz.websocket &mdash; EEZZ 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            EEZZ
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">eezz</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">EEZZ</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">eezz.websocket</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for eezz.websocket</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module implements the following classes</span>
+
+<span class="sd">    * :py:class:`eezz.websocket.TWebSocketAgent`:       The abstract class has to be implemented by the user to \</span>
+<span class="sd">    drive the TWebSocketClient</span>
+<span class="sd">    * :py:class:`eezz.websocket.TWebSocketException`:   The exception for errors on low level interface</span>
+<span class="sd">    * :py:class:`eezz.websocket.TWebSocketClient`:      This class interacts with the TWebSocketAgent and HTML frontend</span>
+<span class="sd">    * :py:class:`eezz.websocket.TWebSocket`:            Low level access to the socket interface</span>
+<span class="sd">    * :py:class:`eezz.websocket.TAsyncHandler`:         This class is used to interact with user defined methods</span>
+
+<span class="sd">The TWebSocket implements the protocol according to</span>
+<span class="sd">`rfc 6455 &lt;https://tools.ietf.org/html/rfc6455&gt;`_</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">struct</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="c1"># from   Crypto.Hash import SHA</span>
+<span class="kn">import</span> <span class="nn">hashlib</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">select</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="kn">from</span>   <span class="nn">abc</span>         <span class="kn">import</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span>   <span class="nn">threading</span>   <span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span>
+<span class="kn">from</span>   <span class="nn">typing</span>      <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span>
+<span class="kn">from</span>   <span class="nn">service</span>     <span class="kn">import</span> <span class="n">TService</span>
+<span class="kn">from</span>   <span class="nn">loguru</span>      <span class="kn">import</span> <span class="n">logger</span>
+
+
+<div class="viewcode-block" id="TWebSocketAgent">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketAgent">[docs]</a>
+<span class="k">class</span> <span class="nc">TWebSocketAgent</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; User has to implement this class to receive data.</span>
+<span class="sd">    TWebSocketClient is called with the class type, leaving the TWebSocketClient to generate an instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="TWebSocketAgent.setup_download">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketAgent.setup_download">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">setup_download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; This method is called before a download of files starts &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketAgent.handle_request">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketAgent.handle_request">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; handle request expects a json structure &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketAgent.handle_download">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketAgent.handle_download">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">handle_download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; handle download expects a json structure, describing the file and the data &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketAgent.shutdown">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketAgent.shutdown">[docs]</a>
+    <span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Implement shutdown to release allocated resources &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TWebSocketException">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketException">[docs]</a>
+<span class="k">class</span> <span class="nc">TWebSocketException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Exception class for this module &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_value</span> <span class="o">=</span> <span class="n">a_value</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_value</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="TWebSocketClient">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient">[docs]</a>
+<span class="k">class</span> <span class="nc">TWebSocketClient</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Implements a WEB socket service thread. This class is created for each WebSocket connection</span>
+
+<span class="sd">    :param a_client_addr:   The communication socket to the web-browser</span>
+<span class="sd">    :type  a_client_addr:   Tuple[host, address]</span>
+<span class="sd">    :param a_agent:         The agent class handle to handle incoming request</span>
+<span class="sd">    :type  a_agent:         type[TWebSocketAgent]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_client_addr</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">a_agent</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">TWebSocketAgent</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_headers</span>      <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span>       <span class="o">=</span> <span class="n">a_client_addr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_cnt</span>          <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_buffer</span>       <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_protocol</span>     <span class="o">=</span> <span class="nb">str</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_class</span>  <span class="o">=</span> <span class="n">a_agent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_client</span> <span class="o">=</span> <span class="n">a_agent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_lock</span>         <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_threads</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Callable</span><span class="p">,</span> <span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="TWebSocketClient.shutdown">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.shutdown">[docs]</a>
+    <span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># self.m_async.shutdown()</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketClient.upgrade">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.upgrade">[docs]</a>
+    <span class="k">def</span> <span class="nf">upgrade</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Upgrade HTTP connection to WEB socket &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;establish web socket&#39;</span><span class="p">)</span>
+        <span class="n">x_bin_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_bin_data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TWebSocketException</span><span class="p">(</span><span class="s1">&#39;no data received&#39;</span><span class="p">)</span>
+
+        <span class="n">x_utf_data</span> <span class="o">=</span> <span class="n">x_bin_data</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="n">x_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_handshake</span><span class="p">(</span><span class="n">x_utf_data</span><span class="p">)</span>
+        <span class="n">x_nr_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">x_response</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+        <span class="c1"># self.m_agent_client = self.m_agent_class()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_buffer</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">(</span><span class="mi">65536</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketClient.handle_request">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.handle_request">[docs]</a>
+    <span class="k">def</span> <span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Receives an request and send a response</span>
+<span class="sd">        The given method is executed async, so there will be no blocking calls. After the call the result</span>
+<span class="sd">        is collected.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_json_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_websocket</span><span class="p">()</span>
+        <span class="n">x_json_obj</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x_json_str</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;handle request </span><span class="si">{</span><span class="n">x_json_obj</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;download&#39;</span> <span class="ow">in</span> <span class="n">x_json_obj</span><span class="p">:</span>
+            <span class="n">x_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_client</span><span class="o">.</span><span class="n">setup_download</span><span class="p">(</span><span class="n">x_json_obj</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_frame</span><span class="p">(</span><span class="n">x_response</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="s1">&#39;file&#39;</span> <span class="ow">in</span> <span class="n">x_json_obj</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_lock</span><span class="p">:</span>
+                <span class="n">x_byte_stream</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_websocket</span><span class="p">()</span>
+                <span class="n">x_response</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_client</span><span class="o">.</span><span class="n">handle_download</span><span class="p">(</span><span class="n">x_json_obj</span><span class="p">,</span> <span class="n">x_byte_stream</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write_frame</span><span class="p">(</span><span class="n">x_response</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="s1">&#39;initialize&#39;</span> <span class="ow">in</span> <span class="n">x_json_obj</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle_aync_request</span><span class="p">(</span><span class="n">request</span><span class="o">=</span><span class="n">x_json_obj</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="s1">&#39;call&#39;</span> <span class="ow">in</span> <span class="n">x_json_obj</span><span class="p">:</span>
+            <span class="n">x_request</span> <span class="o">=</span> <span class="n">x_json_obj</span><span class="p">[</span><span class="s1">&#39;call&#39;</span><span class="p">]</span>
+            <span class="n">x_args</span>    <span class="o">=</span> <span class="n">x_request</span><span class="p">[</span><span class="s1">&#39;args&#39;</span><span class="p">]</span>
+            <span class="n">x_name</span>    <span class="o">=</span> <span class="n">x_request</span><span class="p">[</span><span class="s1">&#39;function&#39;</span><span class="p">]</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;websocket call </span><span class="si">{</span><span class="n">x_name</span><span class="si">}</span><span class="s1">( </span><span class="si">{</span><span class="n">x_args</span><span class="si">}</span><span class="s1"> )&#39;</span><span class="p">)</span>
+            <span class="n">x_obj</span><span class="p">,</span> <span class="n">x_method</span><span class="p">,</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">x_descr</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">get_method</span><span class="p">(</span><span class="n">x_request</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">],</span> <span class="n">x_name</span><span class="p">)</span>
+            <span class="n">x_thread</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_threads</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x_method</span><span class="p">)</span>
+
+            <span class="c1"># Wait for this method to terminate before launching a new request</span>
+            <span class="k">if</span> <span class="n">x_thread</span> <span class="ow">and</span> <span class="n">x_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+                <span class="k">return</span>
+
+            <span class="n">x_descr</span>   <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_descr</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="n">x_name</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="n">x_thread</span>  <span class="o">=</span> <span class="n">TAsyncHandler</span><span class="p">(</span><span class="n">socket_server</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="n">x_json_obj</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">x_method</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">x_args</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">x_descr</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m_threads</span><span class="p">[</span><span class="n">x_method</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_thread</span>
+            <span class="n">x_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
+
+            <span class="c1"># - x_response = self.m_agent_client.handle_request(x_json_obj)</span>
+            <span class="c1"># - self.write_frame(x_response.encode(&#39;utf-8&#39;))</span>
+
+<div class="viewcode-block" id="TWebSocketClient.handle_aync_request">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.handle_aync_request">[docs]</a>
+    <span class="k">def</span> <span class="nf">handle_aync_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; This method is called after each method call request by user interface. The idea of an async call is,</span>
+<span class="sd">        that a user method is unpredictable long-lasting and could block the entire communication channel.</span>
+<span class="sd">        The environment takes care, that the same method is not executed as long as prior execution lasts.</span>
+
+<span class="sd">        :param request: The original request to execute after EEZZ function call</span>
+<span class="sd">        :type  request: dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_lock</span><span class="p">:</span>
+            <span class="n">x_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_client</span><span class="o">.</span><span class="n">handle_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_frame</span><span class="p">(</span><span class="n">x_response</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketClient.read_websocket">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.read_websocket">[docs]</a>
+    <span class="k">def</span> <span class="nf">read_websocket</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Read a chunk of data from stream</span>
+
+<span class="sd">        :return: The chunk of data coming from browser</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x_raw_data</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">()</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">x_final</span><span class="p">,</span> <span class="n">x_opcode</span><span class="p">,</span> <span class="n">x_mask_vector</span><span class="p">,</span> <span class="n">x_payload_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_frame_header</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">x_opcode</span>   <span class="o">==</span> <span class="mh">0x8</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">TWebSocketException</span><span class="p">(</span><span class="s2">&quot;closed connection&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">x_opcode</span> <span class="o">==</span> <span class="mh">0x1</span><span class="p">:</span>
+                    <span class="n">x_raw_data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_frame</span><span class="p">(</span><span class="n">x_opcode</span><span class="p">,</span> <span class="n">x_mask_vector</span><span class="p">,</span> <span class="n">x_payload_len</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">x_opcode</span> <span class="o">==</span> <span class="mh">0x2</span><span class="p">:</span>
+                    <span class="n">x_raw_data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_frame</span><span class="p">(</span><span class="n">x_opcode</span><span class="p">,</span> <span class="n">x_mask_vector</span><span class="p">,</span> <span class="n">x_payload_len</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">x_opcode</span> <span class="o">==</span> <span class="mh">0x9</span><span class="p">:</span>
+                    <span class="n">x_utf_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_frame</span><span class="p">(</span><span class="n">x_opcode</span><span class="p">,</span> <span class="n">x_mask_vector</span><span class="p">,</span> <span class="n">x_payload_len</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write_frame</span><span class="p">(</span><span class="n">a_data</span><span class="o">=</span><span class="n">x_utf_data</span><span class="p">[:</span><span class="n">x_payload_len</span><span class="p">],</span> <span class="n">a_opcode</span><span class="o">=</span><span class="mh">0xA</span><span class="p">,</span> <span class="n">a_final</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">7</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">x_opcode</span> <span class="o">==</span> <span class="mh">0xA</span><span class="p">:</span>
+                    <span class="n">x_utf_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_frame</span><span class="p">(</span><span class="n">x_opcode</span><span class="p">,</span> <span class="n">x_mask_vector</span><span class="p">,</span> <span class="n">x_payload_len</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">write_frame</span><span class="p">(</span><span class="n">a_data</span><span class="o">=</span><span class="n">x_utf_data</span><span class="p">[:</span><span class="n">x_payload_len</span><span class="p">],</span> <span class="n">a_opcode</span><span class="o">=</span><span class="mh">0x9</span><span class="p">,</span> <span class="n">a_final</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">7</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">TWebSocketException</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unknown opcode=</span><span class="si">{</span><span class="n">x_opcode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">x_final</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">x_raw_data</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">xEx</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_client</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">xEx</span><span class="p">)</span><span class="si">}</span><span class="s1"> : shutdown&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_client</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_client</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">raise</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketClient.gen_handshake">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.gen_handshake">[docs]</a>
+    <span class="k">def</span> <span class="nf">gen_handshake</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_data</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Upgrade HTTP connection to WEB-socket</span>
+
+<span class="sd">        :param a_data: Upgrade request data</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_key</span>           <span class="o">=</span> <span class="s1">&#39;accept&#39;</span>
+        <span class="n">x_lines</span>         <span class="o">=</span> <span class="n">a_data</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_headers</span>  <span class="o">=</span> <span class="p">{</span><span class="n">x_key</span><span class="p">:</span> <span class="n">x_val</span> <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_val</span> <span class="ow">in</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">x</span><span class="p">]}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_protocol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Upgrade&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_protocol</span> <span class="o">!=</span> <span class="s1">&#39;peezz&#39;</span><span class="p">:</span>
+            <span class="n">x_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_key</span><span class="p">()</span>
+
+        <span class="n">x_handshake</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+        <span class="n">x_handshake</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;HTTP/1.1 101 Switching Protocols</span><span class="se">\r\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">x_handshake</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Connection: Upgrade</span><span class="se">\r\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">x_handshake</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Upgrade: websocket</span><span class="se">\r\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">x_handshake</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Sec-WebSocket-Accept: </span><span class="si">{}</span><span class="se">\r\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x_key</span><span class="p">))</span>
+        <span class="n">x_handshake</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\r\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_handshake</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketClient.gen_key">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.gen_key">[docs]</a>
+    <span class="k">def</span> <span class="nf">gen_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Generates a key to establish a secure connection</span>
+
+<span class="sd">        :return: Base64 representation of the calculated hash</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_hash</span>     <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">()</span>
+        <span class="n">x_64key</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Sec-WebSocket-Key&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">x_key</span>      <span class="o">=</span> <span class="n">x_64key</span> <span class="o">+</span> <span class="s1">&#39;258EAFA5-E914-47DA-95CA-C5AB0DC85B11&#39;</span>
+        <span class="n">x_hash</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="n">x_key</span><span class="p">,</span> <span class="s1">&#39;ascii&#39;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">x_hash</span><span class="o">.</span><span class="n">digest</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketClient.read_frame_header">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.read_frame_header">[docs]</a>
+    <span class="k">def</span> <span class="nf">read_frame_header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Interpret the incoming data stream, starting with analysis of the first bytes</span>
+
+<span class="sd">        :return: A tuple of all attributes, which enable the program to read the payload: \</span>
+<span class="sd">        final(byte), opcode(data-type), mask(encryption), len(payload size)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_bytes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TWebSocketException</span><span class="p">(</span><span class="s1">&#39;no data received&#39;</span><span class="p">)</span>
+                
+        <span class="n">x_mask_vector</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">x_final</span>       <span class="o">=</span> <span class="p">((</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">7</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">x_bytes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span>
+        <span class="n">x_opcode</span>      <span class="o">=</span> <span class="n">x_bytes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&amp;</span> <span class="mh">0xf</span>
+        <span class="n">x_masked</span>      <span class="o">=</span> <span class="p">((</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">7</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">x_bytes</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">0</span>
+        <span class="n">x_payload_len</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">x_bytes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&amp;</span> <span class="mh">0x7f</span><span class="p">)</span>
+
+        <span class="c1"># calculate extended length</span>
+        <span class="k">if</span> <span class="n">x_payload_len</span> <span class="o">==</span> <span class="mi">126</span><span class="p">:</span>
+            <span class="n">x_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">x_payload_len</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s1">&#39;&gt;H&#39;</span><span class="p">,</span> <span class="n">x_bytes</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">x_payload_len</span> <span class="o">==</span> <span class="mi">127</span><span class="p">:</span>
+            <span class="n">x_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+            <span class="n">x_payload_len</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s1">&#39;&gt;Q&#39;</span><span class="p">,</span> <span class="n">x_bytes</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># unpack data</span>
+        <span class="k">if</span> <span class="n">x_masked</span><span class="p">:</span>
+            <span class="n">x_mask_vector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_final</span><span class="p">,</span> <span class="n">x_opcode</span><span class="p">,</span> <span class="n">x_mask_vector</span><span class="p">,</span> <span class="n">x_payload_len</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketClient.read_frame">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.read_frame">[docs]</a>
+    <span class="k">def</span> <span class="nf">read_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_opcode</span><span class="p">,</span> <span class="n">a_mask_vector</span><span class="p">,</span> <span class="n">a_payload_len</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Read one frame</span>
+
+<span class="sd">        :param x_opcode:        The opcode describes the data type</span>
+<span class="sd">        :param a_mask_vector:   The mask is used to decrypt and encrypt the data stream</span>
+<span class="sd">        :param a_payload_len:   The length of the data block</span>
+<span class="sd">        :return:                The buffer with the data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">a_payload_len</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">bytearray</span><span class="p">()</span>
+        
+        <span class="n">x_rest</span>   <span class="o">=</span> <span class="n">a_payload_len</span>
+        <span class="n">x_view</span>   <span class="o">=</span> <span class="nb">memoryview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_buffer</span><span class="p">)</span>
+        
+        <span class="k">while</span> <span class="n">x_rest</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">x_num_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">recv_into</span><span class="p">(</span><span class="n">x_view</span><span class="p">,</span> <span class="n">x_rest</span><span class="p">)</span>
+            <span class="n">x_rest</span>     <span class="o">=</span> <span class="n">x_rest</span> <span class="o">-</span> <span class="n">x_num_bytes</span>
+            <span class="n">x_view</span>     <span class="o">=</span> <span class="n">x_view</span><span class="p">[</span><span class="n">x_num_bytes</span><span class="p">:]</span>
+                    
+        <span class="k">if</span> <span class="n">a_mask_vector</span><span class="p">:</span>
+            <span class="n">x_dimension</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">((</span><span class="n">a_payload_len</span> <span class="o">+</span> <span class="mi">3</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span>
+            <span class="n">x_view</span>      <span class="o">=</span> <span class="nb">memoryview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_buffer</span><span class="p">)</span>
+            
+            <span class="n">x_int_size</span>  <span class="o">=</span> <span class="n">x_dimension</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">x_seq_mask</span>  <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="s1">&#39;&gt;I&#39;</span><span class="p">,</span> <span class="nb">bytearray</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">a_mask_vector</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">x_view_sli</span>  <span class="o">=</span> <span class="n">x_view</span><span class="p">[:</span> <span class="n">x_int_size</span> <span class="o">*</span> <span class="mi">4</span><span class="p">]</span>
+            <span class="n">x_view_int</span>  <span class="o">=</span> <span class="n">x_view_sli</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="s1">&#39;I&#39;</span><span class="p">)</span>
+            
+            <span class="c1"># Calculate un-mask with int4</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">x_int_size</span><span class="p">):</span>
+                <span class="n">x_view_int</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">^=</span> <span class="n">x_seq_mask</span>
+
+            <span class="n">x_view_int</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+            <span class="n">x_view_sli</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+                                
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_buffer</span><span class="p">[:</span><span class="n">a_payload_len</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="TWebSocketClient.write_frame">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.write_frame">[docs]</a>
+    <span class="k">def</span> <span class="nf">write_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">a_opcode</span><span class="p">:</span> <span class="nb">hex</span> <span class="o">=</span> <span class="mh">0x1</span><span class="p">,</span> <span class="n">a_final</span><span class="p">:</span> <span class="nb">hex</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">7</span><span class="p">),</span> <span class="n">a_mask_vector</span><span class="p">:</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Write single frame</span>
+
+<span class="sd">        :param a_data:      Data to send to browser</span>
+<span class="sd">        :type  a_data:      bytes</span>
+<span class="sd">        :param a_opcode:    Opcode defines the kind of data</span>
+<span class="sd">        :type  a_opcode:    byte</span>
+<span class="sd">        :param a_final:     Indicates if all data are written to stream</span>
+<span class="sd">        :type  a_final:     byte</span>
+<span class="sd">        :param a_mask_vector: Mask to use for secure communication</span>
+<span class="sd">        :type  a_mask_vector: List[byte,byte,byte,byte]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_payload_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">a_data</span><span class="p">)</span>
+        <span class="n">x_bytes</span>       <span class="o">=</span> <span class="nb">bytearray</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">x_position</span>    <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">x_masked</span>      <span class="o">=</span> <span class="mh">0x0</span>
+
+        <span class="k">if</span> <span class="n">a_mask_vector</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">a_mask_vector</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">x_masked</span>  <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">7</span>
+
+        <span class="n">x_bytes</span><span class="p">[</span><span class="n">x_position</span><span class="p">]</span> <span class="o">=</span> <span class="n">a_final</span> <span class="o">|</span> <span class="n">a_opcode</span>
+        <span class="n">x_position</span>   <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">x_payload_len</span> <span class="o">&gt;</span> <span class="mi">126</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">x_payload_len</span> <span class="o">&lt;</span> <span class="mh">0xffff</span><span class="p">:</span>
+                <span class="n">x_bytes</span><span class="p">[</span><span class="n">x_position</span><span class="p">]</span>  <span class="o">=</span> <span class="mh">0x7E</span> <span class="o">|</span> <span class="n">x_masked</span>
+                <span class="n">x_position</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">x_bytes</span><span class="p">[</span><span class="n">x_position</span><span class="p">:</span><span class="n">x_position</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;&gt;H&#39;</span><span class="p">,</span> <span class="n">x_payload_len</span><span class="p">)</span>
+                <span class="n">x_position</span> <span class="o">+=</span> <span class="mi">2</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x_bytes</span><span class="p">[</span><span class="n">x_position</span><span class="p">]</span>  <span class="o">=</span> <span class="mh">0x7F</span> <span class="o">|</span> <span class="n">x_masked</span>
+                <span class="n">x_position</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">x_bytes</span><span class="p">[</span><span class="n">x_position</span><span class="p">:</span><span class="n">x_position</span><span class="o">+</span><span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s1">&#39;&gt;Q&#39;</span><span class="p">,</span> <span class="n">x_payload_len</span><span class="p">)</span>
+                <span class="n">x_position</span> <span class="o">+=</span> <span class="mi">8</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x_bytes</span><span class="p">[</span><span class="n">x_position</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_payload_len</span> <span class="o">|</span> <span class="n">x_masked</span>
+            <span class="n">x_position</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">x_masked</span><span class="p">:</span>
+            <span class="n">x_bytes</span><span class="p">[</span><span class="n">x_position</span><span class="p">:</span><span class="n">x_position</span><span class="o">+</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">a_mask_vector</span>
+            <span class="n">x_position</span> <span class="o">+=</span> <span class="mi">4</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">x_bytes</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">x_position</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">x_payload_len</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">x_masked</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">x_masked</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">(</span><span class="n">x_payload_len</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">x_payload_len</span><span class="p">):</span>
+                <span class="n">x_masked</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">a_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">^</span> <span class="n">a_mask_vector</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="mi">4</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">x_masked</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m_socket</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">a_data</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TWebSocket">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocket">[docs]</a>
+<span class="k">class</span> <span class="nc">TWebSocket</span><span class="p">(</span><span class="n">Thread</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Manage connections to the WEB socket interface.</span>
+<span class="sd">    TWebSocket implements the socket of a http.server.HTTPServer</span>
+
+<span class="sd">    :param a_web_address: The connection information</span>
+<span class="sd">    :type  a_web_address: Tupel[host, address]</span>
+<span class="sd">    :param a_agent_class: The implementation of the EEZZ protocol</span>
+<span class="sd">    :type  a_agent_class: type[TWebSocketAgent]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_web_address</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">a_agent_class</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">TWebSocketAgent</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="p">:</span> <span class="n">socket</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_addr</span>    <span class="o">=</span> <span class="n">a_web_address</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_clients</span>     <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_class</span> <span class="o">=</span> <span class="n">a_agent_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_running</span>     <span class="o">=</span> <span class="kc">True</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;WebSocket&#39;</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="TWebSocket.shutdown">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocket.shutdown">[docs]</a>
+    <span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Shutdown closes all sockets &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_clients</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">x_key</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="TWebSocket.run">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocket.run">[docs]</a>
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Wait for incoming requests&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="o">.</span><span class="n">bind</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">m_web_addr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_web_addr</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+
+        <span class="n">x_read_list</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;websocket </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">m_web_addr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> at </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">m_web_addr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_running</span><span class="p">:</span>
+            <span class="n">x_rd</span><span class="p">,</span> <span class="n">x_wr</span><span class="p">,</span> <span class="n">x_err</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">x_read_list</span><span class="p">,</span> <span class="p">[],</span> <span class="n">x_read_list</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">x_rd</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">x_wr</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">x_err</span><span class="p">:</span>
+                <span class="k">continue</span>
+                            
+            <span class="k">for</span> <span class="n">x_socket</span> <span class="ow">in</span> <span class="n">x_err</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">x_socket</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="p">:</span>
+                    <span class="n">x_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                    <span class="n">x_read_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">x_socket</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;server socket closed&#39;</span><span class="p">)</span>
+                    <span class="k">raise</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">x_read_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">x_socket</span><span class="p">)</span>
+                    <span class="n">x_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">m_clients</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">x_socket</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">x_socket</span> <span class="ow">in</span> <span class="n">x_rd</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">x_socket</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="p">:</span>
+                    <span class="n">x_clt_addr</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+                    <span class="n">x_ws_client</span> <span class="o">=</span> <span class="n">TWebSocketClient</span><span class="p">(</span><span class="n">x_clt_addr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_class</span><span class="p">)</span>
+                    <span class="n">x_ws_client</span><span class="o">.</span><span class="n">upgrade</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">m_clients</span><span class="p">[</span><span class="n">x_clt_addr</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">x_ws_client</span>
+                    <span class="n">x_read_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_clt_addr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">x_client</span><span class="p">:</span> <span class="n">TWebSocketClient</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_clients</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x_socket</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">x_client</span><span class="o">.</span><span class="n">handle_request</span><span class="p">()</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="n">TWebSocketException</span><span class="p">,</span> <span class="ne">ConnectionResetError</span><span class="p">,</span> <span class="ne">ConnectionAbortedError</span><span class="p">)</span> <span class="k">as</span> <span class="n">aEx</span><span class="p">:</span>
+                        <span class="n">x_client</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+                        <span class="n">x_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                        <span class="n">x_read_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">x_socket</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">m_clients</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">x_socket</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TAsyncHandler">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TAsyncHandler">[docs]</a>
+<span class="k">class</span> <span class="nc">TAsyncHandler</span><span class="p">(</span><span class="n">Thread</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Execute method in background task.</span>
+<span class="sd">    This class is designed to be put into an async thread to execute a user method, without blocking the websocket.</span>
+<span class="sd">    After the method returns, the AsyncHandler creates the websocket response.</span>
+<span class="sd">    It&#39;s also possible to specify a loop counter for successive calls to the same method. The loop count is</span>
+<span class="sd">    given with the &quot;_metha.loop&quot; attribute. Some minimal time interval has to be calculated by the user method.</span>
+<span class="sd">    This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.</span>
+
+<span class="sd">    :param method:          The method to be executed</span>
+<span class="sd">    :type  method:          Callable</span>
+<span class="sd">    :param args:            The arguments for this method as key/value pairs plus meta-arguments with the reserved key\</span>
+<span class="sd">    _meta, here with a loop request: ``{&#39;_meta&#39;: {&#39;loop&#39;: 100,...}}``. \</span>
+<span class="sd">    The loop continues until the user method returns None</span>
+<span class="sd">    :type  args:            Dict[name, value]</span>
+<span class="sd">    :param socket_server:   The server to send the result</span>
+<span class="sd">    :type  socket_server:   TWebSocketClient</span>
+<span class="sd">    :param request:         The request, which is waiting for the method to return</span>
+<span class="sd">    :type  request:         dict[eezz-lark-key:value]</span>
+<span class="sd">    :param description:     The name of the thread</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">socket_server</span><span class="p">:</span> <span class="n">TWebSocketClient</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">description</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">method</span>         <span class="o">=</span> <span class="n">method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span>           <span class="o">=</span> <span class="n">args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket_server</span>  <span class="o">=</span> <span class="n">socket_server</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request</span>        <span class="o">=</span> <span class="n">request</span>
+
+<div class="viewcode-block" id="TAsyncHandler.run">
+<a class="viewcode-back" href="../../eezz.html#eezz.websocket.TAsyncHandler.run">[docs]</a>
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x_meta_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_meta&#39;</span><span class="p">)</span>
+            <span class="n">x_loop</span>      <span class="o">=</span> <span class="n">x_meta_args</span><span class="p">[</span><span class="s1">&#39;loop&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">x_meta_args</span> <span class="ow">and</span> <span class="s1">&#39;loop&#39;</span> <span class="ow">in</span> <span class="n">x_meta_args</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">x_loop</span>      <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">x_loop</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">[</span><span class="s1">&#39;result&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket_server</span><span class="o">.</span><span class="n">handle_aync_request</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ---- Module test section:</span>
+<span class="k">def</span> <span class="nf">test_tcm</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; :meta private:</span>
+<span class="sd">    simulate a time consuming method (tcm)&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">TestSocketServer</span><span class="p">(</span><span class="n">TWebSocketClient</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; :meta private:</span>
+<span class="sd">    Simulate a request handler, waiting for a method to finish&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">handle_aync_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">test_async_hadler</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; :meta private:</span>
+<span class="sd">    Test for TAsyncHandler thread &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Test TAsyncHandler: async method call and socket server output </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">x_req</span>    <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;test&#39;</span><span class="p">:</span> <span class="s1">&#39;threads&#39;</span><span class="p">}</span>
+    <span class="n">x_ss</span>     <span class="o">=</span> <span class="n">TestSocketServer</span><span class="p">(</span><span class="n">a_client_addr</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,),</span> <span class="n">a_agent</span><span class="o">=</span><span class="n">TWebSocketAgent</span><span class="p">)</span>
+    <span class="n">x_thread</span> <span class="o">=</span> <span class="n">TAsyncHandler</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">test_tcm</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">{},</span> <span class="n">socket_server</span><span class="o">=</span><span class="n">x_ss</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="n">x_req</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+    <span class="n">x_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Main thread waiting for the method to return&#39;</span><span class="p">)</span>
+    <span class="n">x_thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
+    <span class="n">test_async_hadler</span><span class="p">()</span>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Albert Zedlitz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

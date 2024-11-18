@@ -1,0 +1,523 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eezz.service &mdash; EEZZ 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            EEZZ
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">eezz</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">EEZZ</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">eezz.service</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for eezz.service</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This module implements the following classes:</span>
+
+<span class="sd">    * **TGlobalService**: Container for global environment</span>
+<span class="sd">    * **TService**: A singleton for TGlobalService</span>
+<span class="sd">    * **TServiceCompiler**: A Lark compiler for HTML EEZZ extensions</span>
+<span class="sd">    * **TTranslate**: Extract translation info from HTML to create a POT file</span>
+<span class="sd">    * **TQuery**: Class representing the query of an HTML request</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">from</span>   <span class="nn">loguru</span> <span class="kn">import</span> <span class="n">logger</span>
+
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">Crypto.PublicKey.RSA</span> <span class="kn">import</span> <span class="n">RsaKey</span>
+<span class="kn">from</span>   <span class="nn">bs4</span>                  <span class="kn">import</span> <span class="n">Tag</span>
+<span class="kn">from</span>   <span class="nn">pathlib</span>              <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span>   <span class="nn">importlib</span>            <span class="kn">import</span> <span class="n">import_module</span>
+<span class="kn">from</span>   <span class="nn">lark</span>                 <span class="kn">import</span> <span class="n">Lark</span><span class="p">,</span> <span class="n">Transformer</span><span class="p">,</span> <span class="n">Tree</span>
+<span class="kn">from</span>   <span class="nn">lark.exceptions</span>      <span class="kn">import</span> <span class="n">UnexpectedCharacters</span>
+<span class="kn">from</span>   <span class="nn">typing</span>               <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TypeVar</span>
+<span class="kn">from</span>   <span class="nn">Crypto.PublicKey</span>     <span class="kn">import</span> <span class="n">RSA</span>
+
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;T&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TService">
+<a class="viewcode-back" href="../../eezz.html#eezz.service.TService">[docs]</a>
+<span class="k">class</span> <span class="nc">TService</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Container for unique environment as</span>
+
+<span class="sd">    * path descriptors</span>
+<span class="sd">    * stores assignments of the parser</span>
+<span class="sd">    * stores RSA application key</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_mod</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="s2">&quot;C5F23FA172317A1F6930C0F9AF79FF044D34BFD1336E5A174155953487A4FF0C744A093CA7044F39842AC685AB37C55F1F01F0055561BAD9C3EEA22B28D09F061875ED5BDB2F1F2B797B1BEF6534C0D4FCEFAFFA8F3A91396961165241564BD6E3CA08023F2A760A0B54A4A6A996CDF7DE3491468C199566EE5993FCFD03A2B285AD6FBBC014A20C801618EE19F88EB8E6359624A35FDD7976F316D6AB225CF85DA5E63AB30248D38297A835CF16B9799973C2F9F05F5F850B3152B3A05F06FEC0FBDA95C70911F59F6A11A1451822ABFE4FE5A021F7EA983BDE9F442302891DCF51B7322EAFB88950F2617B7120F9B87534719DCA27E87D82A183CB37BC7045&quot;</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+    <span class="n">_exp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="s2">&quot;10001&quot;</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+    <span class="n">_private_key</span><span class="p">:</span>       <span class="n">RSA</span><span class="o">.</span><span class="n">RsaKey</span>  <span class="o">=</span> <span class="kc">None</span>     <span class="c1">#: :meta private:</span>
+    <span class="n">_public_key</span><span class="p">:</span>        <span class="n">RSA</span><span class="o">.</span><span class="n">RsaKey</span>  <span class="o">=</span> <span class="kc">None</span>     <span class="c1">#: :meta private:</span>
+    <span class="n">_root_path</span><span class="p">:</span>         <span class="n">Path</span>        <span class="o">=</span> <span class="kc">None</span>     <span class="c1">#: :meta private: Root path for the HTTP server</span>
+    <span class="n">_resource_path</span><span class="p">:</span>     <span class="n">Path</span>        <span class="o">=</span> <span class="kc">None</span>     <span class="c1">#: :meta private:</span>
+    <span class="n">_global_objects</span><span class="p">:</span>    <span class="nb">dict</span>        <span class="o">=</span> <span class="kc">None</span>     <span class="c1">#: :meta private:</span>
+    <span class="n">_host</span><span class="p">:</span>              <span class="nb">str</span>         <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span> <span class="c1">#: :meta private:</span>
+    <span class="n">_websocket_addr</span><span class="p">:</span>    <span class="nb">str</span>         <span class="o">=</span> <span class="s1">&#39;8100&#39;</span>   <span class="c1">#: :meta private:</span>
+    <span class="n">_translate</span><span class="p">:</span>         <span class="nb">bool</span>        <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RSA</span><span class="o">.</span><span class="n">RsaKey</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TService</span><span class="o">.</span><span class="n">_private_key</span><span class="p">:</span>
+            <span class="n">TService</span><span class="o">.</span><span class="n">_private_key</span> <span class="o">=</span> <span class="n">RSA</span><span class="o">.</span><span class="n">construct</span><span class="p">((</span><span class="n">TService</span><span class="o">.</span><span class="n">_mod</span><span class="p">,</span> <span class="n">TService</span><span class="o">.</span><span class="n">_exp</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_private_key</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RSA</span><span class="o">.</span><span class="n">RsaKey</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TService</span><span class="o">.</span><span class="n">_public_key</span><span class="p">:</span>
+            <span class="n">TService</span><span class="o">.</span><span class="n">_public_key</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="o">.</span><span class="n">public_key</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_public_key</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">root_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TService</span><span class="o">.</span><span class="n">_root_path</span><span class="p">:</span>
+            <span class="n">TService</span><span class="o">.</span><span class="n">_root_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_root_path</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">resource_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;resources&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">public_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;public&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">application_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;applications&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">document_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;database&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">database_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="s1">&#39;eezz.db&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">locales_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_path</span> <span class="o">/</span> <span class="s1">&#39;locales&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">logging_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;logs&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">host</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_host</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">websocket_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_websocket_addr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">objects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TService</span><span class="o">.</span><span class="n">_global_objects</span><span class="p">:</span>
+            <span class="n">TService</span><span class="o">.</span><span class="n">_global_objects</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_global_objects</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">translate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_translate</span>
+
+<div class="viewcode-block" id="TService.set_environment">
+<a class="viewcode-back" href="../../eezz.html#eezz.service.TService.set_environment">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">set_environment</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">root_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;8000&#39;</span><span class="p">):</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_root_path</span>      <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root_path</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_host</span>           <span class="o">=</span> <span class="n">host</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_websocket_addr</span> <span class="o">=</span> <span class="n">address</span></div>
+
+
+<div class="viewcode-block" id="TService.assign_object">
+<a class="viewcode-back" href="../../eezz.html#eezz.service.TService.assign_object">[docs]</a>
+    <span class="k">def</span> <span class="nf">assign_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">:</span> <span class="n">Tag</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; _`assign_object` Assigns an object to an HTML tag</span>
+
+<span class="sd">        :raise IndexError:      description systax does not match</span>
+<span class="sd">        :raise AttributeError:  Class not found</span>
+<span class="sd">        :param obj_id:      Unique object-id</span>
+<span class="sd">        :param description: Path to the class: &lt;directory&gt;.&lt;module&gt;.&lt;class&gt;</span>
+<span class="sd">        :param attrs:       Attributes for the constructor</span>
+<span class="sd">        :param a_tag:       Parent tag which handles an instance of this object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x_list</span>  <span class="o">=</span> <span class="n">description</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">x_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x_list</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">x_list</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">IndexError</span> <span class="k">as</span> <span class="n">x_except</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">x_except</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">x_except</span>
+
+        <span class="n">x_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">application_path</span> <span class="o">/</span> <span class="n">x</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">x_path</span><span class="p">)</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x_path</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x_module</span>    <span class="o">=</span> <span class="n">import_module</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">x_class</span>     <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">x_module</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+            <span class="n">x_object</span>    <span class="o">=</span> <span class="n">x_class</span><span class="p">(</span><span class="o">**</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">obj_id</span><span class="p">:</span> <span class="p">(</span><span class="n">x_object</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">,</span> <span class="n">description</span><span class="p">)})</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;assign </span><span class="si">{</span><span class="n">obj_id</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">z</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">x_except</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">x_except</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TService.get_method">
+<a class="viewcode-back" href="../../eezz.html#eezz.service.TService.get_method">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">a_method_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Get a method by name for a given object</span>
+
+<span class="sd">        :param obj_id:          Unique hash-ID for object as stored in :py:meth:`eezz.service.TService.assign_object`</span>
+<span class="sd">        :type  obj_id:          str</span>
+<span class="sd">        :param a_method_name:   Name of the method</span>
+<span class="sd">        :type  a_method_name:   str</span>
+<span class="sd">        :return: tuple(object, method, parent-tag)</span>
+<span class="sd">        :raise AttributeError: Class has no method with the given name</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x_object</span><span class="p">,</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">x_descr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">obj_id</span><span class="p">]</span>
+            <span class="n">x_method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">x_object</span><span class="p">,</span> <span class="n">a_method_name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x_object</span><span class="p">,</span> <span class="n">x_method</span><span class="p">,</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">x_descr</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">x_except</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">x_except</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">x_except</span></div>
+
+
+<div class="viewcode-block" id="TService.get_object">
+<a class="viewcode-back" href="../../eezz.html#eezz.service.TService.get_object">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Get the object for a given ID</span>
+
+<span class="sd">        :param obj_id: Unique hash-ID for object as stored in :func:`eezz.service.TGlobalService.assign_object`</span>
+<span class="sd">        :return: The assigned object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_object</span><span class="p">,</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">x_descr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="n">obj_id</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">x_object</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TServiceCompiler">
+<a class="viewcode-back" href="../../eezz.html#eezz.service.TServiceCompiler">[docs]</a>
+<span class="k">class</span> <span class="nc">TServiceCompiler</span><span class="p">(</span><span class="n">Transformer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Transforms the parser tree into a list of dictionaries</span>
+<span class="sd">    The transformer output is in json format</span>
+
+<span class="sd">    :param a_tag:   The parent tag</span>
+<span class="sd">    :type a_tag:    BeautifulSoup4.Tag</span>
+<span class="sd">    :param a_id:    A unique object id</span>
+<span class="sd">    :param a_query: The URL query part</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">:</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">a_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">a_query</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_id</span>       <span class="o">=</span> <span class="n">a_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span>      <span class="o">=</span> <span class="n">a_tag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_query</span>    <span class="o">=</span> <span class="n">a_query</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_service</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">()</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">simple_str</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse a string token &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">item</span><span class="p">])</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">escaped_str</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse an escaped string &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">x</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">item</span><span class="p">])</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">qualified_string</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse a qualified string: ``part1.part2.part3`` &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">item</span><span class="p">])</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">list_updates</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Accumulate &#39;update&#39; statements &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">accumulate</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">|</span> <span class="n">b</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">list_arguments</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Accumulate arguments for function call &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">accumulate</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">|</span> <span class="n">b</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">update_section</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;update&#39; section &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;update&#39;</span><span class="p">:</span>   <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">download</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;download&#39; section &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;download&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;document&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;file&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]}}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">update_item</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;update&#39; expression&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">assignment</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;assignment&#39; expression: ``variable = value`` &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">format_string</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Create a format string: ``{value}`` &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="se">{{</span><span class="si">{</span><span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="si">}</span><span class="se">}}</span><span class="s1">&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">format_value</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Create a format string: ``{key.value}`` &quot;&quot;&quot;</span>
+        <span class="k">return</span>  <span class="sa">f</span><span class="s1">&#39;</span><span class="se">{{</span><span class="si">{</span><span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">])</span><span class="si">}</span><span class="se">}}</span><span class="s1">&#39;</span>
+
+    <span class="k">def</span> <span class="nf">template_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Create tag attributes &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;match&#39;</span><span class="p">,</span> <span class="s1">&#39;template&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;data-eezz-</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span>
+
+    <span class="k">def</span> <span class="nf">funct_assignment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;function&#39; section &quot;&quot;&quot;</span>
+        <span class="n">x_function</span><span class="p">,</span> <span class="n">x_args</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span><span class="p">[</span><span class="s1">&#39;onclick&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;eezzy_click(event, this)&#39;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;call&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">x_function</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">x_args</span><span class="p">,</span> <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_id</span><span class="p">}}</span>
+
+    <span class="k">def</span> <span class="nf">post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;post-init&#39; section for function assignment &quot;&quot;&quot;</span>
+        <span class="n">x_function</span><span class="p">,</span> <span class="n">x_args</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span>
+        <span class="n">x_json_obj</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;call&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">x_function</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">x_args</span><span class="p">,</span> <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_id</span><span class="p">}}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span><span class="p">[</span><span class="s1">&#39;data-eezz-init&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">x_json_obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x_json_obj</span>
+
+    <span class="k">def</span> <span class="nf">table_assignment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;assign&#39; section, assigning a Python object to an HTML-Tag</span>
+<span class="sd">        The table assignment uses TQuery to format arguments</span>
+<span class="sd">        In case the arguments are not all present, the format is broken and process continues with default &quot;&quot;&quot;</span>
+        <span class="n">x_function</span><span class="p">,</span> <span class="n">x_args</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x_query</span> <span class="o">=</span> <span class="n">TQuery</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_query</span><span class="p">)</span>
+            <span class="n">x_args</span>  <span class="o">=</span> <span class="p">{</span><span class="n">x_key</span><span class="p">:</span> <span class="n">x_val</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="n">x_query</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_val</span> <span class="ow">in</span> <span class="n">x_args</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">x_except</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;table_assignment: </span><span class="si">{</span><span class="n">x_function</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">x_args</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_service</span><span class="o">.</span><span class="n">assign_object</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_id</span><span class="p">,</span> <span class="n">x_function</span><span class="p">,</span> <span class="n">x_args</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;assign&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">x_function</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">x_args</span><span class="p">,</span> <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_id</span><span class="p">}}</span></div>
+
+
+
+<div class="viewcode-block" id="TTranslate">
+<a class="viewcode-back" href="../../eezz.html#eezz.service.TTranslate">[docs]</a>
+<span class="k">class</span> <span class="nc">TTranslate</span><span class="p">:</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">generate_pot</span><span class="p">(</span><span class="n">a_soup</span><span class="p">,</span> <span class="n">a_title</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Generate a POT file from HTML file</span>
+
+<span class="sd">        :param a_soup: The HTML page for translation</span>
+<span class="sd">        :param a_title: The file name for the POT file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="s2">&quot; todo: argument a_tile must be a a simple string  &quot;</span>
+        <span class="n">x_regex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;[a-zA-Z0-9]+&#39;</span><span class="p">)</span>
+        <span class="n">x_group</span> <span class="o">=</span> <span class="n">x_regex</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">a_title</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">x_group</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Cannot create file </span><span class="si">{</span><span class="n">a_title</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x_pot_file</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">locales_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_group</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">.pot&#39;</span>
+            <span class="n">x_elements</span> <span class="o">=</span> <span class="n">a_soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x_tag</span><span class="p">:</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;data-eezz-i18n&#39;</span><span class="p">))</span>
+            <span class="n">x_path_hdr</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">locales_path</span> <span class="o">/</span> <span class="s1">&#39;template.pot&#39;</span>
+            <span class="k">with</span> <span class="n">x_pot_file</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">x_path_hdr</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_hdr</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f_hdr</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+                <span class="k">for</span> <span class="n">x_elem</span> <span class="ow">in</span> <span class="n">x_elements</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;msgid  </span><span class="se">\&quot;</span><span class="si">{</span><span class="n">x_elem</span><span class="p">[</span><span class="s1">&#39;data-eezz-i18n&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\&quot;\n</span><span class="s2">&quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;msgstr </span><span class="se">\&quot;</span><span class="si">{</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">x_elem</span><span class="o">.</span><span class="n">descendants</span><span class="p">]</span><span class="si">}</span><span class="se">\&quot;\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">x_except</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">x_except</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">x_except</span></div>
+
+
+
+<span class="c1"># @dataclass(kw_only=True)</span>
+<span class="k">class</span> <span class="nc">TQuery</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; :meta private: Transfer the HTTP query to class attributes</span>
+
+<span class="sd">    :param query: The query string in dictionary format</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">query</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_val</span> <span class="ow">in</span> <span class="n">query</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_key</span><span class="p">,</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x_val</span><span class="p">))</span>
+
+
+<span class="c1"># --- Section for module tests</span>
+<span class="k">def</span> <span class="nf">test_parser</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">json</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
+    <span class="n">x_parent_tag</span>   <span class="o">=</span> <span class="n">Tag</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
+    <span class="n">x_parser</span>       <span class="o">=</span> <span class="n">Lark</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">resource_path</span> <span class="o">/</span> <span class="s1">&#39;eezz.lark&#39;</span><span class="p">))</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">x_syntax_tree</span>  <span class="o">=</span> <span class="n">x_parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="n">x_transformer</span>  <span class="o">=</span> <span class="n">TServiceCompiler</span><span class="p">(</span><span class="n">x_parent_tag</span><span class="p">,</span> <span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
+        <span class="n">x_list_json</span>    <span class="o">=</span> <span class="n">x_transformer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">x_syntax_tree</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">x_list_json</span><span class="p">)</span> <span class="ow">is</span> <span class="n">Tree</span><span class="p">:</span>
+            <span class="n">x_result</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">accumulate</span><span class="p">(</span><span class="n">x_list_json</span><span class="o">.</span><span class="n">children</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">|</span> <span class="n">b</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">x_result</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x_result</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">x_list_json</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">x_list_json</span>
+    <span class="k">except</span> <span class="n">UnexpectedCharacters</span> <span class="k">as</span> <span class="n">x_ex</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;invalid expression: parent-tag=</span><span class="si">{</span><span class="n">x_parent_tag</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">, position=</span><span class="si">{</span><span class="n">x_ex</span><span class="o">.</span><span class="n">pos_in_stream</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">stack_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">x_ex</span>
+
+
+<div class="viewcode-block" id="TestRow">
+<a class="viewcode-back" href="../../eezz.html#eezz.service.TestRow">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">TestRow</span><span class="p">:</span>
+    <span class="n">path</span><span class="p">:</span>   <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;test/path/file&#39;</span>
+    <span class="n">row_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
+    <span class="c1"># test parser</span>
+    <span class="n">TService</span><span class="o">.</span><span class="n">set_environment</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="s1">&#39;/Users/alzer/Projects/github/eezz_full/webroot&#39;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">resource_path</span><span class="si">=}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Test Lark Parser&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;download statement&quot;</span><span class="p">)</span>
+    <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;download: document(name=test1, author=albert), files( main=main, prev=prev )&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;assign statement&quot;</span><span class="p">)</span>
+    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;assign: examples.directory.TDirView(path=&quot;/Users/alzer/Projects/github/eezz_full/webroot&quot;)&quot;&quot;&quot;</span>
+    <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;update statement 1&quot;</span><span class="p">)</span>
+    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot; event: on_select(index=</span><span class="si">{row.row_id}</span><span class="s2">), update: elem1.innerHTML = </span><span class="si">{object.path}</span><span class="s2"> &quot;&quot;&quot;</span>
+    <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;update statement 2&quot;</span><span class="p">)</span>
+    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot; event: on_select(index=</span><span class="si">{row.row_id}</span><span class="s2">), update: elem1.innerHTML = </span><span class="si">{object.path}</span><span class="s2">, elem2.innerHTML = </span><span class="si">{object.row_id}</span><span class="s2">  &quot;&quot;&quot;</span>
+    <span class="n">x_result</span> <span class="o">=</span> <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
+
+    <span class="n">x_update</span>  <span class="o">=</span> <span class="n">x_result</span><span class="p">[</span><span class="s1">&#39;update&#39;</span><span class="p">]</span>
+    <span class="n">x_reslist</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">x_update</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">x_json_obj</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;target&#39;</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">y</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">object</span><span class="o">=</span><span class="n">TestRow</span><span class="p">())}</span>
+        <span class="n">x_reslist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_json_obj</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">x_reslist</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s1">&#39;test finished&#39;</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    # test parser exception and logging</span>
+<span class="sd">    logger.debug(msg=&quot;Test the parser: wrong download statement:&quot;)</span>
+<span class="sd">    logger.debug(msg=&quot;download: files(name=test1, author=albert), documents( main=main, prev=prev )&quot;)</span>
+
+<span class="sd">    try:</span>
+<span class="sd">        test_parser(source=&quot;&quot;download: files(name=test1, author=albert), documents( main=main, prev=prev )&quot;&quot;)</span>
+<span class="sd">    except UnexpectedCharacters as xx_except:</span>
+<span class="sd">        logger.error(msg=&#39;Test parser exception successful&#39;, stack_info=True)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Albert Zedlitz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

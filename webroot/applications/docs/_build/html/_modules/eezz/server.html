@@ -1,0 +1,290 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eezz.server &mdash; EEZZ 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            EEZZ
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">eezz</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">EEZZ</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">eezz.server</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for eezz.server</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module implements the following classes</span>
+
+<span class="sd">    * :py:class:`eezz.server.TWebServer` : Implementation of http.server.HTTPServer, prepares the WEB-Socket interface.</span>
+<span class="sd">    * :py:class:`eezz.server.THttpHandle`: Implementation of http.server.SimpleHTTPRequestHandler, allows special \</span>
+<span class="sd">    access on local services.</span>
+<span class="sd"> </span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">http.server</span>
+<span class="kn">import</span> <span class="nn">http.cookies</span>
+<span class="kn">from</span>   <span class="nn">threading</span>      <span class="kn">import</span> <span class="n">Thread</span>
+<span class="kn">from</span>   <span class="nn">urllib.parse</span>   <span class="kn">import</span> <span class="n">urlparse</span>
+<span class="kn">from</span>   <span class="nn">urllib.parse</span>   <span class="kn">import</span> <span class="n">parse_qs</span>
+<span class="kn">from</span>   <span class="nn">optparse</span>       <span class="kn">import</span> <span class="n">OptionParser</span>
+<span class="kn">from</span>   <span class="nn">websocket</span>      <span class="kn">import</span> <span class="n">TWebSocket</span>
+<span class="kn">from</span>   <span class="nn">pathlib</span>        <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span>   <span class="nn">http_agent</span>     <span class="kn">import</span> <span class="n">THttpAgent</span>
+<span class="kn">from</span>   <span class="nn">service</span>        <span class="kn">import</span> <span class="n">TService</span>
+<span class="kn">from</span>   <span class="nn">session</span>        <span class="kn">import</span> <span class="n">TSession</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span>   <span class="nn">loguru</span>         <span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+
+<div class="viewcode-block" id="TWebServer">
+<a class="viewcode-back" href="../../eezz.html#eezz.server.TWebServer">[docs]</a>
+<span class="k">class</span> <span class="nc">TWebServer</span><span class="p">(</span><span class="n">http</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">HTTPServer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; WEB Server encapsulate the WEB socket implementation</span>
+
+<span class="sd">    :param a_server_address: The WEB address of this server</span>
+<span class="sd">    :param a_http_handler:   The HTTP handler</span>
+<span class="sd">    :param a_web_socket:     The socket address waiting for WEB-Socket interface</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_server_address</span><span class="p">,</span> <span class="n">a_http_handler</span><span class="p">,</span> <span class="n">a_web_socket</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_socket_inx</span>  <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_server_addr</span> <span class="o">=</span> <span class="n">a_server_address</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_addr</span>    <span class="o">=</span> <span class="p">(</span><span class="n">a_server_address</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">a_web_socket</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span>  <span class="o">=</span> <span class="n">TWebSocket</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_web_addr</span><span class="p">,</span> <span class="n">THttpAgent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">a_server_address</span><span class="p">,</span> <span class="n">a_http_handler</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TWebServer.shutdown">
+<a class="viewcode-back" href="../../eezz.html#eezz.server.TWebServer.shutdown">[docs]</a>
+    <span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Shutdown the WEB server &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="THttpHandler">
+<a class="viewcode-back" href="../../eezz.html#eezz.server.THttpHandler">[docs]</a>
+<span class="k">class</span> <span class="nc">THttpHandler</span><span class="p">(</span><span class="n">http</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">SimpleHTTPRequestHandler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; HTTP handler for incoming requests &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">client_address</span><span class="p">,</span> <span class="n">server</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_client</span>       <span class="o">=</span> <span class="n">client_address</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_server</span>       <span class="o">=</span> <span class="n">server</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_request</span>      <span class="o">=</span> <span class="n">request</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server_version</span> <span class="o">=</span> <span class="s1">&#39;eezzyServer/2.0&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_http_agent</span>   <span class="o">=</span> <span class="n">THttpAgent</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">client_address</span><span class="p">,</span> <span class="n">server</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="THttpHandler.do_GET">
+<a class="viewcode-back" href="../../eezz.html#eezz.server.THttpHandler.do_GET">[docs]</a>
+    <span class="k">def</span> <span class="nf">do_GET</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; handle GET request &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handle_request</span><span class="p">()</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="THttpHandler.do_POST">
+<a class="viewcode-back" href="../../eezz.html#eezz.server.THttpHandler.do_POST">[docs]</a>
+    <span class="k">def</span> <span class="nf">do_POST</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; handle POST request &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handle_request</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="THttpHandler.shutdown">
+<a class="viewcode-back" href="../../eezz.html#eezz.server.THttpHandler.shutdown">[docs]</a>
+    <span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_server</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="THttpHandler.handle_request">
+<a class="viewcode-back" href="../../eezz.html#eezz.server.THttpHandler.handle_request">[docs]</a>
+    <span class="k">def</span> <span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; handle GET and POST requests &quot;&quot;&quot;</span>
+        <span class="n">x_cookie</span>    <span class="o">=</span> <span class="n">http</span><span class="o">.</span><span class="n">cookies</span><span class="o">.</span><span class="n">SimpleCookie</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s1">&#39;eezzAgent&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">x_cookie</span><span class="p">:</span>
+            <span class="n">x_cookie</span><span class="p">[</span><span class="s1">&#39;eezzAgent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;AgentName&#39;</span>
+
+        <span class="n">x_morsal</span>     <span class="o">=</span> <span class="n">x_cookie</span><span class="p">[</span><span class="s1">&#39;eezzAgent&#39;</span><span class="p">]</span>
+        <span class="n">x_result</span>     <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">x_query</span>      <span class="o">=</span> <span class="n">parse_qs</span><span class="p">(</span><span class="n">x_result</span><span class="o">.</span><span class="n">query</span><span class="p">)</span>
+        <span class="n">x_query_path</span> <span class="o">=</span> <span class="n">x_result</span><span class="o">.</span><span class="n">path</span>
+        <span class="n">x_resource</span>   <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">public_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;.</span><span class="si">{</span><span class="n">x_query_path</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_client</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="s1">&#39;127.0.0.1&#39;</span><span class="p">):</span>
+            <span class="c1"># Administration commands possible only on local machine</span>
+            <span class="k">if</span> <span class="n">x_query_path</span> <span class="o">==</span> <span class="s1">&#39;/system/shutdown&#39;</span><span class="p">:</span>
+                <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">shutdown_function</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="p">])</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+                <span class="k">return</span>
+            <span class="k">if</span> <span class="n">x_query_path</span> <span class="o">==</span> <span class="s1">&#39;/system/eezzyfree&#39;</span><span class="p">:</span>
+                <span class="c1"># Polling request for an existing connection</span>
+                <span class="n">x_session</span> <span class="o">=</span> <span class="n">TSession</span><span class="p">()</span>
+                <span class="n">x_result</span>  <span class="o">=</span> <span class="n">x_session</span><span class="o">.</span><span class="n">get_user_pwd</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s1">&#39;text/html; charset=utf-8&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">x_result</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+                <span class="k">return</span>
+            <span class="k">if</span> <span class="n">x_query_path</span> <span class="o">==</span> <span class="s1">&#39;/eezzyfree&#39;</span><span class="p">:</span>
+                <span class="c1"># Assign a user to the administration page</span>
+                <span class="n">TSession</span><span class="p">()</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">x_query</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">x_resource</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="n">x_resource</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;public/index.html&#39;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">x_resource</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="mi">404</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">x_resource</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">in</span> <span class="s1">&#39;.html&#39;</span><span class="p">:</span>
+            <span class="n">x_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_http_agent</span><span class="o">.</span><span class="n">do_get</span><span class="p">(</span><span class="n">x_resource</span><span class="p">,</span> <span class="n">x_query</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s1">&#39;text/html; charset=utf-8&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">x_result</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">x_resource</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;.gif&#39;</span><span class="p">,</span> <span class="s1">&#39;.mp4&#39;</span><span class="p">,</span> <span class="s1">&#39;.ico&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s1">&#39;content-type&#39;</span><span class="p">,</span> <span class="s1">&#39;image/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x_resource</span><span class="o">.</span><span class="n">suffix</span><span class="p">)[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+            <span class="k">with</span> <span class="n">x_resource</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="k">elif</span> <span class="n">x_resource</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">in</span> <span class="s1">&#39;.css&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_header</span><span class="p">(</span><span class="s1">&#39;content-type&#39;</span><span class="p">,</span> <span class="s1">&#39;text/css&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_headers</span><span class="p">()</span>
+            <span class="k">with</span> <span class="n">x_resource</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="shutdown_function">
+<a class="viewcode-back" href="../../eezz.html#eezz.server.shutdown_function">[docs]</a>
+<span class="k">def</span> <span class="nf">shutdown_function</span><span class="p">(</span><span class="n">handler</span><span class="p">:</span> <span class="n">THttpHandler</span><span class="p">):</span>
+    <span class="n">handler</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span></div>
+
+    <span class="c1"># os._exit(0)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;&quot; </span>
+<span class="s2">        EezzServer  Copyright (C) 2015  Albert Zedlitz</span>
+<span class="s2">        This program comes with ABSOLUTELY NO WARRANTY;&#39;.</span>
+<span class="s2">        This is free software, and you are welcome to redistribute it</span>
+<span class="s2">        under certain conditions;.</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Parse command line options</span>
+    <span class="n">x_opt_parser</span> <span class="o">=</span> <span class="n">OptionParser</span><span class="p">()</span>
+    <span class="n">x_opt_parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-d&quot;</span><span class="p">,</span> <span class="s2">&quot;--host&quot;</span><span class="p">,</span>      <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;http_host&quot;</span><span class="p">,</span>  <span class="n">default</span><span class="o">=</span><span class="s2">&quot;localhost&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;HTTP Hostname (for example localhost)&quot;</span><span class="p">)</span>
+    <span class="n">x_opt_parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-p&quot;</span><span class="p">,</span> <span class="s2">&quot;--port&quot;</span><span class="p">,</span>      <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;http_port&quot;</span><span class="p">,</span>  <span class="n">default</span><span class="o">=</span><span class="s2">&quot;8000&quot;</span><span class="p">,</span>      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;HTTP Port (default 8000&quot;</span><span class="p">)</span>
+    <span class="n">x_opt_parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-w&quot;</span><span class="p">,</span> <span class="s2">&quot;--webroot&quot;</span><span class="p">,</span>   <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;web_root&quot;</span><span class="p">,</span>   <span class="n">default</span><span class="o">=</span><span class="s2">&quot;webroot&quot;</span><span class="p">,</span>   <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Web-Root (path to webroot directory)&quot;</span><span class="p">)</span>
+    <span class="n">x_opt_parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-x&quot;</span><span class="p">,</span> <span class="s2">&quot;--websocket&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;web_socket&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;8100&quot;</span><span class="p">,</span>      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Web-Socket Port (default 8100)&quot;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+    <span class="n">x_opt_parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;-t&quot;</span><span class="p">,</span> <span class="s2">&quot;--translate&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;translate&quot;</span><span class="p">,</span>  <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optional creation of POT file&quot;</span><span class="p">)</span>
+
+    <span class="p">(</span><span class="n">x_options</span><span class="p">,</span> <span class="n">x_args</span><span class="p">)</span> <span class="o">=</span> <span class="n">x_opt_parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">TService</span><span class="o">.</span><span class="n">set_environment</span><span class="p">(</span><span class="n">x_options</span><span class="o">.</span><span class="n">web_root</span><span class="p">,</span> <span class="n">x_options</span><span class="o">.</span><span class="n">http_host</span><span class="p">,</span> <span class="n">x_options</span><span class="o">.</span><span class="n">web_socket</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">public_path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">public_path</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">x_opt_parser</span><span class="o">.</span><span class="n">print_help</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;webroot not found. Specify path using option &quot;--webroot &lt;path&gt;&quot;&#39;</span><span class="p">)</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">x_httpd</span>   <span class="o">=</span> <span class="n">TWebServer</span><span class="p">((</span><span class="n">x_options</span><span class="o">.</span><span class="n">http_host</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">x_options</span><span class="o">.</span><span class="n">http_port</span><span class="p">)),</span> <span class="n">THttpHandler</span><span class="p">,</span> <span class="n">x_options</span><span class="o">.</span><span class="n">web_socket</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;serving </span><span class="si">{</span><span class="n">x_options</span><span class="o">.</span><span class="n">http_host</span><span class="si">}</span><span class="s2"> at port </span><span class="si">{</span><span class="n">x_options</span><span class="o">.</span><span class="n">http_port</span><span class="si">}</span><span class="s2"> ...&quot;</span><span class="p">)</span>
+
+    <span class="n">x_httpd</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;shutdown&#39;</span><span class="p">)</span>
+    <span class="n">exit</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">EX_OK</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Albert Zedlitz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

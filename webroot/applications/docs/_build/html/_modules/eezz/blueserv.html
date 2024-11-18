@@ -1,0 +1,338 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eezz.blueserv &mdash; EEZZ 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            EEZZ
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">eezz</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">EEZZ</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">eezz.blueserv</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for eezz.blueserv</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The module bueserv handles the bluetooth features of EEZZ.</span>
+<span class="sd">and implements the following classes</span>
+
+<span class="sd">    * :py:class:`eezz.table.TBluetooth`:        TTable for listing bluetooth devices in range</span>
+<span class="sd">    * :py:class:`eezz.table.TBluetoothService`: Communicates with bluetooth-service EEZZ on mobile device</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">select</span>
+<span class="kn">from</span>   <span class="nn">threading</span>       <span class="kn">import</span> <span class="n">Thread</span><span class="p">,</span> <span class="n">Lock</span><span class="p">,</span> <span class="n">Condition</span>
+<span class="kn">from</span>   <span class="nn">table</span>           <span class="kn">import</span> <span class="n">TTable</span><span class="p">,</span> <span class="n">TTableRow</span>
+
+<span class="kn">import</span> <span class="nn">bluetooth</span>
+<span class="kn">from</span>   <span class="nn">bluetooth</span>       <span class="kn">import</span> <span class="n">BluetoothSocket</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">gettext</span>
+<span class="kn">from</span>   <span class="nn">dataclasses</span>      <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span>   <span class="nn">itertools</span>        <span class="kn">import</span> <span class="n">filterfalse</span>
+<span class="kn">from</span>   <span class="nn">typing</span>           <span class="kn">import</span> <span class="n">List</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+
+<span class="n">_</span> <span class="o">=</span> <span class="n">gettext</span><span class="o">.</span><span class="n">gettext</span>
+
+
+<div class="viewcode-block" id="TBluetoothService">
+<a class="viewcode-back" href="../../eezz.html#eezz.blueserv.TBluetoothService">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">TBluetoothService</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class is responsible for managing Bluetooth connections and communication with the EEZZ service.</span>
+
+<span class="sd">    The TBluetoothService class encapsulates the functionality for establishing, maintaining, and terminating</span>
+<span class="sd">    Bluetooth connections. It uses the EEZZ service for communication, indicated by a specific GUID. Apart from</span>
+<span class="sd">    managing connections, it provides mechanisms for sending requests and handling responses from the EEZZ service.</span>
+<span class="sd">    It also includes error handling for various connection states and exceptions.</span>
+
+<span class="sd">    :ivar address:      Address of the Bluetooth device to connect to.</span>
+<span class="sd">    :type address:      str</span>
+<span class="sd">    :ivar eezz_service: Service GUID of the EEZZ app.</span>
+<span class="sd">    :type eezz_service: str</span>
+<span class="sd">    :ivar m_lock:       A lock to synchronize communication with the Bluetooth service.</span>
+<span class="sd">    :type m_lock:       Lock</span>
+<span class="sd">    :ivar bt_socket:    The communication socket once established.</span>
+<span class="sd">    :type bt_socket:    BluetoothSocket</span>
+<span class="sd">    :ivar bt_service:   List of EEZZ services for establishing a connection.</span>
+<span class="sd">    :type bt_service:   list</span>
+<span class="sd">    :ivar connected:    Indicates whether the connection to the EEZZ service is established.</span>
+<span class="sd">    :type connected:    bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">address</span><span class="p">:</span>        <span class="nb">str</span>                  <span class="c1">#: :meta private:</span>
+    <span class="n">eezz_service</span><span class="p">:</span>   <span class="nb">str</span>        <span class="o">=</span> <span class="s2">&quot;07e30214-406b-11e3-8770-84a6c8168ea0&quot;</span>  <span class="c1"># :meta private: service GUID of the eezz App</span>
+    <span class="n">m_lock</span><span class="p">:</span>         <span class="n">Lock</span>       <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>  <span class="c1">#: :meta private: Sync communication with bluetooth service</span>
+    <span class="n">bt_service</span><span class="p">:</span>     <span class="nb">list</span>       <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private: List of eezz service App for establishing a connection</span>
+    <span class="n">connected</span><span class="p">:</span>      <span class="nb">bool</span>       <span class="o">=</span> <span class="kc">False</span>   <span class="c1">#: :meta private: Indicates whether connection to eezz service is established</span>
+    <span class="n">bt_socket</span><span class="p">:</span>      <span class="n">BluetoothSocket</span>  <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private: The communication socket once established</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">error_codes</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;open_connection&#39;</span><span class="p">:</span>   <span class="p">(</span><span class="mi">700</span><span class="p">,</span> <span class="s1">&#39;Could not connect to EEZZ service on address=</span><span class="si">{address}</span><span class="s1">&#39;</span><span class="p">),</span>
+                            <span class="s1">&#39;timeout&#39;</span><span class="p">:</span>           <span class="p">(</span><span class="mi">701</span><span class="p">,</span> <span class="s1">&#39;EEZZ service timeout on address=</span><span class="si">{address}</span><span class="s1">&#39;</span><span class="p">),</span>
+                            <span class="s1">&#39;connection_closed&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">702</span><span class="p">,</span> <span class="s1">&#39;Connection closed by peer&#39;</span><span class="p">),</span>
+                            <span class="s1">&#39;communication&#39;</span><span class="p">:</span>     <span class="p">(</span><span class="mi">703</span><span class="p">,</span> <span class="s1">&#39;Connection closed during communication with exception </span><span class="si">{exception}</span><span class="s1">&#39;</span><span class="p">)}</span>
+
+    <span class="k">def</span> <span class="nf">open_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private:</span>
+<span class="sd">        Open a bluetooth connection &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span> <span class="o">=</span> <span class="n">bluetooth</span><span class="o">.</span><span class="n">find_service</span><span class="p">(</span><span class="n">uuid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eezz_service</span><span class="p">,</span> <span class="n">address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bt_socket</span>  <span class="o">=</span> <span class="n">BluetoothSocket</span><span class="p">(</span><span class="n">bluetooth</span><span class="o">.</span><span class="n">RFCOMM</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bt_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;host&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;port&#39;</span><span class="p">]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connected</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private:</span>
+<span class="sd">        Shutdown interrupts open connections, stops the port-select and closes all open sockets. &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bt_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connected</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="TBluetoothService.send_request">
+<a class="viewcode-back" href="../../eezz.html#eezz.blueserv.TBluetoothService.send_request">[docs]</a>
+    <span class="k">def</span> <span class="nf">send_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sends a request to a remote server via a Bluetooth socket.</span>
+
+<span class="sd">        This function attempts to open a connection, format the request message,</span>
+<span class="sd">        send the message through a Bluetooth socket, and wait for a response. If</span>
+<span class="sd">        any issue occurs during these steps, it handles the errors appropriately</span>
+<span class="sd">        and returns a corresponding error message.</span>
+
+<span class="sd">        :param command: The command to be sent to the remote server</span>
+<span class="sd">        :type command:  str</span>
+<span class="sd">        :param args:    List of arguments associated with the command</span>
+<span class="sd">        :type args:     list</span>
+<span class="sd">        :return:        A dictionary with the result of the operation, containing either</span>
+<span class="sd">                        the server&#39;s response or an error code and description</span>
+<span class="sd">        :rtype:         dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_connection</span><span class="p">():</span>
+            <span class="n">x_code</span><span class="p">,</span> <span class="n">x_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_codes</span><span class="p">[</span><span class="s1">&#39;open_connection&#39;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="n">x_code</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">x_text</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)}}</span>
+
+        <span class="n">message</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;command&#39;</span><span class="p">:</span> <span class="n">command</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">args</span><span class="p">}</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_lock</span><span class="p">:</span>
+                <span class="n">x_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+                <span class="c1"># Send request: Wait for writer and send message</span>
+                <span class="n">x_rd</span><span class="p">,</span> <span class="n">x_wr</span><span class="p">,</span> <span class="n">x_err</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">select</span><span class="p">([],</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">bt_socket</span><span class="p">],</span> <span class="p">[],</span> <span class="n">x_timeout</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">x_wr</span><span class="p">:</span>
+                    <span class="n">x_code</span><span class="p">,</span> <span class="n">x_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_codes</span><span class="p">[</span><span class="s1">&#39;timeout&#39;</span><span class="p">]</span>
+                    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="n">x_code</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">x_text</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)}}</span>
+
+                <span class="k">for</span> <span class="n">x_writer</span> <span class="ow">in</span> <span class="n">x_wr</span><span class="p">:</span>
+                    <span class="n">x_writer</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">message</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># receive an answer</span>
+                <span class="n">x_rd</span><span class="p">,</span> <span class="n">x_wr</span><span class="p">,</span> <span class="n">x_err</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">bt_socket</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">bt_socket</span><span class="p">],</span> <span class="n">x_timeout</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">x_err</span><span class="p">:</span>
+                    <span class="n">x_code</span><span class="p">,</span> <span class="n">x_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_codes</span><span class="p">[</span><span class="s1">&#39;connection_closed&#39;</span><span class="p">]</span>
+                    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="n">x_code</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">x_text</span><span class="p">}}</span>
+
+                <span class="k">for</span> <span class="n">x_reader</span> <span class="ow">in</span> <span class="n">x_rd</span><span class="p">:</span>
+                    <span class="n">x_result</span>   <span class="o">=</span> <span class="n">x_reader</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+                    <span class="n">x_result</span>   <span class="o">=</span> <span class="n">x_result</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+                    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x_result</span><span class="p">)</span>
+
+                <span class="n">x_code</span><span class="p">,</span> <span class="n">x_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_codes</span><span class="p">[</span><span class="s1">&#39;timeout&#39;</span><span class="p">]</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="n">x_code</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">x_text</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)}}</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">xEx</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connected</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bt_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">x_code</span><span class="p">,</span> <span class="n">x_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_codes</span><span class="p">[</span><span class="s1">&#39;communication&#39;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;code&quot;</span><span class="p">:</span> <span class="n">x_code</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">x_text</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">exception</span><span class="o">=</span><span class="nb">repr</span><span class="p">(</span><span class="n">xEx</span><span class="p">))}}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TBluetooth">
+<a class="viewcode-back" href="../../eezz.html#eezz.blueserv.TBluetooth">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">TBluetooth</span><span class="p">(</span><span class="n">TTable</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; The bluetooth class manages bluetooth devices in range</span>
+<span class="sd">    A scan_thread is started to keep looking for new devices.</span>
+<span class="sd">    If there are any changes, self.async_condition.notif_all is triggered.</span>
+<span class="sd">    The inherited attributes for column_names and title are fixed to constant values</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">column_names</span><span class="p">:</span>       <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private: Constant list [&#39;Address&#39;, &#39;Name&#39;]</span>
+    <span class="n">title</span><span class="p">:</span>              <span class="nb">str</span>       <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private: Constant title &#39;bluetooth devices&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">column_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Address&#39;</span><span class="p">,</span> <span class="s1">&#39;Name&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span>        <span class="o">=</span> <span class="s1">&#39;bluetooth devices&#39;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_bluetooth</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">find_devices</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;find devices&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_bluetooth</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+<div class="viewcode-block" id="TBluetooth.find_devices">
+<a class="viewcode-back" href="../../eezz.html#eezz.blueserv.TBluetooth.find_devices">[docs]</a>
+    <span class="k">def</span> <span class="nf">find_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Manages discovery of nearby Bluetooth devices and maintains an internal list</span>
+<span class="sd">        of these devices, notifying when there are changes.</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        async_lock : threading.Lock</span>
+<span class="sd">            Lock to manage simultaneous access to the data.</span>
+<span class="sd">        async_condition : threading.Condition</span>
+<span class="sd">            Condition to notify listeners on changes in the list of discovered devices.</span>
+<span class="sd">        data : list</span>
+<span class="sd">            Internal list of discovered Bluetooth devices.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">x_result</span> <span class="o">=</span> <span class="n">bluetooth</span><span class="o">.</span><span class="n">discover_devices</span><span class="p">(</span><span class="n">flush_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">lookup_names</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">async_lock</span><span class="p">:</span>
+                <span class="n">table_changed</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="c1"># Step 1: Reduce the internal list to devices in range</span>
+                <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x_data</span><span class="p">:</span> <span class="p">(</span><span class="n">x_data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x_data</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="ow">in</span> <span class="n">x_result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                    <span class="n">table_changed</span> <span class="o">=</span> <span class="kc">True</span>
+
+                <span class="c1"># Step 2: Check for new entries</span>
+                <span class="n">x_stored_devices</span> <span class="o">=</span> <span class="p">[(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x_data</span><span class="p">:</span> <span class="n">x_data</span> <span class="ow">in</span> <span class="n">x_stored_devices</span><span class="p">,</span> <span class="n">x_result</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">row_id</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">exists_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">table_changed</span> <span class="o">=</span> <span class="kc">True</span>
+
+                <span class="k">if</span> <span class="n">table_changed</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">async_condition</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">async_condition</span><span class="o">.</span><span class="n">notify_all</span><span class="p">()</span>
+            <span class="c1"># wait a bit for next scan</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TBluetooth.get_visible_rows">
+<a class="viewcode-back" href="../../eezz.html#eezz.blueserv.TBluetooth.get_visible_rows">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_visible_rows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get_all</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableRow</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves the visible rows from the table. If `get_all` is set to True,</span>
+<span class="sd">        it retrieves all the rows regardless of their visibility.</span>
+
+<span class="sd">        :param get_all: Boolean flag to indicate whether to retrieve all rows</span>
+<span class="sd">                        or only visible rows, defaults to False</span>
+<span class="sd">        :type get_all:  bool</span>
+<span class="sd">        :return:        List of visible rows or all rows depending on the `get_all` flag</span>
+<span class="sd">        :rtype:         List[TTableRow]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">async_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_visible_rows</span><span class="p">(</span><span class="n">get_all</span><span class="o">=</span><span class="n">get_all</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># --- Section for module test</span>
+<span class="k">def</span> <span class="nf">test_bluetooth_table</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Test the access to the bluetooth environment &quot;&quot;&quot;</span>
+    <span class="n">bt</span> <span class="o">=</span> <span class="n">TBluetooth</span><span class="p">()</span>
+
+    <span class="c1"># Wait for the table to change</span>
+    <span class="k">with</span> <span class="n">bt</span><span class="o">.</span><span class="n">async_condition</span><span class="p">:</span>
+        <span class="n">bt</span><span class="o">.</span><span class="n">async_condition</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+    <span class="n">bt</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Main entry point for module tests &quot;&quot;&quot;</span>
+    <span class="n">test_bluetooth_table</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Albert Zedlitz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
