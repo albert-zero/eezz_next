@@ -11,7 +11,8 @@
         <caption data-eezz="template: table">{table.title}</caption>
         <thead>
             <tr data-eezz="template: row, match: header">
-                 <th class="clzz_th" data-eezz="template: cell, event: do_sort(index={cell.index})">{cell.value}</th></tr>
+                 <th class="clzz_th"
+                     data-eezz="template: cell, event: do_sort(index={cell.index}), update: this.tbody">{cell.value}</th></tr>
         </thead>
         <tbody>
             <tr data-eezz="template: row, match: body, event: on_select(index={row.row_id})">

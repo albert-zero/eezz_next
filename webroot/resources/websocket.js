@@ -119,6 +119,9 @@ function dynamic_update(a_update_json) {
     if (x_attr == 'innerHTML') {
         x_elem.innerHTML = a_update_json.value;
     }
+    else if (x_attr == 'subtree') {
+        tree_expand(x_elem, a_update_json.value)
+    }
     else {
         x_elem.setAttribute(x_attr, a_update_json.value);
     }    
@@ -137,39 +140,35 @@ function tree_collapse(a_node_element) {
 
 // Inserts a sub-tree into a tree <TR> element, which is defined a given element id
 // The constrains are: subtree.tagName is table, and it contains a thead and a tbody
-function tree_expand(a_node_id, a_subtree) {
-	// Find tree node by id tag element tr
-	var x_node_element  = document.getElementById(a_node_id);
-    if (x_node_element == null)
-        return;
-
+function tree_expand(a_node_element, a_subtree) {
     // Make sure, that the tree node is collapsed and save the node entry as table header entry
 	tree_collapse(x_node_element);
-	var x_nr_columns   = x_node_element.getElementsByTagName('td').length.toString()
-	var x_subtree_body = a_subtree.querySelector('tbody');
-	if (x_subtree_body == null)
-	    return;
+	var x_nr_columns = x_node_element.getElementsByTagName('td').length.toString()
 
-	x_subtree_body.setAttribute('class', 'clzz_tree_node');
-	x_subtree.setAttribute('class', 'clzz_tree_node');
+    // The thead stores the current row elements
+	var x_new_head       = document.createElement('thead');
+	x_new_head.innerHTML = a_node_element.outerHTML;
+    x_new_head.setAttribute('class', 'clzz_tree_node_head');
 
-	var x_subtree_header = a_subtree.querySelector('thead');
-	if (x_subtree_header == null)
-	    return;
+	// The tbody contains the subtree
+	var x_new_body       = document.createElement('tbody');
+    x_new_body.innerHTML = a_subtree;
+    x_new_body.setAttribute('class', 'clzz_tree_node_body');
 
-	x_subtree_header.innerHTML = x_node_element.outerHTML;
-	x_subtree_header.setAttribute('class', 'clzz_tree_node');
-	x_node_element.innerHTML   = '';
+    // The table collects and maintains thead and tbody
+	var x_new_tree       = document.createElement('table');
+    x_new_tree.appendChild(x_new_head);
+    x_new_tree.appendChild(x_new_body);
 
-    // Create a <td> cell as container:
-    // Add the subtree to this container and the container to <tr> node-element
-	var x_new_cell = document.createElement('td');
-    x_new_cell.setAttribute('class', 'clzz_tree_node');
+    // The original cell content is deleted and replaced with the table above
+	var x_new_cell       = document.createElement('td');
     x_new_cell.setAttribute('colspan', x_nr_columns);
+    x_new_cell.setAttribute('class', 'clzz_tree_node');
+    x_new_cell.appendChild(x_new_tree);
 
-    x_new_cell.appendChild(a_subtree)
+	x_node_element.innerHTML  = '';
     x_node_element.appendChild(x_new_cell)
-    x_node_element.setAttribute('data-eezz-subtree_state', 'expanded');
+    a_node_element.setAttribute('data-eezz-subtree_state', 'expanded');
 }
 
 // Function collects all eezz events from page using WEB-socket to

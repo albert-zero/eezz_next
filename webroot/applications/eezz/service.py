@@ -376,6 +376,10 @@ if __name__ == '__main__':
     x_source = """ event: on_select(index={row.row_id}), update: elem1.innerHTML = {object.path}, elem2.innerHTML = {object.row_id}  """
     x_result = test_parser(source=x_source)
 
+    logger.debug("template statement 1")
+    x_source = "template: cell, event: do_sort(index={cell.index}), update: this.tbody"
+    x_result = test_parser(source=x_source)
+
     x_update  = x_result['update']
     x_reslist = list()
     for x, y in x_update.items():

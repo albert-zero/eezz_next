@@ -28,7 +28,7 @@ update_item       : qualified_string "=" format_string
 string            : CNAME                                   -> simple_str
 ?quoted_string    : ESCAPED_STRING                          -> escaped_str
 ?qualified_string : [ string ("." string  )* ]
-?format_string    : "{" [ string ("." string  )* ] "}"
+?format_string    : "{" [ string ("." string  )* ] "}" | "*"
 
 %import common.ESCAPED_STRING
 %import common.CNAME

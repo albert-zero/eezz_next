@@ -22,18 +22,23 @@
     * :py:class:`eezz.table.TSort`:         Enumeration for method :py:meth:`eezz.table.TTable.do_sort`
 
 """
-import itertools
+import  itertools
 import  os
 import  re
 from    collections.abc  import Callable
 from    collections import UserList
-from    dataclasses import dataclass
+from    dataclasses import dataclass, field
 from    itertools   import filterfalse, chain
-from    typing      import List, Dict, NewType, Any
+from    typing      import List, Dict, NewType, Any, ClassVar
 from    enum        import Enum
 from    pathlib     import Path
 from    datetime    import datetime, timezone
 from    copy        import deepcopy
+from    abc         import abstractmethod
+from    Crypto.Hash import SHA1
+
+from typing_extensions import override
+
 from    service     import TService
 from    threading   import Condition, Lock
 import  logging
@@ -214,8 +219,8 @@ class TTable(UserList):
         >>> print(f"{my_table.format_types['iban'](30, iban)}")
                 de12 1234 1234 1234 12
     """
-    column_names:       List[str]                       #: :meta private: Property - List of column names
-    title:              str         = 'TTable'          #: :meta private: Property - Table title name
+    column_names:       List[str]                       #: :meta private: List of column names
+    title:              str         = 'TTable'          #: :meta private: Table title name
     column_names_map:   Dict[str, TTableCell]   = None  #: :meta private: Map name to columns
     column_names_alias: Dict[str, str]          = None  #: :meta private: Translated column names
     column_names_filter: List[int]              = None  #: :meta private: Index for shuffle columns
@@ -238,6 +243,8 @@ class TTable(UserList):
         """ Post init for a data class
         The value for self.format_types could be customized for own data type formatting
         The formatter sends size aad value of the column and receives the formatted string """
+
+        # Init the UserList and keep track on the table instances
         super().__init__()
         self.table_index = dict()
 
@@ -339,7 +346,7 @@ class TTable(UserList):
         # Check if the row-id is unique
         if self.table_index.get(row_id):
             if not exists_ok:
-                raise TTableException(f'InsertException: row-id already exists {row_id}')
+                raise TTableException(f'InsertException: row-id already exists {table_row}: {row_id}')
             return self.table_index.get(row_id)
 
         x_cells = [TTableCell(name=x_descr.header, width=len(str(x_cell)), value=x_cell, index=x_descr.index, type=x_descr.type) for x_cell, x_descr in x_row_descr]
@@ -522,22 +529,22 @@ class TTable(UserList):
                 self.offset = max(0, len(self) - self.visible_items)
         self.is_synchron = False
 
-    def do_sort(self, column: int | str, reverse: bool = False) -> None:
+    def do_sort(self, column: int | str, reverse: bool = False) -> TTable:
         """ :meta private: Toggle sort on a given column index """
         super().sort(key=lambda x_row: x_row[column], reverse=reverse)
+        return self
 
-    def print(self) -> None:
+    def print(self, level: int = 0) -> None:
         """ Print ASCII formatted table
-
-        :param rows: Optional parameter to print selected rows. If not set, print the visible rows.
         """
+        x_offset        = ' ' * 6 * level
         x_column_descr  = [self.column_descr[x] for x in self.column_names_filter] if self.apply_filter_column \
                       else self.column_descr
 
-        print(f'Table: {self.title}')
+        print(f'{x_offset}Table: {self.title}')
         x_formatted_row = '|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.alias)  for x_col in x_column_descr])  if self.apply_filter_column \
                     else ('|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.header) for x_col in x_column_descr]))
-        print(f'|{x_formatted_row}|')
+        print(f'{x_offset}|{x_formatted_row}|')
 
         for x_row in self.get_visible_rows():
             x_cells         = [x_row.cells[x] for x in self.column_names_filter] if self.apply_filter_column else x_row.cells
@@ -546,7 +553,10 @@ class TTable(UserList):
                           else ('str',        x_descr.width, str(x_cell.value)) for x_cell, x_descr in x_row_descr]
 
             x_formatted_row = '|'.join([self.format_types[x_type](x_width, x_value) for x_type, x_width, x_value in x_format_descr])
-            print(f'|{x_formatted_row}|')
+            if x_row.child:
+                x_row.child.print(level + 1)
+            else:
+                print(f'{x_offset}|{x_formatted_row}|')
 
 
 def test_table():
@@ -601,13 +611,7 @@ def test_table():
 
 if __name__ == '__main__':
     """:meta private:"""
-    x_service = TService(root_path=Path(r'C:\Users\alzer\Projects\github\eezz_full\webroot'))
-    x_log_path = x_service.logging_path / 'table.log'
+    TService.set_environment(root_path=r'C:\Users\alzer\Projects\github\eezz_full\webroot')
 
-    #logging.basicConfig(filename=x_log_path, filemode='w', style='{', format='{name} - {levelname} - {funcName} - {message}')
-    #logger = logging.getLogger()
-    logging.config.dictConfig(logging_config)
-    logger.setLevel(logging.DEBUG)
-
-    # print = logger.debug
+    x_log_path = TService().logging_path / 'table.log'
     test_table()
