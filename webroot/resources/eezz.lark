@@ -12,8 +12,11 @@ document          : "document"  "(" list_arguments ")"
 files             : "files"     "(" list_arguments ")"
 
 list_updates      : [ update_item  ("," update_item  )* ]
-update_item       : qualified_string "=" format_string
+update_item       : qualified_string "=" update_string
                   | qualified_string
+
+?update_string    : string
+                  | format_string
 
 ?list_arguments   : [ assignment  ("," assignment  )* ]
 ?assignment       : string "=" value_string

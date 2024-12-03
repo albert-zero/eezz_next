@@ -46,9 +46,18 @@
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">eezz</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">eezz package</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#module-eezz.blueserv">module eezz.blueserv</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.blueserv.TBluetoothService"><code class="docutils literal notranslate"><span class="pre">TBluetoothService</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.blueserv.TBluetooth"><code class="docutils literal notranslate"><span class="pre">TBluetooth</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-eezz">Module contents</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-eezz.table">module eezz.table</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TTable"><code class="docutils literal notranslate"><span class="pre">TTable</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TTableCell"><code class="docutils literal notranslate"><span class="pre">TTableCell</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TTableRow"><code class="docutils literal notranslate"><span class="pre">TTableRow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TTableColumn"><code class="docutils literal notranslate"><span class="pre">TTableColumn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TNavigation"><code class="docutils literal notranslate"><span class="pre">TNavigation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TSort"><code class="docutils literal notranslate"><span class="pre">TSort</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-eezz.tabletree">module eezz.tabletree</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.tabletree.TTableTree"><code class="docutils literal notranslate"><span class="pre">TTableTree</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-eezz.database">module eezz.database</a><ul>
@@ -92,15 +101,6 @@
 <li class="toctree-l4"><a class="reference internal" href="#eezz.session.TSession"><code class="docutils literal notranslate"><span class="pre">TSession</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#module-eezz.table">module eezz.table</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TTable"><code class="docutils literal notranslate"><span class="pre">TTable</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TTableCell"><code class="docutils literal notranslate"><span class="pre">TTableCell</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TTableRow"><code class="docutils literal notranslate"><span class="pre">TTableRow</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TTableColumn"><code class="docutils literal notranslate"><span class="pre">TTableColumn</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TNavigation"><code class="docutils literal notranslate"><span class="pre">TNavigation</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.table.TSort"><code class="docutils literal notranslate"><span class="pre">TSort</span></code></a></li>
-</ul>
-</li>
 <li class="toctree-l3"><a class="reference internal" href="#module-eezz.websocket">module eezz.websocket</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TAsyncHandler"><code class="docutils literal notranslate"><span class="pre">TAsyncHandler</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TWebSocket"><code class="docutils literal notranslate"><span class="pre">TWebSocket</span></code></a></li>
@@ -113,7 +113,11 @@
 <li class="toctree-l4"><a class="reference internal" href="#eezz.mobile.TMobileDevices"><code class="docutils literal notranslate"><span class="pre">TMobileDevices</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#module-eezz">Module contents</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-eezz.blueserv">module eezz.blueserv</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.blueserv.TBluetoothService"><code class="docutils literal notranslate"><span class="pre">TBluetoothService</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.blueserv.TBluetooth"><code class="docutils literal notranslate"><span class="pre">TBluetooth</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -150,134 +154,428 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
 </section>
-<section id="module-eezz.blueserv">
-<span id="module-eezz-blueserv"></span><h2>module eezz.blueserv<a class="headerlink" href="#module-eezz.blueserv" title="Link to this heading"></a></h2>
-<p>The module bueserv handles the bluetooth features of EEZZ.
-and implements the following classes</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TBluetooth</span></code>:        TTable for listing bluetooth devices in range</p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TBluetoothService</span></code>: Communicates with bluetooth-service EEZZ on mobile device</p></li>
+<section id="module-eezz">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-eezz" title="Link to this heading"></a></h2>
+</section>
+<section id="module-eezz.table">
+<span id="module-eezz-table"></span><h2>module eezz.table<a class="headerlink" href="#module-eezz.table" title="Link to this heading"></a></h2>
+<p>This module implements the following classes:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableCell</span></code></a>:   Defines properties of a table cell</p></li>
+<li><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableRow</span></code></a>:    Defines properties of a table row, containing a list of TTableCells</p></li>
+<li><p><a class="reference internal" href="#eezz.table.TTableColumn" title="eezz.table.TTableColumn"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableColumn</span></code></a>: Defines properties of a table column</p></li>
+<li><p><a class="reference internal" href="#eezz.table.TTable" title="eezz.table.TTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTable</span></code></a>:       Defines properties of a table, containing a list of TTableRows</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableException</span></code>: Exception on checking the row-id, which has to be unique</p></li>
 </ul>
-</div></blockquote>
+<p>TTable is used for formatted ASCII output of a table structure.
+It allows to access the table data for further processing e.g. for HTML output. The class handles an
+internal read cursor, which allows to navigate in the list of rows and to read a fixed amount of rows.</p>
+<p>TTable is a list of TTableRow objects, each of which is a list of TCell objects.
+The TTableColumn holds the as well column names as types and is used to organize sort and filter.
+A TTableCell object could hold a TTable object for recursive tree structures.</p>
+<p>Besides this the following enumerations are used</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#eezz.table.TNavigation" title="eezz.table.TNavigation"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TNavigation</span></code></a>:   Enumeration for method <a class="reference internal" href="#eezz.table.TTable.navigate" title="eezz.table.TTable.navigate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">eezz.table.TTable.navigate()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#eezz.table.TSort" title="eezz.table.TSort"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TSort</span></code></a>:         Enumeration for method <code class="xref py py-meth docutils literal notranslate"><span class="pre">eezz.table.TTable.do_sort()</span></code></p></li>
+</ul>
 <dl class="py class">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetoothService">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.blueserv.</span></span><span class="sig-name descname"><span class="pre">TBluetoothService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetoothService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetoothService" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>This class is responsible for managing Bluetooth connections and communication with the EEZZ service.</p>
-<p>The TBluetoothService class encapsulates the functionality for establishing, maintaining, and terminating
-Bluetooth connections. It uses the EEZZ service for communication, indicated by a specific GUID. Apart from
-managing connections, it provides mechanisms for sending requests and handling responses from the EEZZ service.
-It also includes error handling for various connection states and exceptions.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dt class="sig sig-object py" id="eezz.table.TTable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UserList</span></code></p>
+<p>The table is derived from User-list to enable sort and list management
+This is a dataclass, so the arguments become properties</p>
+<dl class="field-list simple" id="ttable-parameter-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>address</strong> – Address of the Bluetooth device to connect to.</p></li>
-<li><p><strong>eezz_service</strong> – Service GUID of the EEZZ app.</p></li>
-<li><p><strong>m_lock</strong> – A lock to synchronize communication with the Bluetooth service.</p></li>
-<li><p><strong>bt_socket</strong> – The communication socket once established.</p></li>
-<li><p><strong>bt_service</strong> – List of EEZZ services for establishing a connection.</p></li>
-<li><p><strong>connected</strong> – Indicates whether the connection to the EEZZ service is established.</p></li>
+<li><p><strong>column_names</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of names for each column</p></li>
+<li><p><strong>title</strong> (<em>str</em>) – Table name and title</p></li>
 </ul>
 </dd>
+<dt class="field-even">Variables<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>format_types</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Callable</em><em>[</em><em>size</em><em>, </em><em>value</em><em>]</em><em>]</em>) – A map for types and format rules.
+The callable takes two variables, the width and the value.</p>
+</dd>
 </dl>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetoothService.eezz_service">
-<span class="sig-name descname"><span class="pre">eezz_service</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'07e30214-406b-11e3-8770-84a6c8168ea0'</span></em><a class="headerlink" href="#eezz.blueserv.TBluetoothService.eezz_service" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
+<p class="rubric">Examples</p>
+<p>Table instance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">table</span> <span class="kn">import</span> <span class="n">TTable</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># for file in Path(&#39;.&#39;).iterdir():</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1">#    my_table.append(table_row=[file, file.stat().st_size])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;.idea&#39;</span><span class="p">,</span>        <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;directory.py&#39;</span><span class="p">,</span> <span class="mi">1699</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>    <span class="mi">37</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span>  <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+<span class="go">Table: Directory</span>
+<span class="go">| FileName     | Size |</span>
+<span class="go">| .idea        | 4096 |</span>
+<span class="go">| directory.py | 1699 |</span>
+<span class="go">| __init__.py  |   37 |</span>
+<span class="go">| __pycache__  | 4096 |</span>
+</pre></div>
+</div>
+<p>This is a possible extension of a format for type iban, breaking the string into chunks of 4:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">iban</span> <span class="o">=</span> <span class="s1">&#39;de1212341234123412&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;iban&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x_size</span><span class="p">,</span> <span class="n">x_val</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s1">&#39;.{1,4}&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">x_val</span><span class="p">)))</span><span class="si">:</span><span class="s2">&gt;</span><span class="si">{</span><span class="n">x_size</span><span class="si">}}</span><span class="s2">&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">my_table</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;iban&#39;</span><span class="p">](</span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="n">iban</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">        de12 1234 1234 1234 12</span>
+</pre></div>
+</div>
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetoothService.send_request">
-<span class="sig-name descname"><span class="pre">send_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetoothService.send_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetoothService.send_request" title="Link to this definition"></a></dt>
-<dd><p>Sends a request to a remote server via a Bluetooth socket.</p>
-<p>This function attempts to open a connection, format the request message,
-send the message through a Bluetooth socket, and wait for a response. If
-any issue occurs during these steps, it handles the errors appropriately
-and returns a corresponding error message.</p>
+<dt class="sig sig-object py" id="eezz.table.TTable.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table_row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'body'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exists_ok</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.append"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.append" title="Link to this definition"></a></dt>
+<dd><p>Append a row into the table
+This procedure also defines the column type and the width</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>command</strong> (<em>str</em>) – The command to be sent to the remote server</p></li>
-<li><p><strong>args</strong> (<em>list</em>) – List of arguments associated with the command</p></li>
+<li><p><strong>table_row</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of values</p></li>
+<li><p><strong>attrs</strong> – Customizable attributes</p></li>
+<li><p><strong>row_type</strong> – Row type used for output filter</p></li>
+<li><p><strong>row_id</strong> – Unique row id, which consists of pattern letters and numbers [a-zA-Z0-9]+</p></li>
+<li><p><strong>exists_ok</strong> – Try to append, but do not throw exception, if key exists</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A dictionary with the result of the operation, containing either
-the server’s response or an error code and description</p>
+<dd class="field-even"><p>The generated row object</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict</p>
+<dd class="field-odd"><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>TableInsertException</strong> – Exception if row-id already exists</p>
 </dd>
 </dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.blueserv.</span></span><span class="sig-name descname"><span class="pre">TBluetooth</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetooth"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetooth" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TTable</span></code></p>
-<p>The bluetooth class manages bluetooth devices in range
-A scan_thread is started to keep looking for new devices.
-If there are any changes, self.async_condition.notif_all is triggered.
-The inherited attributes for column_names and title are fixed to constant values</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth.find_devices">
-<span class="sig-name descname"><span class="pre">find_devices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetooth.find_devices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetooth.find_devices" title="Link to this definition"></a></dt>
-<dd><p>Manages discovery of nearby Bluetooth devices and maintains an internal list
-of these devices, notifying when there are changes.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth.async_lock">
-<span class="sig-name descname"><span class="pre">async_lock</span></span><a class="headerlink" href="#eezz.blueserv.TBluetooth.async_lock" title="Link to this definition"></a></dt>
-<dd><p>Lock to manage simultaneous access to the data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>threading.Lock</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth.async_condition">
-<span class="sig-name descname"><span class="pre">async_condition</span></span><a class="headerlink" href="#eezz.blueserv.TBluetooth.async_condition" title="Link to this definition"></a></dt>
-<dd><p>Condition to notify listeners on changes in the list of discovered devices.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>threading.Condition</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth.data">
-<span class="sig-name descname"><span class="pre">data</span></span><a class="headerlink" href="#eezz.blueserv.TBluetooth.data" title="Link to this definition"></a></dt>
-<dd><p>Internal list of discovered Bluetooth devices.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>list</p>
-</dd>
-</dl>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth.get_visible_rows">
-<span class="sig-name descname"><span class="pre">get_visible_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">get_all</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetooth.get_visible_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetooth.get_visible_rows" title="Link to this definition"></a></dt>
-<dd><p>Retrieves the visible rows from the table. If <cite>get_all</cite> is set to True,
-it retrieves all the rows regardless of their visibility.</p>
+<dt class="sig sig-object py" id="eezz.table.TTable.do_select">
+<span class="sig-name descname"><span class="pre">do_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">get_all</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_descr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.do_select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.do_select" title="Link to this definition"></a></dt>
+<dd><p>Create and execute a select statement on the given database.
+For a :memory: database this method achieves a complex search combining multiple columns
+returning the values and the row index of the internal data</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.filter_columns">
+<span class="sig-name descname"><span class="pre">filter_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.filter_columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.filter_columns" title="Link to this definition"></a></dt>
+<dd><p>The column_names is a dictionary with a set of keys as subset of TTable.column_names.
+The values are translated names to display in output. The order of the keys represents the order in the
+output.
+The filter is used to generate customized output. This function could also be used to reduce the number of
+visible columns</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>get_all</strong> (<em>bool</em>) – Boolean flag to indicate whether to retrieve all rows
-or only visible rows, defaults to False</p>
+<dd class="field-odd"><p><strong>column_names</strong> (<em>Dict</em><em>[</em><em>str: str</em><em>]</em>) – Map new names to a column, e.g. after translation</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">filter_columns</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Size&#39;</span><span class="p">:</span><span class="s1">&#39;Größe&#39;</span><span class="p">,</span> <span class="s1">&#39;FileName&#39;</span><span class="p">:</span> <span class="s1">&#39;Datei&#39;</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;.idea&#39;</span><span class="p">,</span>        <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;directory.py&#39;</span><span class="p">,</span> <span class="mi">1886</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>    <span class="mi">37</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span>  <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+<span class="go">Table: Directory</span>
+<span class="go">| Größe | Datei        |</span>
+<span class="go">|  4096 | .idea        |</span>
+<span class="go">|  1886 | directory.py |</span>
+<span class="go">|    37 | __init__.py  |</span>
+<span class="go">|  4096 | __pycache__  |</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.filter_rows">
+<span class="sig-name descname"><span class="pre">filter_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row_filter_descr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTable.filter_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.filter_rows" title="Link to this definition"></a></dt>
+<dd><p>Set the row filter: Each inner list is joined with ‘AND’.
+The outer list joins the inner lists with ‘OR’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.get_header_row">
+<span class="sig-name descname"><span class="pre">get_header_row</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.get_header_row"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.get_header_row" title="Link to this definition"></a></dt>
+<dd><p>Returns the header row.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The header of the table</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.get_next_values">
+<span class="sig-name descname"><span class="pre">get_next_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.get_next_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.get_next_values" title="Link to this definition"></a></dt>
+<dd><p>Generator for all elements of a table.
+Restrict the rows for a search attribute, if specified
+Remove the search criteria, if now second visit is required</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>search_filter</strong> – A function that returns True for any row entry to be shown</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>List of visible rows or all rows depending on the <cite>get_all</cite> flag</p>
+<dd class="field-even"><p>Tuple of values in the order of column names</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.get_visible_rows">
+<span class="sig-name descname"><span class="pre">get_visible_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">get_all</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.get_visible_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.get_visible_rows" title="Link to this definition"></a></dt>
+<dd><p>Select table rows using column values pairs, return at maximum visible_items.
+The value could be any valid regular expression.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>get_all</strong> – If True select more than visible_items</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of selected rows</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>List[<a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a>]</p>
 </dd>
 </dl>
+<p>Example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>   <span class="mi">37</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;test.py&#39;</span><span class="p">,</span>     <span class="mi">1246</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s1">&#39;FileName&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span> <span class="o">=</span> <span class="s1">&#39;^__[a-zA-Z]*__.py&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+<span class="go">Table: Directory</span>
+<span class="go">| FileName    | Size |</span>
+<span class="go">| __init__.py |   37 |</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.navigate">
+<span class="sig-name descname"><span class="pre">navigate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">where_togo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.table.TNavigation" title="eezz.table.TNavigation"><span class="pre">TNavigation</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">TNavigation.NEXT</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.navigate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.navigate" title="Link to this definition"></a></dt>
+<dd><p>Navigate in block mode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>where_togo</strong> (<a class="reference internal" href="#eezz.table.TNavigation" title="eezz.table.TNavigation"><em>TNavigation</em></a>) – Navigation direction</p></li>
+<li><p><strong>position</strong> – Position for absolute navigation, ignored in any other case</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.on_select">
+<span class="sig-name descname"><span class="pre">on_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.on_select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.on_select" title="Link to this definition"></a></dt>
+<dd><p>Select a row from cache</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.print">
+<span class="sig-name descname"><span class="pre">print</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.print"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.print" title="Link to this definition"></a></dt>
+<dd><p>Print ASCII formatted table</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.table.TTableCell">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTableCell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTableCell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTableCell" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The cell is the smallest unit of a table. This class is a dataclass, so all
+parameters become properties</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the corresponding column</p></li>
+<li><p><strong>value</strong> – Content of the cell</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.table.TTableRow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTableRow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cells</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTableRow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTableRow" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>This structure is created for each row in a table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cells</strong> (<em>List</em><em>[</em><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><em>TTableCell</em></a><em> | </em><em>str</em><em>]</em>) – List of row values. If specified as list of string values of the
+column descriptor are calculated to default.
+If specified as list of TTableCell you could set specific values during creation</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TTableRow.cells">
+<span class="sig-name descname"><span class="pre">cells</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><span class="pre">TTableCell</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#eezz.table.TTableRow.cells" title="Link to this definition"></a></dt>
+<dd><p>Property - A list of strings are converted to a list of TTableCells</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTableRow.get_values_list">
+<span class="sig-name descname"><span class="pre">get_values_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTableRow.get_values_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTableRow.get_values_list" title="Link to this definition"></a></dt>
+<dd><p>Get all values in a row as a list</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.table.TTableColumn">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTableColumn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attrs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTableColumn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTableColumn" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Summarize the cell properties in a column, which includes sorting and formatting.
+This class is a dataclass, so all parameters become properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>header</strong> (<em>str</em>) – Display name for the column</p></li>
+<li><p><strong>attrs</strong> (<em>dict</em>) – User attributes</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.table.TNavigation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TNavigation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TNavigation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TNavigation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Elements to describe navigation events for method <a class="reference internal" href="#eezz.table.TTable.navigate" title="eezz.table.TTable.navigate"><code class="xref py py-func docutils literal notranslate"><span class="pre">eezz.table.TTable.navigate()</span></code></a>. The navigation is
+organized in chunks of rows given by property
+<a class="reference internal" href="#ttable-parameter-list"><span class="std std-ref">TTable.visible_items</span></a>:</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TNavigation.ABS">
+<span class="sig-name descname"><span class="pre">ABS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(0,</span> <span class="pre">'Request</span> <span class="pre">an</span> <span class="pre">absolute</span> <span class="pre">position</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">dataset')</span></em><a class="headerlink" href="#eezz.table.TNavigation.ABS" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TNavigation.LAST">
+<span class="sig-name descname"><span class="pre">LAST</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(4,</span> <span class="pre">'Set</span> <span class="pre">the</span> <span class="pre">cursor</span> <span class="pre">to</span> <span class="pre">show</span> <span class="pre">the</span> <span class="pre">last</span> <span class="pre">chunk</span> <span class="pre">of</span> <span class="pre">rows')</span></em><a class="headerlink" href="#eezz.table.TNavigation.LAST" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TNavigation.NEXT">
+<span class="sig-name descname"><span class="pre">NEXT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(1,</span> <span class="pre">'Set</span> <span class="pre">the</span> <span class="pre">cursor</span> <span class="pre">to</span> <span class="pre">show</span> <span class="pre">the</span> <span class="pre">next</span> <span class="pre">chunk</span> <span class="pre">of</span> <span class="pre">rows')</span></em><a class="headerlink" href="#eezz.table.TNavigation.NEXT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TNavigation.PREV">
+<span class="sig-name descname"><span class="pre">PREV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(2,</span> <span class="pre">'Set</span> <span class="pre">the</span> <span class="pre">cursor</span> <span class="pre">to</span> <span class="pre">show</span> <span class="pre">the</span> <span class="pre">previous</span> <span class="pre">chunk</span> <span class="pre">of</span> <span class="pre">rows')</span></em><a class="headerlink" href="#eezz.table.TNavigation.PREV" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TNavigation.TOP">
+<span class="sig-name descname"><span class="pre">TOP</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(3,</span> <span class="pre">'Set</span> <span class="pre">the</span> <span class="pre">cursor</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">first</span> <span class="pre">row')</span></em><a class="headerlink" href="#eezz.table.TNavigation.TOP" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.table.TSort">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TSort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TSort"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TSort" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Sorting control enum to define sort on columns</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TSort.ASC">
+<span class="sig-name descname"><span class="pre">ASC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#eezz.table.TSort.ASC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TSort.DESC">
+<span class="sig-name descname"><span class="pre">DESC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#eezz.table.TSort.DESC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.table.TSort.NONE">
+<span class="sig-name descname"><span class="pre">NONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#eezz.table.TSort.NONE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-eezz.tabletree">
+<span id="module-eezz-tabletree"></span><h2>module eezz.tabletree<a class="headerlink" href="#module-eezz.tabletree" title="Link to this heading"></a></h2>
+<p>This module implements the following classes:</p>
+<ul class="simple">
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableTree</span></code>:    Implements a Tree representation, where each node is a TTable with TTableRow entries. Nodes could be expanded and collapsed.</p></li>
+</ul>
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.tabletree.TTableTree">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.tabletree.</span></span><span class="sig-name descname"><span class="pre">TTableTree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/tabletree.html#TTableTree"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.tabletree.TTableTree" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TTable</span></code></p>
+<p>Represents a tree structure of tables where each node is a table and can contain other tables as children.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nodes</strong> – List of table nodes within the tree.</p></li>
+<li><p><strong>root_path</strong> – Path of the table node in the directory structure.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.tabletree.TTableTree.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table_row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'body'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exists_ok</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/tabletree.html#TTableTree.append"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.tabletree.TTableTree.append" title="Link to this definition"></a></dt>
+<dd><p>Append a new row to the table with optional attributes and a specific row type.</p>
+<p>This method takes a list of table row values and the optionally attributes row-type.
+The incoming row-ID must be set to a file entry in specified table path.
+A new unique row-ID is calculated combining TTableTree.root_path and row-ID, which allows to
+address the row in the entire tree as “index” parameter</p>
+<p>Then, it appends the row to the table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>table_row</strong> – A list representing the contents of the table row.</p></li>
+<li><p><strong>row_id</strong> – A string representing a file in a directory.</p></li>
+<li><p><strong>attrs</strong> – A dictionary of attributes to set for the table row (default is None).</p></li>
+<li><p><strong>row_type</strong> – A string representing the type of row, e.g., ‘is_file’, ‘is_dir’ (default is ‘body’).</p></li>
+<li><p><strong>exists_ok</strong> – If True, supress exception, trying to insert the same row-ID</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An instance of TTableRow representing the appended row.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.tabletree.TTableTree.exco">
+<span class="sig-name descname"><span class="pre">exco</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTable" title="eezz.table.TTable"><span class="pre">TTable</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/tabletree.html#TTableTree.exco"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.tabletree.TTableTree.exco" title="Link to this definition"></a></dt>
+<dd><p>This class provides functionalities to expand or collapse node elements in a tree
+based on their index. Expansion status is toggled, i.e., if an element
+is currently collapsed, it will be expanded and vice versa.</p>
+<p>If the subtree is expensive to calculate, override this method and omit the
+clearing of data .</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.tabletree.TTableTree.on_select">
+<span class="sig-name descname"><span class="pre">on_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/tabletree.html#TTableTree.on_select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.tabletree.TTableTree.on_select" title="Link to this definition"></a></dt>
+<dd><p>Handles the selection of a table row by a given index.</p>
+<p>This method iterates through the nodes and checks if a row is selected by
+calling the parent class’s on_select method. If a row is found, it returns
+the selected table row.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>index</strong> (<em>str</em>) – The index of the table row to select.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The selected table row if found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.tabletree.TTableTree.read_dir">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/tabletree.html#TTableTree.read_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.tabletree.TTableTree.read_dir" title="Link to this definition"></a></dt>
+<dd><p>Implement this method to fill the table using self.root_path</p>
 </dd></dl>
 
 </dd></dl>
@@ -883,7 +1181,7 @@ Input for the lamda is a string and output is formatted according to the TTableC
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.generate_html_grid">
-<span class="sig-name descname"><span class="pre">generate_html_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_grid" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">generate_html_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_grid" title="Link to this definition"></a></dt>
 <dd><p>Besides the table, supported display is grid (via class clzz_grid or select</p>
 </dd></dl>
 
@@ -927,7 +1225,7 @@ Cells which are not included as template for table data are used to add a consta
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.generate_html_table">
-<span class="sig-name descname"><span class="pre">generate_html_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_table_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_table" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">generate_html_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_table_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_table" title="Link to this definition"></a></dt>
 <dd><p>Generates a table structure in four steps</p>
 <ol class="arabic simple">
 <li><p>Get the column order and the viewport</p></li>
@@ -1425,352 +1723,6 @@ forwards it to the eezz server page.</p>
 </dd></dl>
 
 </section>
-<section id="module-eezz.table">
-<span id="module-eezz-table"></span><h2>module eezz.table<a class="headerlink" href="#module-eezz.table" title="Link to this heading"></a></h2>
-<p>This module implements the following classes:</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableCell</span></code></a>:   Defines properties of a table cell</p></li>
-<li><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableRow</span></code></a>:    Defines properties of a table row, containing a list of TTableCells</p></li>
-<li><p><a class="reference internal" href="#eezz.table.TTableColumn" title="eezz.table.TTableColumn"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableColumn</span></code></a>: Defines properties of a table column</p></li>
-<li><p><a class="reference internal" href="#eezz.table.TTable" title="eezz.table.TTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTable</span></code></a>:       Defines properties of a table, containing a list of TTableRows</p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableException</span></code>: Exception on checking the row-id, which has to be unique</p></li>
-</ul>
-<p>TTable is used for formatted ASCII output of a table structure.
-It allows to access the table data for further processing e.g. for HTML output. The class handles an
-internal read cursor, which allows to navigate in the list of rows and to read a fixed amount of rows.</p>
-<p>TTable is a list of TTableRow objects, each of which is a list of TCell objects.
-The TTableColumn holds the as well column names as types and is used to organize sort and filter.
-A TTableCell object could hold a TTable object for recursive tree structures.</p>
-<p>Besides this the following enumerations are used</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="#eezz.table.TNavigation" title="eezz.table.TNavigation"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TNavigation</span></code></a>:   Enumeration for method <a class="reference internal" href="#eezz.table.TTable.navigate" title="eezz.table.TTable.navigate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">eezz.table.TTable.navigate()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#eezz.table.TSort" title="eezz.table.TSort"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TSort</span></code></a>:         Enumeration for method <code class="xref py py-meth docutils literal notranslate"><span class="pre">eezz.table.TTable.do_sort()</span></code></p></li>
-</ul>
-<dl class="py class">
-<dt class="sig sig-object py" id="eezz.table.TTable">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UserList</span></code></p>
-<p>The table is derived from User-list to enable sort and list management
-This is a dataclass, so the arguments become properties</p>
-<dl class="field-list simple" id="ttable-parameter-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>column_names</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of names for each column</p></li>
-<li><p><strong>title</strong> (<em>str</em>) – Table name and title</p></li>
-</ul>
-</dd>
-<dt class="field-even">Variables<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>format_types</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Callable</em><em>[</em><em>size</em><em>, </em><em>value</em><em>]</em><em>]</em>) – A map for types and format rules.
-The callable takes two variables, the width and the value.</p>
-</dd>
-</dl>
-<p class="rubric">Examples</p>
-<p>Table instance:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">table</span> <span class="kn">import</span> <span class="n">TTable</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># for file in Path(&#39;.&#39;).iterdir():</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1">#    my_table.append(table_row=[file, file.stat().st_size])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;.idea&#39;</span><span class="p">,</span>        <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;directory.py&#39;</span><span class="p">,</span> <span class="mi">1699</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>    <span class="mi">37</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span>  <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
-<span class="go">Table: Directory</span>
-<span class="go">| FileName     | Size |</span>
-<span class="go">| .idea        | 4096 |</span>
-<span class="go">| directory.py | 1699 |</span>
-<span class="go">| __init__.py  |   37 |</span>
-<span class="go">| __pycache__  | 4096 |</span>
-</pre></div>
-</div>
-<p>This is a possible extension of a format for type iban, breaking the string into chunks of 4:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">iban</span> <span class="o">=</span> <span class="s1">&#39;de1212341234123412&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;iban&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x_size</span><span class="p">,</span> <span class="n">x_val</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s1">&#39;.{1,4}&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">x_val</span><span class="p">)))</span><span class="si">:</span><span class="s2">&gt;</span><span class="si">{</span><span class="n">x_size</span><span class="si">}}</span><span class="s2">&quot;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">my_table</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="s1">&#39;iban&#39;</span><span class="p">](</span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="n">iban</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="go">        de12 1234 1234 1234 12</span>
-</pre></div>
-</div>
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.append">
-<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table_row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'body'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exists_ok</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.append"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.append" title="Link to this definition"></a></dt>
-<dd><p>Append a row into the table
-This procedure also defines the column type and the width</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>table_row</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of values</p></li>
-<li><p><strong>attrs</strong> – Customizable attributes</p></li>
-<li><p><strong>row_type</strong> – Row type used for output filter</p></li>
-<li><p><strong>row_id</strong> – Unique row id, which consists of pattern letters and numbers [a-zA-Z0-9]+</p></li>
-<li><p><strong>exists_ok</strong> – Try to append, but do not throw exception, if key exists</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The generated row object</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a></p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>TableInsertException</strong> – Exception if row-id already exists</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.do_select">
-<span class="sig-name descname"><span class="pre">do_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">get_all</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_descr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.do_select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.do_select" title="Link to this definition"></a></dt>
-<dd><p>Create and execute a select statement on the given database.
-For a :memory: database this method achieves a complex search combining multiple columns
-returning the values and the row index of the internal data</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.filter_columns">
-<span class="sig-name descname"><span class="pre">filter_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.filter_columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.filter_columns" title="Link to this definition"></a></dt>
-<dd><p>The column_names is a dictionary with a set of keys as subset of TTable.column_names.
-The values are translated names to display in output. The order of the keys represents the order in the
-output.
-The filter is used to generate customized output. This function could also be used to reduce the number of
-visible columns</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>column_names</strong> (<em>Dict</em><em>[</em><em>str: str</em><em>]</em>) – Map new names to a column, e.g. after translation</p>
-</dd>
-</dl>
-<p>Example:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">filter_columns</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Size&#39;</span><span class="p">:</span><span class="s1">&#39;Größe&#39;</span><span class="p">,</span> <span class="s1">&#39;FileName&#39;</span><span class="p">:</span> <span class="s1">&#39;Datei&#39;</span><span class="p">})</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;.idea&#39;</span><span class="p">,</span>        <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;directory.py&#39;</span><span class="p">,</span> <span class="mi">1886</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>    <span class="mi">37</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span>  <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
-<span class="go">Table: Directory</span>
-<span class="go">| Größe | Datei        |</span>
-<span class="go">|  4096 | .idea        |</span>
-<span class="go">|  1886 | directory.py |</span>
-<span class="go">|    37 | __init__.py  |</span>
-<span class="go">|  4096 | __pycache__  |</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.filter_rows">
-<span class="sig-name descname"><span class="pre">filter_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row_filter_descr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTable.filter_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.filter_rows" title="Link to this definition"></a></dt>
-<dd><p>Set the row filter: Each inner list is joined with ‘AND’.
-The outer list joins the inner lists with ‘OR’</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.get_header_row">
-<span class="sig-name descname"><span class="pre">get_header_row</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.get_header_row"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.get_header_row" title="Link to this definition"></a></dt>
-<dd><p>Returns the header row.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The header of the table</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.get_next_values">
-<span class="sig-name descname"><span class="pre">get_next_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.get_next_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.get_next_values" title="Link to this definition"></a></dt>
-<dd><p>Generator for all elements of a table.
-Restrict the rows for a search attribute, if specified
-Remove the search criteria, if now second visit is required</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>search_filter</strong> – A function that returns True for any row entry to be shown</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Tuple of values in the order of column names</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.get_visible_rows">
-<span class="sig-name descname"><span class="pre">get_visible_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">get_all</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.get_visible_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.get_visible_rows" title="Link to this definition"></a></dt>
-<dd><p>Select table rows using column values pairs, return at maximum visible_items.
-The value could be any valid regular expression.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>get_all</strong> – If True select more than visible_items</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>List of selected rows</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>List[<a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a>]</p>
-</dd>
-</dl>
-<p>Example:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>   <span class="mi">37</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span> <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;test.py&#39;</span><span class="p">,</span>     <span class="mi">1246</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">get_column</span><span class="p">(</span><span class="s1">&#39;FileName&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span> <span class="o">=</span> <span class="s1">&#39;^__[a-zA-Z]*__.py&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
-<span class="go">Table: Directory</span>
-<span class="go">| FileName    | Size |</span>
-<span class="go">| __init__.py |   37 |</span>
-</pre></div>
-</div>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.navigate">
-<span class="sig-name descname"><span class="pre">navigate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">where_togo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.table.TNavigation" title="eezz.table.TNavigation"><span class="pre">TNavigation</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">TNavigation.NEXT</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.navigate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.navigate" title="Link to this definition"></a></dt>
-<dd><p>Navigate in block mode</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>where_togo</strong> (<a class="reference internal" href="#eezz.table.TNavigation" title="eezz.table.TNavigation"><em>TNavigation</em></a>) – Navigation direction</p></li>
-<li><p><strong>position</strong> – Position for absolute navigation, ignored in any other case</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.on_select">
-<span class="sig-name descname"><span class="pre">on_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.on_select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.on_select" title="Link to this definition"></a></dt>
-<dd><p>Select a row from cache</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.print">
-<span class="sig-name descname"><span class="pre">print</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.print"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.print" title="Link to this definition"></a></dt>
-<dd><p>Print ASCII formatted table</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>rows</strong> – Optional parameter to print selected rows. If not set, print the visible rows.</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="eezz.table.TTableCell">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTableCell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTableCell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTableCell" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>The cell is the smallest unit of a table. This class is a dataclass, so all
-parameters become properties</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<em>str</em>) – Name of the corresponding column</p></li>
-<li><p><strong>value</strong> – Content of the cell</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="eezz.table.TTableRow">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTableRow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cells</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTableRow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTableRow" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>This structure is created for each row in a table.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cells</strong> (<em>List</em><em>[</em><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><em>TTableCell</em></a><em> | </em><em>str</em><em>]</em>) – List of row values. If specified as list of string values of the
-column descriptor are calculated to default.
-If specified as list of TTableCell you could set specific values during creation</p>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TTableRow.cells">
-<span class="sig-name descname"><span class="pre">cells</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><span class="pre">TTableCell</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#eezz.table.TTableRow.cells" title="Link to this definition"></a></dt>
-<dd><p>Property - A list of strings are converted to a list of TTableCells</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTableRow.get_values_list">
-<span class="sig-name descname"><span class="pre">get_values_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTableRow.get_values_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTableRow.get_values_list" title="Link to this definition"></a></dt>
-<dd><p>Get all values in a row as a list</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="eezz.table.TTableColumn">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTableColumn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attrs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTableColumn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTableColumn" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Summarize the cell properties in a column, which includes sorting and formatting.
-This class is a dataclass, so all parameters become properties.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>header</strong> (<em>str</em>) – Display name for the column</p></li>
-<li><p><strong>attrs</strong> (<em>dict</em>) – User attributes</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="eezz.table.TNavigation">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TNavigation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TNavigation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TNavigation" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
-<p>Elements to describe navigation events for method <a class="reference internal" href="#eezz.table.TTable.navigate" title="eezz.table.TTable.navigate"><code class="xref py py-func docutils literal notranslate"><span class="pre">eezz.table.TTable.navigate()</span></code></a>. The navigation is
-organized in chunks of rows given by property
-<a class="reference internal" href="#ttable-parameter-list"><span class="std std-ref">TTable.visible_items</span></a>:</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TNavigation.ABS">
-<span class="sig-name descname"><span class="pre">ABS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(0,</span> <span class="pre">'Request</span> <span class="pre">an</span> <span class="pre">absolute</span> <span class="pre">position</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">dataset')</span></em><a class="headerlink" href="#eezz.table.TNavigation.ABS" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TNavigation.LAST">
-<span class="sig-name descname"><span class="pre">LAST</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(4,</span> <span class="pre">'Set</span> <span class="pre">the</span> <span class="pre">cursor</span> <span class="pre">to</span> <span class="pre">show</span> <span class="pre">the</span> <span class="pre">last</span> <span class="pre">chunk</span> <span class="pre">of</span> <span class="pre">rows')</span></em><a class="headerlink" href="#eezz.table.TNavigation.LAST" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TNavigation.NEXT">
-<span class="sig-name descname"><span class="pre">NEXT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(1,</span> <span class="pre">'Set</span> <span class="pre">the</span> <span class="pre">cursor</span> <span class="pre">to</span> <span class="pre">show</span> <span class="pre">the</span> <span class="pre">next</span> <span class="pre">chunk</span> <span class="pre">of</span> <span class="pre">rows')</span></em><a class="headerlink" href="#eezz.table.TNavigation.NEXT" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TNavigation.PREV">
-<span class="sig-name descname"><span class="pre">PREV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(2,</span> <span class="pre">'Set</span> <span class="pre">the</span> <span class="pre">cursor</span> <span class="pre">to</span> <span class="pre">show</span> <span class="pre">the</span> <span class="pre">previous</span> <span class="pre">chunk</span> <span class="pre">of</span> <span class="pre">rows')</span></em><a class="headerlink" href="#eezz.table.TNavigation.PREV" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TNavigation.TOP">
-<span class="sig-name descname"><span class="pre">TOP</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(3,</span> <span class="pre">'Set</span> <span class="pre">the</span> <span class="pre">cursor</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">first</span> <span class="pre">row')</span></em><a class="headerlink" href="#eezz.table.TNavigation.TOP" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="eezz.table.TSort">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TSort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TSort"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TSort" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
-<p>Sorting control enum to define sort on columns</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TSort.ASC">
-<span class="sig-name descname"><span class="pre">ASC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#eezz.table.TSort.ASC" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TSort.DESC">
-<span class="sig-name descname"><span class="pre">DESC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#eezz.table.TSort.DESC" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TSort.NONE">
-<span class="sig-name descname"><span class="pre">NONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#eezz.table.TSort.NONE" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-</section>
 <section id="module-eezz.websocket">
 <span id="module-eezz-websocket"></span><h2>module eezz.websocket<a class="headerlink" href="#module-eezz.websocket" title="Link to this heading"></a></h2>
 <p>This module implements the following classes</p>
@@ -2039,8 +1991,107 @@ from TDatabaseTable and setting additional parameters specific to mobile devices
 </dd></dl>
 
 </section>
-<section id="module-eezz">
-<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-eezz" title="Link to this heading"></a></h2>
+<section id="module-eezz.blueserv">
+<span id="module-eezz-blueserv"></span><h2>module eezz.blueserv<a class="headerlink" href="#module-eezz.blueserv" title="Link to this heading"></a></h2>
+<p>The module bueserv handles the bluetooth features of EEZZ.
+and implements the following classes</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TBluetooth</span></code>:        TTable for listing bluetooth devices in range</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TBluetoothService</span></code>: Communicates with bluetooth-service EEZZ on mobile device</p></li>
+</ul>
+</div></blockquote>
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.blueserv.TBluetoothService">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.blueserv.</span></span><span class="sig-name descname"><span class="pre">TBluetoothService</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">address</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetoothService"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetoothService" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>This class is responsible for managing Bluetooth connections and communication with the EEZZ service.</p>
+<p>The TBluetoothService class encapsulates the functionality for establishing, maintaining, and terminating
+Bluetooth connections. It uses the EEZZ service for communication, indicated by a specific GUID. Apart from
+managing connections, it provides mechanisms for sending requests and handling responses from the EEZZ service.
+It also includes error handling for various connection states and exceptions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>address</strong> – Address of the Bluetooth device to connect to.</p></li>
+<li><p><strong>eezz_service</strong> – Service GUID of the EEZZ app.</p></li>
+<li><p><strong>m_lock</strong> – A lock to synchronize communication with the Bluetooth service.</p></li>
+<li><p><strong>bt_socket</strong> – The communication socket once established.</p></li>
+<li><p><strong>bt_service</strong> – List of EEZZ services for establishing a connection.</p></li>
+<li><p><strong>connected</strong> – Indicates whether the connection to the EEZZ service is established.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.blueserv.TBluetoothService.eezz_service">
+<span class="sig-name descname"><span class="pre">eezz_service</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'07e30214-406b-11e3-8770-84a6c8168ea0'</span></em><a class="headerlink" href="#eezz.blueserv.TBluetoothService.eezz_service" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.blueserv.TBluetoothService.send_request">
+<span class="sig-name descname"><span class="pre">send_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetoothService.send_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetoothService.send_request" title="Link to this definition"></a></dt>
+<dd><p>Sends a request to a remote server via a Bluetooth socket.</p>
+<p>This function attempts to open a connection, format the request message,
+send the message through a Bluetooth socket, and wait for a response. If
+any issue occurs during these steps, it handles the errors appropriately
+and returns a corresponding error message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>command</strong> (<em>str</em>) – The command to be sent to the remote server</p></li>
+<li><p><strong>args</strong> (<em>list</em>) – List of arguments associated with the command</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary with the result of the operation, containing either
+the server’s response or an error code and description</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.blueserv.</span></span><span class="sig-name descname"><span class="pre">TBluetooth</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetooth"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetooth" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TTable</span></code></p>
+<p>The bluetooth class manages bluetooth devices in range
+A scan_thread is started to keep looking for new devices.
+If there are any changes, self.async_condition.notif_all is triggered.
+The inherited attributes for column_names and title are fixed to constant values</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth.find_devices">
+<span class="sig-name descname"><span class="pre">find_devices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetooth.find_devices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetooth.find_devices" title="Link to this definition"></a></dt>
+<dd><p>Manages discovery of nearby Bluetooth devices and maintains an internal list
+of these devices, notifying when there are changes.</p>
+<p>This is a time-consuming function and should run in a separate thread.
+The caller may wait for changes on TTable.async_condition.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.blueserv.TBluetooth.get_visible_rows">
+<span class="sig-name descname"><span class="pre">get_visible_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">get_all</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/eezz/blueserv.html#TBluetooth.get_visible_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.blueserv.TBluetooth.get_visible_rows" title="Link to this definition"></a></dt>
+<dd><p>Retrieves the visible rows from the table. If <cite>get_all</cite> is set to True,
+it retrieves all the rows regardless of their visibility.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>get_all</strong> (<em>bool</em>) – Boolean flag to indicate whether to retrieve all rows
+or only visible rows, defaults to False</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of visible rows or all rows depending on the <cite>get_all</cite> flag</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[<a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 

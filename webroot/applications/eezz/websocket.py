@@ -439,6 +439,7 @@ class TAsyncHandler(Thread):
         self.socket_server  = socket_server
         self.request        = request
 
+    @logger.catch(reraise=True)
     def run(self):
         try:
             x_meta_args = self.args.pop('_meta')

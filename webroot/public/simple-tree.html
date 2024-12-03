@@ -2,6 +2,31 @@
 <head>
     <script data-eezz="template:websocket"></script>
     <link rel="stylesheet" href="/css/eezz.css">
+    <style>
+        table {
+            position: relative;
+            display: inline-block;
+            background-color: white;
+            left: 30px;
+        }
+
+        .clz_output {
+            background-color: yellow;
+            border: 1px solid black;
+        }
+
+        table[data-eezz-subtree-id] {
+            border-left: 2px solid black;
+            // background-color: gray;
+        }
+
+        tr td:first-child {
+             // border: 1px solid black;
+             // background-color: gray;
+        }
+
+    </style>
+
 </head>
 <html lang="en">
 <body>
@@ -10,19 +35,20 @@
     <title>Title</title>
     <h1>Simple table</h1>
 
-    <table id="Directory" data-eezz='assign: examples.directory.TDirView(path="/Users/alzer/Projects/github/eezz_full/webroot")'> 
+    <table id="Directory" data-eezz='assign: examples.directory.TDirTree(title="Simple Tree", path="/Users/alzer/Projects/github/eezz_full/webroot")'>
         <tbody>
             <tr data-eezz="template: row, match: is_file,
                             event  : on_select(index={row.row_id}),
-                            update : path_label.innerHTML={row.path}">
+                            update : path_label.innerHTML={row.row_id}">
                 <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
-            <tr data-eezz="template: row, match: is_dir,
-                            event  : opendir(path={row.path}),
-                            update : this.subtree, path_label.innerHTML={table.path}">
+            <tr data-eezz='template: row, match: is_dir,
+                            event  : open_dir(path={row.row_id}),
+                            update : this.subtree=restricted, path_label.innerHTML={row.row_id}'>
                 <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
         </tbody>
     </table>
 
-    <lable style="border: 2px solid black" id="path_label">path</lable>
+    <h3>Output On Select</h3>
+    <span class="clz_output" id="path_label"></span>
 </body>
 </html>

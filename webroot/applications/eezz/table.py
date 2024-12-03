@@ -24,7 +24,9 @@
 """
 import  itertools
 import  os
+import  io
 import  re
+import sys
 from    collections.abc  import Callable
 from    collections import UserList
 from    dataclasses import dataclass, field
@@ -41,30 +43,9 @@ from typing_extensions import override
 
 from    service     import TService
 from    threading   import Condition, Lock
-import  logging
-import  logging.config
 import  sqlite3
+from    loguru      import logger
 
-logger = logging.getLogger('table')
-logging_config = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '%(levelname)s: %(message)s',
-        }
-    },
-    'handlers': {
-        'stdout': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-            'stream': 'ext://sys.stdout',
-        }
-    },
-    'loggers': {
-        'root': {'level': 'DEBUG', 'handlers':['stdout']}
-    }
-}
 
 class TTableException(Exception):
     """ The table exception: trying to insert a double row-id """
@@ -152,6 +133,10 @@ class TTableRow:
     type:       str         = 'body'    #: :meta private: Customizable type used for triggering template output
     attrs:      dict        = None      #: :meta private: Customizable row attributes
 
+    @property
+    def id(self):
+        return SHA1.new(self.row_id.encode('utf8')).hexdigest()
+
     def __post_init__(self):
         """ Create a row, converting the values to :py:obj:`eezz.table.TTableCell` """
         if type(self.cells) is List[str]:
@@ -238,6 +223,8 @@ class TTable(UserList):
     database_path:      str         = ':memory:'        #: :meta private: The database path
     row_filter_descr:   List[List]  = None              #: :meta private: The row filter combines column values
     is_synchron:        bool        = False             #: :meta private: Used to reduce calls to do_select
+    navigation:         TNavigation = TNavigation
+    id:                 str         = None
 
     def __post_init__(self):
         """ Post init for a data class
@@ -385,13 +372,14 @@ class TTable(UserList):
             if search_filter(x_row):
                 yield tuple(x_value for x_value in x_row.get_values_list())
 
-    def on_select(self, index: str) -> TTableRow:
+    def on_select(self, index: str) -> TTableRow | None:
         """ Select a row from cache """
         if selected_row := self.table_index.get(index):
             self.selected_row = selected_row
             return self.selected_row
         else:
-            raise TTableException(f'Selected row does not exist: {index}')
+            return None
+            # raise TTableException(f'Selected row does not exist: {index}')
 
     def do_select(self, get_all: bool = False, filter_descr: list = None) -> list:
         """ Create and execute a select statement on the given database.
@@ -402,7 +390,6 @@ class TTable(UserList):
         sqlite3.register_converter("datetime", lambda x_val: datetime.fromisoformat(x_val.decode()))
         self.is_synchron = True
 
-        logger      = logging.getLogger()
         x_database  = sqlite3.connect(self.database_path)
         x_cursor    = x_database.cursor()
         x_ty_map    = {'int': 'integer', 'str': 'text', 'float': 'real'}
@@ -416,11 +403,11 @@ class TTable(UserList):
 
         if self.database_path == ':memory:':
             x_create_stm = f"""create table {self.title}  ({', '.join(f"{x.header}  {x_ty_map.get(x.type)  if x_ty_map.get(x.type) else 'text'}" for x in self.column_descr)}, index_key integer)"""
-            logger.debug(msg=f'TTable.do_select: {x_create_stm}')
+            logger.debug(f'TTable.do_select: {x_create_stm}')
             x_cursor.execute(x_create_stm)
 
             x_insert_stm = f"""insert into {self.title} values ({('?,' * len(self.column_names))} ?)"""
-            logger.debug(msg=f'TTable.do_select: {x_insert_stm}')
+            logger.debug(f'TTable.do_select: {x_insert_stm}')
 
             x_row: TTableRow
             for i, x_row in enumerate(self.data):
@@ -430,7 +417,7 @@ class TTable(UserList):
         if filter_descr:
             x_where, x_args = self.create_filter(filter_descr)
             x_select_stm = f"""select * from {self.title} where {x_where} {x_sort_stm} {x_options}"""
-            logger.debug(msg=f'TTable.do_select: {x_select_stm}')
+            logger.debug(f'TTable.do_select: {x_select_stm}')
             x_cursor.execute(x_select_stm, tuple(x_args))
         else:
             x_cursor.execute(f"""select * from {self.title} {x_options}""")
@@ -534,17 +521,17 @@ class TTable(UserList):
         super().sort(key=lambda x_row: x_row[column], reverse=reverse)
         return self
 
-    def print(self, level: int = 0) -> None:
+    def print(self, level: int = 0, file=sys.stdout) -> None:
         """ Print ASCII formatted table
         """
         x_offset        = ' ' * 6 * level
         x_column_descr  = [self.column_descr[x] for x in self.column_names_filter] if self.apply_filter_column \
                       else self.column_descr
 
-        print(f'{x_offset}Table: {self.title}')
+        print(f'{x_offset}Table: {self.title}', file=file)
         x_formatted_row = '|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.alias)  for x_col in x_column_descr])  if self.apply_filter_column \
                     else ('|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.header) for x_col in x_column_descr]))
-        print(f'{x_offset}|{x_formatted_row}|')
+        print(f'{x_offset}|{x_formatted_row}|', file=file)
 
         for x_row in self.get_visible_rows():
             x_cells         = [x_row.cells[x] for x in self.column_names_filter] if self.apply_filter_column else x_row.cells
@@ -553,15 +540,14 @@ class TTable(UserList):
                           else ('str',        x_descr.width, str(x_cell.value)) for x_cell, x_descr in x_row_descr]
 
             x_formatted_row = '|'.join([self.format_types[x_type](x_width, x_value) for x_type, x_width, x_value in x_format_descr])
+            print(f'{x_offset}|{x_formatted_row}|', file=file)
             if x_row.child:
                 x_row.child.print(level + 1)
-            else:
-                print(f'{x_offset}|{x_formatted_row}|')
 
 
 def test_table():
     """:meta private:"""
-    logger.debug(msg="Create a table and read the directory with attribute: [File, Size, Access] and print")
+    logger.debug("Create a table and read the directory with attribute: [File, Size, Access] and print")
     x_path = Path.cwd()
     x_table = TTable(title= 'list_files', column_names=['File', 'Size', 'Access'], visible_items=1000)
     for x_item in x_path.iterdir():
@@ -576,33 +562,41 @@ def test_table():
             x_time = datetime.fromtimestamp(x_stat.st_atime, tz=timezone.utc)
             x_table.append([str(x_item.name), x_stat.st_size, x_time], attrs={'path': x_item}, row_id=x_item.name)
         except TTableException as x_except:
-            logger.debug(msg='Check row-id: Add entries with same row-id should be rejected')
-            logger.debug(msg=f'TableInsertException {x_item.name}: {x_except}')
+            logger.debug('Check row-id: Add entries with same row-id should be rejected')
+            logger.debug(f'TableInsertException {x_item.name}: {x_except}')
             break
 
-    logger.debug(msg=f'table header = {[x.value for x in x_table.get_header_row().cells]}')
-    x_table.print()
+    logger.debug(f'table header = {[x.value for x in x_table.get_header_row().cells]}')
+    debug_out = io.StringIO()
+    x_table.print(file=debug_out)
+    logger.debug(debug_out.getvalue())
 
-    logger.debug(msg="--- Output restricted on File and Size, change the position and translate the column names")
+    logger.debug("--- Output restricted on File and Size, change the position and translate the column names")
     x_table.filter_columns({'Size': 'Größe', 'File': 'Datei'})
-    x_table.print()
+    debug_out = io.StringIO()
+    x_table.print(file=debug_out)
+    logger.debug(debug_out.getvalue())
 
-    logger.debug(msg='--- Sort for column Size')
+    logger.debug('--- Sort for column Size')
     x_table.apply_filter_column = False
     x_table.do_sort('Size')
     x_table.print()
 
-    logger.debug(msg='--- Restrict number of visible items')
+    logger.debug('--- Restrict number of visible items')
     x_table.visible_items = 5
-    x_table.print()
+    debug_out = io.StringIO()
+    x_table.print(file=debug_out)
+    logger.debug(debug_out.getvalue())
 
-    logger.debug(msg='--- Navigate to next')
+    logger.debug('--- Navigate to next')
     x_table.navigate(where_togo=TNavigation.NEXT)
-    x_table.print()
+    debug_out = io.StringIO()
+    x_table.print(file=debug_out)
+    logger.debug(debug_out.getvalue())
 
     # x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[['Size > 20000'],['File like %py']])]
     x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[["Size > 10000"],["File like %.py"]])]
-    logger.debug(msg=f'--- result = {x_result}')
+    logger.debug(f'--- result = {x_result}')
 
     x_table.visible_items = 100
     x_table.filter_rows([["Size > 10000" ],["File like %.py"]])
@@ -613,5 +607,5 @@ if __name__ == '__main__':
     """:meta private:"""
     TService.set_environment(root_path=r'C:\Users\alzer\Projects\github\eezz_full\webroot')
 
-    x_log_path = TService().logging_path / 'table.log'
+    # x_log_path = TService().logging_path / 'table.log'
     test_table()

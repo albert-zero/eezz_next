@@ -2,6 +2,21 @@
 <head>
     <script data-eezz="template:websocket"></script>
     <link rel="stylesheet" href="/css/eezz.css">
+    <style>
+        .clz_output {
+            background-color: yellow;
+            border: 1px solid black;
+            width: 520px;
+        }
+        table {
+            background-color: skyblue;
+            width: 520px;
+        }
+        td {
+            border: 1px solid black;
+        }
+    </style>
+
 </head>
 <html lang="en">
 <body>
@@ -10,13 +25,14 @@
     <title>Title</title>
     <h1>Simple table</h1>
 
-    <table id="Directory" data-eezz='assign: examples.directory.TDirView(path="/Users/alzer/Projects/github/eezz_full/webroot")'> 
+    <table id="Directory" data-eezz='assign: examples.directory.TDirView(title="Simple Update", path="/Users/alzer/Projects/github/eezz_full/webroot")'>
         <tbody>
-            <tr data-eezz="template: row, match: body, event: on_select(index={row.row_id}), update: path.innerHTML={row.path}">
+            <tr data-eezz="template: row, match: body, event: on_select(index={row.row_id}), update: path.innerHTML={row.row_id}">
                 <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
         </tbody>
     </table>
 
-    <lable style="border: 2px solid black" id="path">path</lable>
+    <h3>output</h3>
+    <div class="clz_output" id="path">path</div>
 </body>
 </html>

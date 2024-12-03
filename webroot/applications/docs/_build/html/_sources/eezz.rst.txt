@@ -9,19 +9,59 @@ eezz package
 Submodules
 ----------
 
-module eezz.blueserv
---------------------
 
-.. automodule:: eezz.blueserv
+Module contents
+---------------
 
-   .. autoclass:: TBluetoothService( address )
+.. automodule:: eezz
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+module eezz.table
+-----------------
+
+.. automodule:: eezz.table
+
+   .. autoclass:: TTable(column_names, title)
       :members:
       :undoc-members:
       :show-inheritance:
 
-   .. autoclass:: TBluetooth( None )
+   .. autoclass:: TTableCell(name, value)
       :members:
       :undoc-members:
+      :show-inheritance:
+
+   .. autoclass:: TTableRow(cells)
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+   .. autoclass:: TTableColumn(header, attrs)
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+   .. autoclass:: TNavigation
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+   .. autoclass:: TSort
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+
+module eezz.tabletree
+---------------------
+
+.. automodule:: eezz.tabletree
+
+   .. autoclass:: TTableTree
+      :members:
       :show-inheritance:
 
 
@@ -101,40 +141,6 @@ module eezz.session
       :undoc-members:
       :show-inheritance:
 
-module eezz.table
------------------
-
-.. automodule:: eezz.table
-
-   .. autoclass:: TTable(column_names, title)
-      :members:
-      :undoc-members:
-      :show-inheritance:
-
-   .. autoclass:: TTableCell(name, value)
-      :members:
-      :undoc-members:
-      :show-inheritance:
-
-   .. autoclass:: TTableRow(cells)
-      :members:
-      :undoc-members:
-      :show-inheritance:
-
-   .. autoclass:: TTableColumn(header, attrs)
-      :members:
-      :undoc-members:
-      :show-inheritance:
-
-   .. autoclass:: TNavigation
-      :members:
-      :undoc-members:
-      :show-inheritance:
-
-   .. autoclass:: TSort
-      :members:
-      :undoc-members:
-      :show-inheritance:
 
 module eezz.websocket
 ---------------------
@@ -143,6 +149,7 @@ module eezz.websocket
    :members:
    :undoc-members:
    :show-inheritance:
+
 
 module eezz.mobile
 ---------------------
@@ -154,10 +161,18 @@ module eezz.mobile
       :undoc-members:
       :show-inheritance:
 
-Module contents
----------------
 
-.. automodule:: eezz
-   :members:
-   :undoc-members:
-   :show-inheritance:
+module eezz.blueserv
+--------------------
+
+.. automodule:: eezz.blueserv
+
+   .. autoclass:: TBluetoothService( address )
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+   .. autoclass:: TBluetooth( None )
+      :members:
+      :undoc-members:
+      :show-inheritance:

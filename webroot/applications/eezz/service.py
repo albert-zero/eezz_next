@@ -119,6 +119,24 @@ class TService:
         cls._host           = host
         cls._websocket_addr = address
 
+    def get_method(self, obj_id: str, a_method_name: str) -> tuple:
+        """ Get a method by name for a given object
+
+        :param obj_id:          Unique hash-ID for object as stored in :py:meth:`eezz.service.TService.assign_object`
+        :type  obj_id:          str
+        :param a_method_name:   Name of the method
+        :type  a_method_name:   str
+        :return: tuple(object, method, parent-tag)
+        :raise AttributeError: Class has no method with the given name
+        """
+        try:
+            x_object, x_tag, x_descr = self.objects[obj_id]
+            x_method = getattr(x_object, a_method_name)
+            return x_object, x_method, x_tag, x_descr
+        except AttributeError as x_except:
+            logger.exception(x_except)
+            raise x_except
+
     def assign_object(self, obj_id: str, description: str, attrs: dict, a_tag: Tag = None) -> None:
         """ _`assign_object` Assigns an object to an HTML tag
 
@@ -149,24 +167,6 @@ class TService:
             logger.debug(f'assign {obj_id} {x}/{y}/{z}')
         except AttributeError as x_except:
             logger.exception(x_except)
-
-    def get_method(self, obj_id: str, a_method_name: str) -> tuple:
-        """ Get a method by name for a given object
-
-        :param obj_id:          Unique hash-ID for object as stored in :py:meth:`eezz.service.TService.assign_object`
-        :type  obj_id:          str
-        :param a_method_name:   Name of the method
-        :type  a_method_name:   str
-        :return: tuple(object, method, parent-tag)
-        :raise AttributeError: Class has no method with the given name
-        """
-        try:
-            x_object, x_tag, x_descr = self.objects[obj_id]
-            x_method = getattr(x_object, a_method_name)
-            return x_object, x_method, x_tag, x_descr
-        except AttributeError as x_except:
-            logger.exception(x_except)
-            raise x_except
 
     def get_object(self, obj_id: str) -> Any:
         """ Get the object for a given ID
@@ -259,6 +259,7 @@ class TServiceCompiler(Transformer):
         """ :meta private: Parse 'function' section """
         x_function, x_args = item[0].children
         self.m_tag['onclick'] = 'eezzy_click(event, this)'
+        # -- logger.debug(f'function assignment {x_function} {x_args}')
         return {'call': {'function': x_function, 'args': x_args, 'id': self.m_id}}
 
     def post_init(self, item):
@@ -279,7 +280,7 @@ class TServiceCompiler(Transformer):
             x_args  = {x_key: x_val.format(query=x_query) for x_key, x_val in x_args.items()}
         except AttributeError as x_except:
             logger.debug(f'table_assignment: {x_function}, {x_args}')
-        self.m_service.assign_object(self.m_id, x_function, x_args, self.m_tag)
+        TService().assign_object(self.m_id, x_function, x_args, self.m_tag)
         return {'assign': {'function': x_function, 'args': x_args, 'id': self.m_id}}
 
 
@@ -365,7 +366,7 @@ if __name__ == '__main__':
     test_parser(source="download: document(name=test1, author=albert), files( main=main, prev=prev )")
 
     logger.debug("assign statement")
-    x_source = """assign: examples.directory.TDirView(path="/Users/alzer/Projects/github/eezz_full/webroot")"""
+    x_source = """assign: examples.directory.TDirView(title="", path="/Users/alzer/Projects/github/eezz_full/webroot")"""
     test_parser(source=x_source)
 
     logger.debug("update statement 1")
@@ -386,6 +387,10 @@ if __name__ == '__main__':
         x_json_obj = {'target': x, 'value': y.format(object=TestRow())}
         x_reslist.append(x_json_obj)
     logger.debug(x_reslist)
+
+    x_source = 'name: directory, assign: examples.directory.TDirView(path=".", title="dir")'
+    x_result = test_parser(source=x_source)
+    logger.debug(x_result)
 
     logger.success('test finished')
     """

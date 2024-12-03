@@ -1,6 +1,10 @@
 """
-    TTableTree implements a Tree representation, where each node is a TTable with
-    TTableRow entries
+    This module implements the following classes:
+
+    * :py:class:`eezz.table.TTableTree`:\
+    Implements a Tree representation, where each node is a TTable with TTableRow entries. \
+    Nodes could be expanded and collapsed.
+
 
 """
 from table      import TTable, TTableRow
@@ -21,9 +25,10 @@ class TTableTree(TTable):
     """
     def __init__(self, column_names: list[str], title: str, path: str) -> None:
         super().__init__(column_names=column_names, title=title)
-        self.root_path           = Path(path)
-        self.nodes: List[TTable] = [self]
-        self.expanded: bool      = False
+        self.root_path            = Path(path)
+        self.nodes: List[TTable]  = [self]
+        self.expanded: bool       = False
+        self.selected: TTableTree = None
 
     @override
     def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '', exists_ok=False) -> TTableRow:
@@ -74,7 +79,7 @@ class TTableTree(TTable):
             if x_row := super(TTableTree, x_table).on_select(index):
                 return x_row
 
-    def exco(self, index: str) -> TTable | None:
+    def open_dir(self, path: str) -> TTableRow | None:
         """
         This class provides functionalities to expand or collapse node elements in a tree
         based on their index. Expansion status is toggled, i.e., if an element
@@ -84,11 +89,11 @@ class TTableTree(TTable):
         clearing of data .
         """
         for x_table in self.nodes:
-            if x_row := super(TTableTree, x_table).on_select(index):
+            if x_row := super(TTableTree, x_table).on_select(path):
                 if x_row.child:
                     if not x_row.child.expanded:
                         x_row.child.expanded = True
-                        return x_row.child
+                        return x_row
                     x_row.child.expanded = False
 
                     # Possible return None without clearing possible
@@ -100,59 +105,9 @@ class TTableTree(TTable):
                     x_row.child.expanded = True
                     x_row.child.read_dir()
                     self.nodes.append(x_row.child)
-                return x_row.child
+                self.selected = x_row
+                return x_row
         return None
-
-    def expand(self, index: str) -> TTable | None:
-        """
-        Expands the current table node based on a specified index.
-
-        This method iterates through the nodes of the current table, selects
-        the row corresponding to the given index, and performs the following
-        actions:
-        - If the row has a child, it returns that child.
-        - If the row does not have a child, the method creates a new child
-          instance, reads the directory for the child, appends it to the nodes of
-          the current table, and returns the newly created child.
-
-        The child node inherits the layout from the parent node. It would be possible
-        to override this and create nodes with different layouts.
-
-        :param index:   The index used to identify and expand the corresponding row in the table.
-        :type index:    str
-        :return:        The expanded child table node if found, otherwise None.
-        :rtype:         TTable or None, if the index is not found
-        """
-        for x_table in self.nodes:
-            if x_row := x_table.on_select(index):
-                if x_row.child:
-                    return x_row.child
-                x_path      = x_row.row_id
-                x_row.child = self.__class__(title=self.title, path=x_path)
-                x_row.child.read_dir()
-                x_row.child.expanded = True
-                self.nodes.append(x_row.child)
-                return x_row.child
-        return None
-
-    def collapse(self, index: str) -> None:
-        """
-        Collapses a node specified by the index in the tree.
-
-        This method traverses through the nodes and collapses
-        the child node of the selected row if it exists. The
-        selected row is identified using the index parameter.
-
-        :param index: The identifier of the node to collapse
-        :type  index: str
-        """
-        for x_table in self.nodes:
-            if x_row := x_table.on_select(index):
-                if x_row.child:
-                    self.nodes.remove(x_row.child)
-                    x_row.child.clear()
-                    x_row.child = None
-                return
 
 
 import os
@@ -169,6 +124,7 @@ class TTestTree(TTableTree):
         self.read_dir()
 
     def read_dir(self) -> TTable:
+        """ :meta private: """
         self.data.clear()
         for x in self.path.iterdir():
             x_stat = os.stat(x)
@@ -183,7 +139,7 @@ def test_table_tree():
 
     for x in x_tree.get_visible_rows():
         if x.type == 'is_dir':
-            x_tbl = x_tree.exco(x.row_id)
+            x_tbl = x_tree.open_dir(x.row_id)
     x_tree.print()
 
 

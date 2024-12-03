@@ -238,14 +238,8 @@
 <span class="sd">        Manages discovery of nearby Bluetooth devices and maintains an internal list</span>
 <span class="sd">        of these devices, notifying when there are changes.</span>
 
-<span class="sd">        Attributes</span>
-<span class="sd">        ----------</span>
-<span class="sd">        async_lock : threading.Lock</span>
-<span class="sd">            Lock to manage simultaneous access to the data.</span>
-<span class="sd">        async_condition : threading.Condition</span>
-<span class="sd">            Condition to notify listeners on changes in the list of discovered devices.</span>
-<span class="sd">        data : list</span>
-<span class="sd">            Internal list of discovered Bluetooth devices.</span>
+<span class="sd">        This is a time-consuming function and should run in a separate thread.</span>
+<span class="sd">        The caller may wait for changes on TTable.async_condition.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="n">x_result</span> <span class="o">=</span> <span class="n">bluetooth</span><span class="o">.</span><span class="n">discover_devices</span><span class="p">(</span><span class="n">flush_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">lookup_names</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>

@@ -106,16 +106,20 @@ function dynamic_update(a_update_json) {
     var x_elem_root = document.getElementById(x_dest[0]);
     var x_elem      = x_elem_root;
 
-    // The following makes sense for table.tbody and table.tfooter etc...
-    // In any other cases the update should be more specific
-    for (var i = 1; i < x_dest.length && x_elem != null; i++) {
-        x_elem = x_elem.getElementsByTagName(x_dest[i])[0];
-    } 
-    
-    if (x_elem == null) { 
+    if (x_attr == 'subtreeTemplate') {
+        tree_expand(x_elem, a_update_json.value);
         return;
     }
-     
+
+    for (var i = 1; i < x_dest.length; i++) {
+        x_elem = x_elem.getElementsByTagName(x_dest[i])[0];
+    }
+
+    if (x_elem == null) {
+        console.log("warning: target not found " + a_update_json.target);
+        return;
+    }
+
     if (x_attr == 'innerHTML') {
         x_elem.innerHTML = a_update_json.value;
     }
@@ -128,47 +132,65 @@ function dynamic_update(a_update_json) {
 }
 
 // Collapse a tree element
-function tree_collapse(a_node_element) {
-	var x_subtree_state = a_node_element.getAttribute('data-eezz-subtree_state');
-	if (x_subtree_state == 'expanded') {
-    	// Restore the original entry of the tree node
-		var x_subtree_header     = a_node_element.querySelector('thead')
-		a_node_element.innerHTML = x_subtree_header.innerHTML;
-		a_node_element.setAttribute('data-eezz-subtree_state', 'collapsed');
-	}
+function tree_collapse(a_node) {
+    if (a_node.nextSibling) {
+        if (a_node.nextSibling.getAttribute('data-eezz-subtree-id') == a_node.id) {
+            a_node.nextSibling.remove();
+        }
+    }
 }
 
 // Inserts a sub-tree into a tree <TR> element, which is defined a given element id
 // The constrains are: subtree.tagName is table, and it contains a thead and a tbody
-function tree_expand(a_node_element, a_subtree) {
-    // Make sure, that the tree node is collapsed and save the node entry as table header entry
-	tree_collapse(x_node_element);
-	var x_nr_columns = x_node_element.getElementsByTagName('td').length.toString()
+function tree_expand(a_node, subtree_descr) {
+    // Create a new node
+    if (!subtree_descr.template) {
+        tree_collapse(a_node);
+        return;
+    }
+    if (subtree_descr.tbody == '') {
+        return;
+    }
 
-    // The thead stores the current row elements
-	var x_new_head       = document.createElement('thead');
-	x_new_head.innerHTML = a_node_element.outerHTML;
-    x_new_head.setAttribute('class', 'clzz_tree_node_head');
+    var x_nr_cols       = a_node.getElementsByTagName('td').length.toString()
+    var x_row           = document.createElement('tr');
+    var x_td            = document.createElement('td');
 
-	// The tbody contains the subtree
-	var x_new_body       = document.createElement('tbody');
-    x_new_body.innerHTML = a_subtree;
-    x_new_body.setAttribute('class', 'clzz_tree_node_body');
+    x_td.setAttribute('colspan', x_nr_cols);
+    x_row.setAttribute('data-eezz-subtree-id', a_node['id']);
+    x_row.appendChild(x_td);
 
-    // The table collects and maintains thead and tbody
-	var x_new_tree       = document.createElement('table');
-    x_new_tree.appendChild(x_new_head);
-    x_new_tree.appendChild(x_new_body);
+    x_td.innerHTML      = subtree_descr.template;
+    var x_table         = x_td.getElementsByTagName('table')[0];
+    var x_caption       = x_td.getElementsByTagName('caption')[0];
+    var x_thead         = x_td.getElementsByTagName('thead')[0];
+    var x_tbody         = x_td.getElementsByTagName('tbody')[0];
 
-    // The original cell content is deleted and replaced with the table above
-	var x_new_cell       = document.createElement('td');
-    x_new_cell.setAttribute('colspan', x_nr_columns);
-    x_new_cell.setAttribute('class', 'clzz_tree_node');
-    x_new_cell.appendChild(x_new_tree);
+    x_table.setAttribute('data-eezz-subtree-id',  a_node['id']);
+    x_caption.remove();
 
-	x_node_element.innerHTML  = '';
-    x_node_element.appendChild(x_new_cell)
-    a_node_element.setAttribute('data-eezz-subtree_state', 'expanded');
+    if (subtree_descr.option == 'restricted') {
+        x_table.classList.add('clzz_node');
+        x_tbody.classList.add('clzz_node');
+        x_thead.remove();
+        x_tbody.innerHTML = subtree_descr.tbody;
+    }
+    else {
+        x_table.classList.add('clzz_node');
+        x_tbody.classList.add('clzz_node');
+        x_thead.innerHTML = subtree_descr.thead;
+        x_tbody.innerHTML = subtree_descr.tbody;
+    }
+
+    a_node.parentNode.insertBefore(x_row, a_node.nextSibling);
+    a_node.setAttribute('data-eezz-subtree_state', 'expanded');
+
+    // adding a td element to consume additional space for the inserted table
+    // todo: fine adjusting this value to
+    // (.. width ..) = getBoundingClientRect of node and table
+    // x_td = document.createElement('td');
+    // x_td.style.width = '50px';
+    // a_node.insertBefore(x_td, null);
 }
 
 // Function collects all eezz events from page using WEB-socket to
