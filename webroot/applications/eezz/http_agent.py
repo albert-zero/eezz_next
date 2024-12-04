@@ -13,6 +13,8 @@ from copy import deepcopy
 
 from loguru    import logger
 from Crypto.Hash import SHA1
+import base64
+
 from pathlib   import Path
 from typing    import Any, Callable
 from bs4       import Tag, BeautifulSoup, NavigableString
@@ -74,11 +76,13 @@ class THttpAgent(TWebSocketAgent):
                 # The method itself is executed in module TWebSocketClient
                 x_event     = request_data['call']
                 x_event_id  = x_event['id']
+                x_row       = request_data['result']
+
                 x_obj, x_method, x_tag, x_descr  = TService().get_method(x_event_id, x_event['function'])
 
                 for x_key, x_value in request_data['update'].items():
                     if x_key == 'this.tbody':
-                        x_html      = self.generate_html_table(x_tag, x_tag['id'])
+                        x_html = self.generate_html_table(x_tag, x_tag['id'])
                         x_updates.append({'target': f'{x_tag["id"]}.tbody.innerHTML', 'value': x_html['tbody']})
                     elif x_key == 'this.subtree':
                         x_row:   TTableRow  = request_data['result']
@@ -86,8 +90,10 @@ class THttpAgent(TWebSocketAgent):
                         x_table: TTable     = x_row.child
 
                         if x_table is None:
+                            # There is no subtree: Send empty value to collapse the tree view
                             x_updates.append({'target': f'{x_id}.subtree', 'value': ''})
                         else:
+                            # Send a subtree template and data
                             TService().objects.update({x_id: (x_table, x_tag, x_descr)})
                             x_tag_list = x_tag.css.select('tr[data-eezz-json]')
 
@@ -102,10 +108,16 @@ class THttpAgent(TWebSocketAgent):
                             x_updates.append({'target': f'{x_id}.subtreeTemplate',
                                               'value': {'option': x_value, 'template': x_html['template'], 'thead': x_html['thead'], 'tbody': x_html['tbody']}})
                     else:
-                        x_row:   TTableRow = request_data['result']
-                        x_updates.append({'target': x_key, 'value': x_value.format(row=x_row)})
+                        # update returns a row. Value may contain a function call request:
+                        if isinstance(x_value, dict):
+                            x_object, x_method, x_tag, x_descr = TService().get_method(x_event_id, x_value['function'])
+                            x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()}
+                            x_result = x_method(**x_args)
+                            x_updates.append({'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')})
+                        else:
+                            x_updates.append({'target': x_key, 'value': x_value.format(row=x_row)})
             except KeyError as ex:
-                logger.debug(f'KeyError {ex.args}')
+                logger.warning(f'KeyError {ex.args}')
 
             x_result = {'update': x_updates}
             return json.dumps(x_result)

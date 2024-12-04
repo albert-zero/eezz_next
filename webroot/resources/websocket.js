@@ -69,8 +69,13 @@ function eezz_connect() {
                 console.log("update " + x_array_descr[i]);
                 var x_update_json = x_array_descr[i];
 
-                try { // Abstract function to overwrite for user callback
-                    var x_dest = x_update_json.target.split('.'); 
+                try {
+                    if (typeof window[x_update_json.target] === 'function') {
+                        window[x_update_json.target]( x_update_json.value );
+                        continue;
+                    }
+
+                    var x_dest = x_update_json.target.split('.');
                     if (!x_element_map.has(x_dest[0])) {
                         x_element_map.set(x_dest[0], x_dest[0]);
                     }
@@ -121,7 +126,12 @@ function dynamic_update(a_update_json) {
     }
 
     if (x_attr == 'innerHTML') {
-        x_elem.innerHTML = a_update_json.value;
+        if (a_update_json.type == 'base64') {
+            x_elem.innerHTML = window.atob(a_update_json.value);
+        }
+        else {
+            x_elem.innerHTML = a_update_json.value;
+        }
     }
     else if (x_attr == 'subtree') {
         tree_expand(x_elem, a_update_json.value)
@@ -137,6 +147,7 @@ function tree_collapse(a_node) {
         if (a_node.nextSibling.getAttribute('data-eezz-subtree-id') == a_node.id) {
             a_node.nextSibling.remove();
         }
+        //a_node.lastChild.remove();
     }
 }
 
@@ -185,12 +196,9 @@ function tree_expand(a_node, subtree_descr) {
     a_node.parentNode.insertBefore(x_row, a_node.nextSibling);
     a_node.setAttribute('data-eezz-subtree_state', 'expanded');
 
-    // adding a td element to consume additional space for the inserted table
-    // todo: fine adjusting this value to
-    // (.. width ..) = getBoundingClientRect of node and table
-    // x_td = document.createElement('td');
-    // x_td.style.width = '50px';
-    // a_node.insertBefore(x_td, null);
+    //x_td = document.createElement('td');
+    //x_td.style.width = '0px';
+    //a_node.insertBefore(x_td, null);
 }
 
 // Function collects all eezz events from page using WEB-socket to

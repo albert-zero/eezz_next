@@ -235,6 +235,11 @@ class TServiceCompiler(Transformer):
         return {item[0]: item[1]} if len(item) == 2 else {item[0]: item[0]}
 
     @staticmethod
+    def update_function(item):
+        x_function, x_args = item[1].children
+        return {item[0]: {'function': x_function, 'args': x_args}}
+
+    @staticmethod
     def assignment(item):
         """ :meta private: Parse 'assignment' expression: ``variable = value`` """
         return {item[0]: item[1]}
@@ -259,7 +264,6 @@ class TServiceCompiler(Transformer):
         """ :meta private: Parse 'function' section """
         x_function, x_args = item[0].children
         self.m_tag['onclick'] = 'eezzy_click(event, this)'
-        # -- logger.debug(f'function assignment {x_function} {x_args}')
         return {'call': {'function': x_function, 'args': x_args, 'id': self.m_id}}
 
     def post_init(self, item):
@@ -341,6 +345,12 @@ def test_parser(source: str) -> json:
             logger.debug(x_result)
             return x_result
         else:
+            x_res = dict()
+            for x_key, x_val in x_list_json.items():
+                x_result = x_val
+                # if type(x_val) is Tree:
+                    # x_result = list(itertools.accumulate(x_val.children, lambda a, b: a | b))[-1]
+                # x_res[x_key] = x_result
             logger.debug(x_list_json)
             return x_list_json
     except UnexpectedCharacters as x_ex:
@@ -391,6 +401,11 @@ if __name__ == '__main__':
     x_source = 'name: directory, assign: examples.directory.TDirView(path=".", title="dir")'
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
+
+    x_source = 'update : path_label.innerHTML={row.row_id}, text.innerHTML=my_function(filename={row.row_id}, id=abc)'
+    x_result = test_parser(source=x_source)
+    logger.debug(x_result)
+
 
     logger.success('test finished')
     """

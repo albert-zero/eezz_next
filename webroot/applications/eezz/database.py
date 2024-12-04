@@ -164,7 +164,7 @@ class TDatabaseTable(TTable):
         x_row_descr = list(zip(table_row, self.column_descr))
         if not row_id:
             x_primary   = itertools.filterfalse(lambda x: not x[1].primary_key, x_row_descr)
-            row_id      = SHA256.new(','.join(str(x[0]) for x in x_primary).encode('utf8')).hexdigest()
+            row_id      = '/'.join(str(x[0]) for x in x_primary)
 
         if not attrs:
             attrs = dict()

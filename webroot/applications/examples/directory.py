@@ -1,3 +1,4 @@
+import base64
 import sys
 import os
 from   pathlib     import Path
@@ -7,7 +8,7 @@ from   tabletree   import TTableTree
 from   Crypto.Hash import SHA
 from   loguru      import logger
 from   typing      import List, override
-
+from   base64      import b64encode
 
 class TDirView(TTable):
     """ Example class printing directory content """
@@ -28,6 +29,26 @@ class TDirView(TTable):
 
 
 class TDirTree(TTableTree):
+    def __init__(self, title: str, path: str):
+        # noinspection PyArgumentList
+        super().__init__(column_names=['File', 'Size', 'Access Time'], title=title, path=path)
+        self.path = Path(path)
+        if not self.path.is_dir():
+            logger.error(f'{self.path.as_posix()} not a directory')
+            return
+        self.table_title = 'Simple Tree'
+        self.read_dir()
+
+    def read_dir(self) -> TTable:
+        self.data.clear()
+        for x in self.path.iterdir():
+            x_stat = os.stat(x)
+            x_time = datetime.fromtimestamp(x_stat.st_atime, tz=timezone.utc)
+            self.append([str(x.name), x_stat.st_size, x_time], row_type='is_dir' if x.is_dir() else 'is_file', row_id=x.as_posix())
+        return self
+
+
+class TDirTreeDetails(TTableTree):
     def __init__(self, title: str, path: str):
         # noinspection PyArgumentList
         super().__init__(column_names=['File', 'Size', 'Access Time'], title=title, path=path)
@@ -74,9 +95,15 @@ def test():
     x_row = my_table[0]
     logger.debug(f'row = {x_row[0]}, type = {x_row.type}')
     x_sub_table = my_table.open_dir(x_row.row_id)
-    x_sub_table.print()
+    x_sub_table.child.print()
+    logger.debug(x_sub_table)
 
     my_table = TDirTree(title='tree-view', path = r'\Users\alzer\Projects\nofile')
+    my_table.print()
+
+    my_table = TDirTreeDetails(title="details", path=r"\Users\alzer\Projects\github\eezz_full\webroot\applications\examples")
+    x_buffer = my_table.read_file(r'\Users\alzer\Projects\github\eezz_full\webroot\applications\examples\directory.py')
+    print(base64.b64encode(x_buffer)[:20])
     my_table.print()
 
 

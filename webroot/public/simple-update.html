@@ -17,6 +17,20 @@
         }
     </style>
 
+    <script type="text/javascript">
+        eezz.on_update = (a_element) => {
+            x_element  = document.getElementById(a_element);
+            x_list     = x_element.querySelectorAll("td[timestamp]");
+            
+            for (var inx in x_list) {
+                var x_time       = x_list[inx];
+                var x_timestamp  = x_time.getAttribute('timestamp');
+                var date         = new Date(x_timestamp * 1000);
+                x_time.innerHTML = date.toLocaleTimeString();
+            }
+        }
+
+    </script> 
 </head>
 <html lang="en">
 <body>

@@ -64,7 +64,7 @@ class TTableTree(TTable):
     @override
     def on_select(self, index: str) -> TTableRow:
         """
-        Handles the selection of a table row by a given index.
+        Handles the selection of a table row by a given index within a tree.
 
         This method iterates through the nodes and checks if a row is selected by
         calling the parent class's on_select method. If a row is found, it returns
@@ -108,6 +108,24 @@ class TTableTree(TTable):
                 self.selected = x_row
                 return x_row
         return None
+
+    def read_file(self, path: str) -> bytes:
+        """
+        Reads the contents of a file specified by the given path and returns the
+        data in binary format. If the file does not exist or cannot be read,
+        the function returns an empty binary string.
+
+        :param path:    The file system path to the file that needs to be read.
+                        It should be a string representing the path to the file.
+        :return:        A binary string containing the contents of the file if it exists,
+                        otherwise an empty binary string.
+        """
+        x_full_path = Path(path)
+        if x_full_path.is_file():
+            with x_full_path.open('rb') as f:
+                x_buffer = f.read()
+            return x_buffer
+        return b''
 
 
 import os

@@ -111,6 +111,12 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.end_headers()
             self.wfile.write(x_result.encode('utf-8'))
+        elif x_resource.suffix in ('.txt', '.bak'):
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.end_headers()
+            with x_resource.open('rb') as f:
+                self.wfile.write(f.read())
         elif x_resource.suffix in ('.png', '.jpg', '.gif', '.mp4', '.ico'):
             self.send_response(200)
             self.send_header('content-type', 'image/{}'.format(x_resource.suffix)[1:])
