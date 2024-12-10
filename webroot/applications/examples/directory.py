@@ -9,6 +9,7 @@ from   Crypto.Hash import SHA
 from   loguru      import logger
 from   typing      import List, override
 from   base64      import b64encode
+import time
 
 class TDirView(TTable):
     """ Example class printing directory content """
@@ -26,6 +27,29 @@ class TDirView(TTable):
             x_time = datetime.fromtimestamp(x_stat.st_atime, tz=timezone.utc)
             self.append([str(x.name), x_stat.st_size, x_time], row_id=x.as_posix())
         return self
+
+
+class TDirAsync(TTable):
+    """ Example class printing directory content """
+    def __init__(self, title: str, path: str):
+        # noinspection PyArgumentList
+        super().__init__(column_names=['File', 'Size', 'Access Time'], title=title)
+        self.path        = Path(path)
+        self.table_title = 'Directory'
+        self.read_dir()
+
+    def read_dir(self) -> TTable:
+        self.data.clear()
+        for x in self.path.iterdir():
+            x_stat = os.stat(x)
+            x_time = datetime.fromtimestamp(x_stat.st_atime, tz=timezone.utc)
+            self.append([str(x.name), x_stat.st_size, x_time], row_id=x.as_posix())
+        return self
+
+    def push_time(self) -> bytes:
+        time.sleep(3.0)
+        now = datetime.now()
+        return str(now.time()).encode('utf8')
 
 
 class TDirTree(TTableTree):
@@ -84,7 +108,18 @@ class TDirPng(TTable):
             self.append([str(x.name), x_stat.st_size, x_time], row_type='is_dir' if x.is_dir() else 'is_file')
 
 
-#from icecream import ic
+class TFormInput(TTable):
+    def __init__(self, title: str):
+        super().__init__(column_names=['Name', 'FirstName', 'City'], title=title)
+        self.visible_items = 1
+        self.append(['mame', 'first name', 'city'])
+
+    def register(self, table_row: TTableRow) -> None:
+        print(f"Register...{table_row}")
+        super().append(table_row)
+
+
+# from icecream import ic
 def test():
     x_row = TDirView(title='directory-view', path = r'\Users\alzer\Projects')
     x_row.print()

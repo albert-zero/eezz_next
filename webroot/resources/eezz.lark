@@ -1,19 +1,20 @@
 ?start            : list_statements
 
 ?list_statements  : [ statement  ("," statement  )* ]
-?statement        : "event"     ":" function_call             -> funct_assignment
-                  | "assign"    ":" function_call             -> table_assignment
-                  | "update"    ":" list_updates              -> update_section
-                  | "post_init" ":" function_call             -> post_init
-                  | "download"  ":" document "," files        -> download
-                  | string      ":" string                    -> template_section
+?statement        : "event"     ":" function_call               -> funct_assignment
+                  | "assign"    ":" function_call               -> table_assignment
+                  | "update"    ":" list_updates                -> update_section
+                  | "post_init" ":" function_call               -> post_init
+                  | "download"  ":" document "," files          -> download
+                  | "template"  ":" string ( "(" value_string ")" )?  -> template_section
+                  | string      ":" string                      -> parameter_section
 
 document          : "document"  "(" list_arguments ")"
 files             : "files"     "(" list_arguments ")"
 
 list_updates      : [ update_item  ("," update_item  )* ]
 
-update_item       : qualified_string "=" function_call         -> update_function
+update_item       : qualified_string "=" function_call        -> update_function
                   | qualified_string "=" update_string
                   | update_function
                   | qualified_string
@@ -32,6 +33,7 @@ update_function   : string "(" list_update_strings ")"
                   | format_string
                   | qualified_string
                   | quoted_string
+                  | selector_string
 
 ?function_call    : qualified_string "(" list_arguments ")"
 
@@ -39,6 +41,7 @@ string            : CNAME                                   -> simple_str
 ?quoted_string    : ESCAPED_STRING                          -> escaped_str
 ?qualified_string : [ string ("." string  )* ]
 ?format_string    : "{" [ string ("." string  )* ] "}" | "*"
+selector_string   : "[" [ string ("." string  )* ] "]"
 
 %import common.ESCAPED_STRING
 %import common.CNAME

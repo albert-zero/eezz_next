@@ -95,7 +95,9 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span>  <span class="nn">itertools</span>
 <span class="kn">import</span>  <span class="nn">os</span>
+<span class="kn">import</span>  <span class="nn">io</span>
 <span class="kn">import</span>  <span class="nn">re</span>
+<span class="kn">import</span>  <span class="nn">sys</span>
 <span class="kn">from</span>    <span class="nn">collections.abc</span>  <span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span>    <span class="nn">collections</span> <span class="kn">import</span> <span class="n">UserList</span>
 <span class="kn">from</span>    <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
@@ -112,30 +114,9 @@
 
 <span class="kn">from</span>    <span class="nn">service</span>     <span class="kn">import</span> <span class="n">TService</span>
 <span class="kn">from</span>    <span class="nn">threading</span>   <span class="kn">import</span> <span class="n">Condition</span><span class="p">,</span> <span class="n">Lock</span>
-<span class="kn">import</span>  <span class="nn">logging</span>
-<span class="kn">import</span>  <span class="nn">logging.config</span>
 <span class="kn">import</span>  <span class="nn">sqlite3</span>
+<span class="kn">from</span>    <span class="nn">loguru</span>      <span class="kn">import</span> <span class="n">logger</span>
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;table&#39;</span><span class="p">)</span>
-<span class="n">logging_config</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;version&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="s1">&#39;disable_existing_loggers&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="s1">&#39;formatters&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;simple&#39;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">%(levelname)s</span><span class="s1">: </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
-        <span class="p">}</span>
-    <span class="p">},</span>
-    <span class="s1">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;stdout&#39;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s1">&#39;class&#39;</span><span class="p">:</span> <span class="s1">&#39;logging.StreamHandler&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;formatter&#39;</span><span class="p">:</span> <span class="s1">&#39;simple&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;stream&#39;</span><span class="p">:</span> <span class="s1">&#39;ext://sys.stdout&#39;</span><span class="p">,</span>
-        <span class="p">}</span>
-    <span class="p">},</span>
-    <span class="s1">&#39;loggers&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;root&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;level&#39;</span><span class="p">:</span> <span class="s1">&#39;DEBUG&#39;</span><span class="p">,</span> <span class="s1">&#39;handlers&#39;</span><span class="p">:[</span><span class="s1">&#39;stdout&#39;</span><span class="p">]}</span>
-    <span class="p">}</span>
-<span class="p">}</span>
 
 <span class="k">class</span> <span class="nc">TTableException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; The table exception: trying to insert a double row-id &quot;&quot;&quot;</span>
@@ -162,7 +143,23 @@
 <div class="viewcode-block" id="TSort">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TSort">[docs]</a>
 <span class="k">class</span> <span class="nc">TSort</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot; Sorting control enum to define sort on columns &quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Represents a sorting order enumeration providing different sorting</span>
+<span class="sd">    states that can be used to specify how elements should be sorted in</span>
+<span class="sd">    an application.</span>
+
+<span class="sd">    This class can be used to define sorting order preferences for lists</span>
+<span class="sd">    or collections, supporting ascending, descending, or no specific</span>
+<span class="sd">    order. It provides a clear and concise way to handle sorting logic</span>
+<span class="sd">    without using plain integers or strings, ensuring better</span>
+<span class="sd">    readability and maintainability of the code.</span>
+
+<span class="sd">    :ivar NONE: Represents no specific sorting order.</span>
+<span class="sd">    :type NONE: int</span>
+<span class="sd">    :ivar ASC: Represents ascending sorting order.</span>
+<span class="sd">    :type ASC: int</span>
+<span class="sd">    :ivar DESC: Represents descending sorting order.</span>
+<span class="sd">    :type DESC: int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">NONE</span>    <span class="o">=</span> <span class="mi">0</span>
     <span class="n">ASC</span>     <span class="o">=</span> <span class="mi">1</span>
     <span class="n">DESC</span>    <span class="o">=</span> <span class="mi">2</span></div>
@@ -173,13 +170,25 @@
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTableCell">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">TTableCell</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot; The cell is the smallest unit of a table. This class is a dataclass, so all</span>
-<span class="sd">    parameters become properties</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a table cell with properties such as name, value, width, index,</span>
+<span class="sd">    type, and additional user-defined attributes. This class is used to store</span>
+<span class="sd">    and manage the properties of a single cell within a table structure. It</span>
+<span class="sd">    provides default values for width, index, type, and allows the inclusion</span>
+<span class="sd">    of custom attributes if necessary.</span>
 
-<span class="sd">    :param name:  Name of the corresponding column</span>
-<span class="sd">    :type  name:  str</span>
-<span class="sd">    :param value: Content of the cell</span>
-<span class="sd">    :type  type:  str</span>
+<span class="sd">    :ivar name: Name of the column.</span>
+<span class="sd">    :type name: str</span>
+<span class="sd">    :ivar value: Value of the cell.</span>
+<span class="sd">    :type value: Any</span>
+<span class="sd">    :ivar width: Calculated width of a cell.</span>
+<span class="sd">    :type width: int</span>
+<span class="sd">    :ivar index: Calculated index of a cell.</span>
+<span class="sd">    :type index: int</span>
+<span class="sd">    :ivar type: Calculated type (could also be user defined).</span>
+<span class="sd">    :type type: str</span>
+<span class="sd">    :ivar attrs: User attributes.</span>
+<span class="sd">    :type attrs: dict</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span><span class="p">:</span>       <span class="nb">str</span>                 <span class="c1">#: :meta private: Name of the column</span>
     <span class="n">value</span><span class="p">:</span>      <span class="n">Any</span>                 <span class="c1">#: :meta private: Value of the cell</span>
@@ -194,13 +203,31 @@
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTableColumn">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">TTableColumn</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot; Summarize the cell properties in a column, which includes sorting and formatting.</span>
-<span class="sd">    This class is a dataclass, so all parameters become properties.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a column in a table with customizable properties.</span>
 
-<span class="sd">    :param header:  Display name for the column</span>
-<span class="sd">    :type  header:  str</span>
-<span class="sd">    :param attrs:   User attributes</span>
-<span class="sd">    :type  attrs:   dict</span>
+<span class="sd">    This class is designed to encapsulate the properties and behaviors of a</span>
+<span class="sd">    table column, offering options to set and modify its header, attributes,</span>
+<span class="sd">    index, width, alias, sorting preference, data type, and filtering</span>
+<span class="sd">    criteria. It is typically used in table structures where columns may need</span>
+<span class="sd">    specific customization for display or processing.</span>
+
+<span class="sd">    :ivar header: Name of the column.</span>
+<span class="sd">    :type header: str</span>
+<span class="sd">    :ivar attrs: Customizable attributes of the column.</span>
+<span class="sd">    :type attrs: dict</span>
+<span class="sd">    :ivar index: Calculated index of the column.</span>
+<span class="sd">    :type index: int</span>
+<span class="sd">    :ivar width: Calculated width of the column.</span>
+<span class="sd">    :type width: int</span>
+<span class="sd">    :ivar alias: Alias name for output.</span>
+<span class="sd">    :type alias: str</span>
+<span class="sd">    :ivar sort: Sort direction of the column.</span>
+<span class="sd">    :type sort: bool</span>
+<span class="sd">    :ivar type: Type of the column.</span>
+<span class="sd">    :type type: str</span>
+<span class="sd">    :ivar filter: Filter string.</span>
+<span class="sd">    :type filter: str</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">header</span><span class="p">:</span>     <span class="nb">str</span>                 <span class="c1">#: :meta private: Name of the column</span>
     <span class="n">attrs</span><span class="p">:</span>      <span class="nb">dict</span>    <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: Customizable attributes of the column</span>
@@ -221,14 +248,37 @@
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTableRow">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">TTableRow</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot; This structure is created for each row in a table.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a table row, capable of handling both simple and complex table structures.</span>
 
-<span class="sd">    :param cells:   List of row values. If specified as list of string values of the</span>
-<span class="sd">                    column descriptor are calculated to default.</span>
-<span class="sd">                    If specified as list of TTableCell you could set specific values during creation</span>
-<span class="sd">    :type  cells:   List[TTableCell | str]</span>
+<span class="sd">    The TTableRow class is designed to facilitate the management and manipulation of table</span>
+<span class="sd">    rows, allowing for both straightforward data representation and handling of more complex</span>
+<span class="sd">    recursive data structures within a table. This class supports automatic conversion of</span>
+<span class="sd">    string lists into cells and provides properties for interacting with row elements by column</span>
+<span class="sd">    name or index.</span>
+
+<span class="sd">    :ivar cells: A list of TTableCell objects or strings. Strings are automatically converted</span>
+<span class="sd">                 into TTableCell objects during initialization.</span>
+<span class="sd">    :ivar cells_filter: Filtered cells used for re-ordering and alias names, intended for</span>
+<span class="sd">                        internal use only.</span>
+<span class="sd">    :ivar column_descr: The column descriptor holds the attributes of the columns.</span>
+<span class="sd">    :ivar index: Unique address for the columns, intended for internal use only.</span>
+<span class="sd">    :ivar row_id: Unique row id of the row, valid for the entire table, intended for internal</span>
+<span class="sd">                  use only.</span>
+<span class="sd">    :ivar child: A row could handle recursive data structures, intended for internal use only.</span>
+<span class="sd">    :ivar type: Customizable type used for triggering template output, intended for internal</span>
+<span class="sd">                use only.</span>
+<span class="sd">    :ivar attrs: Customizable row attributes, intended for internal use only.</span>
+<span class="sd">    :type cells: List[TTableCell] | List[str]</span>
+<span class="sd">    :type cells_filter: List[TTableCell]</span>
+<span class="sd">    :type column_descr: List[str]</span>
+<span class="sd">    :type index: int</span>
+<span class="sd">    :type row_id: str</span>
+<span class="sd">    :type child: TTable</span>
+<span class="sd">    :type type: str</span>
+<span class="sd">    :type attrs: dict</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">cells</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableCell</span><span class="p">]</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1">#: Property - A list of strings are converted to a list of TTableCells</span>
+    <span class="n">cells</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableCell</span><span class="p">]</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1">#: :meta private: A list of strings are converted to a list of TTableCells</span>
     <span class="n">cells_filter</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableCell</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private: Filtered cells used for re-ordering and alias names.</span>
     <span class="n">column_descr</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: The column descriptor holds the attributes of the columns</span>
     <span class="n">index</span><span class="p">:</span>      <span class="nb">int</span>         <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: Unique address for the columns</span>
@@ -236,6 +286,20 @@
     <span class="n">child</span><span class="p">:</span>      <span class="n">TTable</span>      <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: A row could handle recursive data structures</span>
     <span class="nb">type</span><span class="p">:</span>       <span class="nb">str</span>         <span class="o">=</span> <span class="s1">&#39;body&#39;</span>    <span class="c1">#: :meta private: Customizable type used for triggering template output</span>
     <span class="n">attrs</span><span class="p">:</span>      <span class="nb">dict</span>        <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: Customizable row attributes</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Computes the SHA1 hash of the `row_id` attribute encoded in UTF-8.</span>
+
+<span class="sd">        This property provides a unique string identifier for an object by</span>
+<span class="sd">        hashing its `row_id` attribute. This can be particularly useful for</span>
+<span class="sd">        ensuring consistent, non-collision identifiers across distributed systems</span>
+<span class="sd">        or unique object tracking.</span>
+
+<span class="sd">        :return: The SHA1 hash of the `row_id` as a hexadecimal string.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">SHA1</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_id</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Create a row, converting the values to :py:obj:`eezz.table.TTableCell` &quot;&quot;&quot;</span>
@@ -251,7 +315,14 @@
 <div class="viewcode-block" id="TTableRow.get_values_list">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTableRow.get_values_list">[docs]</a>
     <span class="k">def</span> <span class="nf">get_values_list</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Get all values in a row as a list &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a list of values from the cells.</span>
+
+<span class="sd">        This method iterates over the cells and extracts their values into a list.</span>
+
+<span class="sd">        :return: A list containing values of the cells.</span>
+<span class="sd">        :rtype: list</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">]</span></div>
 
 
@@ -329,6 +400,8 @@
     <span class="n">database_path</span><span class="p">:</span>      <span class="nb">str</span>         <span class="o">=</span> <span class="s1">&#39;:memory:&#39;</span>        <span class="c1">#: :meta private: The database path</span>
     <span class="n">row_filter_descr</span><span class="p">:</span>   <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">]</span>  <span class="o">=</span> <span class="kc">None</span>              <span class="c1">#: :meta private: The row filter combines column values</span>
     <span class="n">is_synchron</span><span class="p">:</span>        <span class="nb">bool</span>        <span class="o">=</span> <span class="kc">False</span>             <span class="c1">#: :meta private: Used to reduce calls to do_select</span>
+    <span class="n">navigation</span><span class="p">:</span>         <span class="n">TNavigation</span> <span class="o">=</span> <span class="n">TNavigation</span>
+    <span class="nb">id</span><span class="p">:</span>                 <span class="nb">str</span>         <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Post init for a data class</span>
@@ -416,18 +489,27 @@
 <div class="viewcode-block" id="TTable.append">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.append">[docs]</a>
     <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_row</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;body&#39;</span><span class="p">,</span> <span class="n">row_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">exists_ok</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Append a row into the table</span>
-<span class="sd">        This procedure also defines the column type and the width</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Appends a new row to the table. The new row can include custom attributes,</span>
+<span class="sd">        a specified type, and a unique identifier. If `row_id` already exists in</span>
+<span class="sd">        the table, the function will handle it based on the `exists_ok` parameter.</span>
+<span class="sd">        Appropriate cell types, widths, and descriptors are determined and updated</span>
+<span class="sd">        accordingly. The added row is indexed and stored within the table structure.</span>
 
-<span class="sd">        :param table_row:   List of values</span>
-<span class="sd">        :type  table_row:   List[str]</span>
-<span class="sd">        :param attrs:       Customizable attributes</span>
-<span class="sd">        :param row_type:    Row type used for output filter</span>
-<span class="sd">        :param row_id:      Unique row id, which consists of pattern letters and numbers [a-zA-Z0-9]+</span>
-<span class="sd">        :param exists_ok:   Try to append, but do not throw exception, if key exists</span>
-<span class="sd">        :return:            The generated row object</span>
+<span class="sd">        :param table_row:   List of values representing a single row in the table.</span>
+<span class="sd">        :type table_row:    list</span>
+<span class="sd">        :param attrs:       Optional dictionary of attributes for the table row.</span>
+<span class="sd">        :type attrs:        dict, optional</span>
+<span class="sd">        :param row_type:    Type of the row, default is &#39;body&#39;.</span>
+<span class="sd">        :type row_type:     str</span>
+<span class="sd">        :param row_id:      Unique identifier for the row. If not provided, defaults</span>
+<span class="sd">                            to the row index.</span>
+<span class="sd">        :type row_id:       str</span>
+<span class="sd">        :param exists_ok:   If True, allows appending of a row with an existing</span>
+<span class="sd">                            row_id without raising an exception.</span>
+<span class="sd">        :type exists_ok:    bool</span>
+<span class="sd">        :return:            The newly created table row object.</span>
 <span class="sd">        :rtype:             TTableRow</span>
-<span class="sd">        :raise TableInsertException: Exception if row-id already exists</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># define the type with the first line inserted</span>
         <span class="n">x_inx</span>       <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
@@ -462,10 +544,14 @@
 <div class="viewcode-block" id="TTable.get_header_row">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.get_header_row">[docs]</a>
     <span class="k">def</span> <span class="nf">get_header_row</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Returns the header row.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Retrieves the header row of a table, applying a filter to the columns if</span>
+<span class="sd">        necessary. If the `apply_filter_column` attribute is set to True, selects</span>
+<span class="sd">        the visible columns according to the order specified in `column_names_filter`</span>
+<span class="sd">        and maps these columns to new names specified in `column_names_alias`.</span>
 
-<span class="sd">        :return: The header of the table</span>
-<span class="sd">        :rtype:  TTableRow</span>
+<span class="sd">        :return: The table header row, potentially filtered and with aliased column</span>
+<span class="sd">                 names, encapsulated in a `TTableRow` object.</span>
+<span class="sd">        :rtype: TTableRow</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filter_column</span><span class="p">:</span>
             <span class="c1"># Select the visible columns in the desired order and map the new names</span>
@@ -478,12 +564,15 @@
 <div class="viewcode-block" id="TTable.get_next_values">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.get_next_values">[docs]</a>
     <span class="k">def</span> <span class="nf">get_next_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">search_filter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TTableRow</span><span class="p">],</span> <span class="nb">bool</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;  Generator for all elements of a table.</span>
-<span class="sd">        Restrict the rows for a search attribute, if specified</span>
-<span class="sd">        Remove the search criteria, if now second visit is required</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Iterates over rows in the dataset and yields a tuple of values for each</span>
+<span class="sd">        row that matches the given search filter. The search filter is a callable</span>
+<span class="sd">        that should return a boolean indicating whether a particular row matches</span>
+<span class="sd">        the criteria.</span>
 
-<span class="sd">        :param search_filter: A function that returns True for any row entry to be shown</span>
-<span class="sd">        :return: Tuple of values in the order of column names</span>
+<span class="sd">        :param search_filter: A callable function that takes a TTableRow object</span>
+<span class="sd">                              and returns a boolean indicating whether the row</span>
+<span class="sd">                              matches the criteria.</span>
+<span class="sd">        :return: Tuple of values from each matched row.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_row</span><span class="p">:</span> <span class="n">TTableRow</span>
         <span class="k">for</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
@@ -493,27 +582,51 @@
 
 <div class="viewcode-block" id="TTable.on_select">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.on_select">[docs]</a>
-    <span class="k">def</span> <span class="nf">on_select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Select a row from cache &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">on_select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Updates the selected row in the table if a row with the given index</span>
+<span class="sd">        exists. If the row exists, it sets the selected row to it and</span>
+<span class="sd">        returns the row. If the row does not exist, it returns None.</span>
+
+<span class="sd">        :param index: The unique identifier for the table row that is</span>
+<span class="sd">                      to be selected.</span>
+<span class="sd">        :return: The selected table row if it exists, otherwise None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">selected_row</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_index</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">selected_row</span> <span class="o">=</span> <span class="n">selected_row</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_row</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">TTableException</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Selected row does not exist: </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div>
+            <span class="k">return</span> <span class="kc">None</span></div>
 
 
 <div class="viewcode-block" id="TTable.do_select">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.do_select">[docs]</a>
     <span class="k">def</span> <span class="nf">do_select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get_all</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">filter_descr</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Create and execute a select statement on the given database.</span>
-<span class="sd">        For a :memory: database this method achieves a complex search combining multiple columns</span>
-<span class="sd">        returning the values and the row index of the internal data</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Executes a SELECT statement on the SQLite database associated with the current</span>
+<span class="sd">        object and retrieves data based on the specified filter and options. The data</span>
+<span class="sd">        can be fetched from an existing database or an in-memory table. Supports optional</span>
+<span class="sd">        sorting and offset logic.</span>
+
+<span class="sd">        The method allows focusing on retrieving either all records or a subset</span>
+<span class="sd">        defined by internal pagination settings. It uses SQLite3 with Python&#39;s datetime</span>
+<span class="sd">        support for converting date and time objects seamlessly. The method supports</span>
+<span class="sd">        custom filtering through the `filter_descr` argument, which works with</span>
+<span class="sd">        predefined column descriptions to create conditional where clauses.</span>
+
+<span class="sd">        :param get_all: A boolean flag indicating whether to retrieve all records</span>
+<span class="sd">            from the database. If set to True, the method retrieves all available</span>
+<span class="sd">            data. If set to False, the method retrieves a limited number of records</span>
+<span class="sd">            based on the current pagination settings.</span>
+<span class="sd">        :param filter_descr: A list of filters to be applied during the data selection.</span>
+<span class="sd">            These filters guide the construction of the SQL WHERE clause and determine</span>
+<span class="sd">            which records are included in the result set.</span>
+<span class="sd">        :return: A list containing the fetched records from the database. The records</span>
+<span class="sd">            fetched are determined by filter conditions or sorting and pagination</span>
+<span class="sd">            settings depending on the provided arguments.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sqlite3</span><span class="o">.</span><span class="n">register_adapter</span><span class="p">(</span><span class="n">datetime</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x_val</span><span class="p">:</span> <span class="n">x_val</span><span class="o">.</span><span class="n">isoformat</span><span class="p">())</span>
         <span class="n">sqlite3</span><span class="o">.</span><span class="n">register_converter</span><span class="p">(</span><span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x_val</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">x_val</span><span class="o">.</span><span class="n">decode</span><span class="p">()))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span> <span class="o">=</span> <span class="kc">True</span>
 
-        <span class="n">logger</span>      <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
         <span class="n">x_database</span>  <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">database_path</span><span class="p">)</span>
         <span class="n">x_cursor</span>    <span class="o">=</span> <span class="n">x_database</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
         <span class="n">x_ty_map</span>    <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;int&#39;</span><span class="p">:</span> <span class="s1">&#39;integer&#39;</span><span class="p">,</span> <span class="s1">&#39;str&#39;</span><span class="p">:</span> <span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;float&#39;</span><span class="p">:</span> <span class="s1">&#39;real&#39;</span><span class="p">}</span>
@@ -527,11 +640,11 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">database_path</span> <span class="o">==</span> <span class="s1">&#39;:memory:&#39;</span><span class="p">:</span>
             <span class="n">x_create_stm</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;create table </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2">  (</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">header</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">x_ty_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">type</span><span class="p">)</span><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="n">x_ty_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">type</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;text&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">)</span><span class="si">}</span><span class="s2">, index_key integer)&quot;&quot;&quot;</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;TTable.do_select: </span><span class="si">{</span><span class="n">x_create_stm</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;TTable.do_select: </span><span class="si">{</span><span class="n">x_create_stm</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
             <span class="n">x_cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">x_create_stm</span><span class="p">)</span>
 
             <span class="n">x_insert_stm</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;insert into </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2"> values (</span><span class="si">{</span><span class="p">(</span><span class="s1">&#39;?,&#39;</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="p">))</span><span class="si">}</span><span class="s2"> ?)&quot;&quot;&quot;</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;TTable.do_select: </span><span class="si">{</span><span class="n">x_insert_stm</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;TTable.do_select: </span><span class="si">{</span><span class="n">x_insert_stm</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
             <span class="n">x_row</span><span class="p">:</span> <span class="n">TTableRow</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
@@ -541,21 +654,31 @@
         <span class="k">if</span> <span class="n">filter_descr</span><span class="p">:</span>
             <span class="n">x_where</span><span class="p">,</span> <span class="n">x_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_filter</span><span class="p">(</span><span class="n">filter_descr</span><span class="p">)</span>
             <span class="n">x_select_stm</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;select * from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2"> where </span><span class="si">{</span><span class="n">x_where</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">x_sort_stm</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">x_options</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;TTable.do_select: </span><span class="si">{</span><span class="n">x_select_stm</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;TTable.do_select: </span><span class="si">{</span><span class="n">x_select_stm</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
             <span class="n">x_cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">x_select_stm</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x_args</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">x_cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;select * from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">x_options</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
         <span class="k">yield from</span> <span class="n">x_cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span></div>
 
 
+<div class="viewcode-block" id="TTable.create_filter">
+<a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.create_filter">[docs]</a>
     <span class="k">def</span> <span class="nf">create_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filter_descr</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Return a database select where statement</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Constructs a SQL filter query and its corresponding arguments</span>
+<span class="sd">        from a structured filter description. The filter description</span>
+<span class="sd">        consists of nested lists representing conditions connected by</span>
+<span class="sd">        logical &quot;and&quot; and &quot;or&quot; operators. Each condition within &quot;and&quot; is</span>
+<span class="sd">        specified as a string with a column name, an operator, and a value.</span>
 
-<span class="sd">        :param filter_descr: An OR array containing AND arrays. Each AND array is evaluated and then</span>
-<span class="sd">                            the result is combined to an OR expression. See the following array and the resulting string</span>
-<span class="sd">                |br| list[list[&#39;id &gt; 100&#39;, &#39;num &lt; 10], list[&#39;id &lt; 10&#39;]] -&gt;</span>
-<span class="sd">                |br| tuple(&#39;(id &gt; ? and num &lt; ?) or (id &lt; ?)&#39;, tuple(&#39;100&#39;,10,10))</span>
-<span class="sd">        :return: Valid SQL part as string for a &#39;where&#39; clause and the value list</span>
+<span class="sd">        :param filter_descr: A list of lists where each inner list</span>
+<span class="sd">                             contains strings representing individual</span>
+<span class="sd">                             conditions in the format</span>
+<span class="sd">                             &quot;&lt;column_name&gt; &lt;operator&gt; &lt;value&gt;&quot;.</span>
+<span class="sd">        :type filter_descr: List[List[str]]</span>
+<span class="sd">        :return: A tuple containing the constructed SQL filter query as</span>
+<span class="sd">                 a string and a list of arguments corresponding to the</span>
+<span class="sd">                 placeholders in the SQL query.</span>
+<span class="sd">        :rtype: tuple</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_where</span>     <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="n">x_args</span>      <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
@@ -568,29 +691,21 @@
                 <span class="n">x_args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_value</span><span class="p">)</span>
             <span class="n">x_or_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;(</span><span class="si">{</span><span class="s1">&#39; and &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x_where</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;&quot;&quot;</span><span class="p">)</span>
             <span class="n">x_where</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="k">return</span> <span class="s1">&#39; or &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x_or_list</span><span class="p">),</span> <span class="n">x_args</span>
+        <span class="k">return</span> <span class="s1">&#39; or &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x_or_list</span><span class="p">),</span> <span class="n">x_args</span></div>
+
 
 <div class="viewcode-block" id="TTable.get_visible_rows">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.get_visible_rows">[docs]</a>
     <span class="k">def</span> <span class="nf">get_visible_rows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get_all</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableRow</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Select table rows using column values pairs, return at maximum visible_items.</span>
-<span class="sd">        The value could be any valid regular expression.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Retrieves visible rows from the data source. The rows are filtered based</span>
+<span class="sd">        on column descriptions and filter expressions, and can be further controlled</span>
+<span class="sd">        by whether all rows should be retrieved or just a limited visible set.</span>
 
-<span class="sd">        :param get_all:   If True select more than visible_items</span>
-<span class="sd">        :return:          List of selected rows</span>
+<span class="sd">        :param get_all: Determines whether to retrieve all rows without counting</span>
+<span class="sd">            against the visible items limit. Defaults to False.</span>
+<span class="sd">        :type get_all: bool</span>
+<span class="sd">        :return: A generator yielding visible rows that match the filter criteria.</span>
 <span class="sd">        :rtype: List[TTableRow]</span>
-
-<span class="sd">        Example:</span>
-
-<span class="sd">        &gt;&gt;&gt; my_table = TTable(column_names=[&#39;FileName&#39;, &#39;Size&#39;], title=&#39;Directory&#39;)</span>
-<span class="sd">        &gt;&gt;&gt; row = my_table.append([&#39;__init__.py&#39;,   37])</span>
-<span class="sd">        &gt;&gt;&gt; row = my_table.append([&#39;__pycache__&#39;, 4096])</span>
-<span class="sd">        &gt;&gt;&gt; row = my_table.append([&#39;test.py&#39;,     1246])</span>
-<span class="sd">        &gt;&gt;&gt; my_table.get_column(&#39;FileName&#39;).filter = &#39;^__[a-zA-Z]*__.py&#39;</span>
-<span class="sd">        &gt;&gt;&gt; my_table.print()</span>
-<span class="sd">        Table: Directory</span>
-<span class="sd">        | FileName    | Size |</span>
-<span class="sd">        | __init__.py |   37 |</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># in case the filters is a string, we could also handle tree access</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">row_filter_descr</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span><span class="p">:</span>
@@ -627,11 +742,21 @@
 <div class="viewcode-block" id="TTable.navigate">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.navigate">[docs]</a>
     <span class="k">def</span> <span class="nf">navigate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">where_togo</span><span class="p">:</span> <span class="n">TNavigation</span> <span class="o">=</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Navigate in block mode</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adjusts the current navigation offset based on the specified navigation</span>
+<span class="sd">        command and position. It calculates a new offset value for navigating</span>
+<span class="sd">        within a data structure while ensuring that boundaries are respected.</span>
+<span class="sd">        The offset determines the starting point for visible items and can be</span>
+<span class="sd">        adjusted using different navigation strategies such as moving to the</span>
+<span class="sd">        next, previous, absolute position, top, or last items in the structure.</span>
 
-<span class="sd">        :param where_togo:  Navigation direction</span>
-<span class="sd">        :type  where_togo:  TNavigation</span>
-<span class="sd">        :param position:    Position for absolute navigation, ignored in any other case</span>
+<span class="sd">        :param where_togo: Determines the navigation strategy. The navigation</span>
+<span class="sd">                           can be to the &#39;NEXT&#39; item, &#39;PREV&#39; item, an &#39;ABS&#39;olute</span>
+<span class="sd">                           position, &#39;TOP&#39; of the data, or the &#39;LAST&#39; item.</span>
+<span class="sd">        :param position: Used when the &#39;ABS&#39; navigation strategy is selected.</span>
+<span class="sd">                         Determines the target position for the offset in the</span>
+<span class="sd">                         data structure.</span>
+<span class="sd">        :return: None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">match</span> <span class="n">where_togo</span><span class="p">:</span>
             <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">:</span>
@@ -647,24 +772,55 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span> <span class="o">=</span> <span class="kc">False</span></div>
 
 
+<div class="viewcode-block" id="TTable.do_sort">
+<a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.do_sort">[docs]</a>
     <span class="k">def</span> <span class="nf">do_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">column</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTable</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Toggle sort on a given column index &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Sorts the table by a specified column. This method allows sorting in</span>
+<span class="sd">        ascending or descending order based on the `reverse` flag. The column to</span>
+<span class="sd">        be sorted can be specified using either its index or name.</span>
+
+<span class="sd">        :param column: The column by which the table should be sorted. It can be</span>
+<span class="sd">                       specified as an integer (index) or a string (name).</span>
+<span class="sd">        :type column: int | str</span>
+<span class="sd">        :param reverse: Determines the order of sorting. If True, the table is</span>
+<span class="sd">                        sorted in descending order; otherwise, it is sorted in</span>
+<span class="sd">                        ascending order. Default is False.</span>
+<span class="sd">        :type reverse: bool</span>
+<span class="sd">        :return: The sorted table object.</span>
+<span class="sd">        :rtype: TTable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x_row</span><span class="p">:</span> <span class="n">x_row</span><span class="p">[</span><span class="n">column</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
 
 <div class="viewcode-block" id="TTable.print">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.print">[docs]</a>
-    <span class="k">def</span> <span class="nf">print</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Print ASCII formatted table</span>
+    <span class="k">def</span> <span class="nf">print</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Prints the table with the specified formatting and indentation level. The table</span>
+<span class="sd">        headers are determined based on the column descriptions, and the rows are</span>
+<span class="sd">        printed with respect to the visibility and formatting criteria applied. Each row</span>
+<span class="sd">        can have a hierarchy with child rows being printed recursively at increasing</span>
+<span class="sd">        indentation levels.</span>
+
+<span class="sd">        :param level:</span>
+<span class="sd">            The indentation level to be applied to the printed table. Default is 0.</span>
+<span class="sd">            This affects the amount of whitespace before the table data, enhancing</span>
+<span class="sd">            readability for nested (child) tables.</span>
+<span class="sd">        :param file:</span>
+<span class="sd">            An optional output stream to which the table will be printed. Default is</span>
+<span class="sd">            `sys.stdout`, which represents standard output.</span>
+<span class="sd">        :return:</span>
+<span class="sd">            This function does not return any value. It directly prints the formatted</span>
+<span class="sd">            table to the specified output.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_offset</span>        <span class="o">=</span> <span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">level</span>
         <span class="n">x_column_descr</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_names_filter</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filter_column</span> \
                       <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_offset</span><span class="si">}</span><span class="s1">Table: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_offset</span><span class="si">}</span><span class="s1">Table: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
         <span class="n">x_formatted_row</span> <span class="o">=</span> <span class="s1">&#39;|&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39; {{:&lt;</span><span class="si">{}</span><span class="s1">}} &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x_col</span><span class="o">.</span><span class="n">width</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x_col</span><span class="o">.</span><span class="n">alias</span><span class="p">)</span>  <span class="k">for</span> <span class="n">x_col</span> <span class="ow">in</span> <span class="n">x_column_descr</span><span class="p">])</span>  <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filter_column</span> \
                     <span class="k">else</span> <span class="p">(</span><span class="s1">&#39;|&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39; {{:&lt;</span><span class="si">{}</span><span class="s1">}} &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x_col</span><span class="o">.</span><span class="n">width</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x_col</span><span class="o">.</span><span class="n">header</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_col</span> <span class="ow">in</span> <span class="n">x_column_descr</span><span class="p">]))</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_offset</span><span class="si">}</span><span class="s1">|</span><span class="si">{</span><span class="n">x_formatted_row</span><span class="si">}</span><span class="s1">|&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_offset</span><span class="si">}</span><span class="s1">|</span><span class="si">{</span><span class="n">x_formatted_row</span><span class="si">}</span><span class="s1">|&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_visible_rows</span><span class="p">():</span>
             <span class="n">x_cells</span>         <span class="o">=</span> <span class="p">[</span><span class="n">x_row</span><span class="o">.</span><span class="n">cells</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_names_filter</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filter_column</span> <span class="k">else</span> <span class="n">x_row</span><span class="o">.</span><span class="n">cells</span>
@@ -673,17 +829,16 @@
                           <span class="k">else</span> <span class="p">(</span><span class="s1">&#39;str&#39;</span><span class="p">,</span>        <span class="n">x_descr</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">x_cell</span><span class="o">.</span><span class="n">value</span><span class="p">))</span> <span class="k">for</span> <span class="n">x_cell</span><span class="p">,</span> <span class="n">x_descr</span> <span class="ow">in</span> <span class="n">x_row_descr</span><span class="p">]</span>
 
             <span class="n">x_formatted_row</span> <span class="o">=</span> <span class="s1">&#39;|&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">[</span><span class="n">x_type</span><span class="p">](</span><span class="n">x_width</span><span class="p">,</span> <span class="n">x_value</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_type</span><span class="p">,</span> <span class="n">x_width</span><span class="p">,</span> <span class="n">x_value</span> <span class="ow">in</span> <span class="n">x_format_descr</span><span class="p">])</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_offset</span><span class="si">}</span><span class="s1">|</span><span class="si">{</span><span class="n">x_formatted_row</span><span class="si">}</span><span class="s1">|&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">x_row</span><span class="o">.</span><span class="n">child</span><span class="p">:</span>
-                <span class="n">x_row</span><span class="o">.</span><span class="n">child</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">level</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_offset</span><span class="si">}</span><span class="s1">|</span><span class="si">{</span><span class="n">x_formatted_row</span><span class="si">}</span><span class="s1">|&#39;</span><span class="p">)</span></div>
+                <span class="n">x_row</span><span class="o">.</span><span class="n">child</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">level</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span></div>
 </div>
 
 
 
 <span class="k">def</span> <span class="nf">test_table</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s2">&quot;Create a table and read the directory with attribute: [File, Size, Access] and print&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Create a table and read the directory with attribute: [File, Size, Access] and print&quot;</span><span class="p">)</span>
     <span class="n">x_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
     <span class="n">x_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">title</span><span class="o">=</span> <span class="s1">&#39;list_files&#39;</span><span class="p">,</span> <span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;File&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">,</span> <span class="s1">&#39;Access&#39;</span><span class="p">],</span> <span class="n">visible_items</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">x_item</span> <span class="ow">in</span> <span class="n">x_path</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
@@ -698,33 +853,41 @@
             <span class="n">x_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">x_stat</span><span class="o">.</span><span class="n">st_atime</span><span class="p">,</span> <span class="n">tz</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
             <span class="n">x_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="p">),</span> <span class="n">x_stat</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span> <span class="n">x_time</span><span class="p">],</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;path&#39;</span><span class="p">:</span> <span class="n">x_item</span><span class="p">},</span> <span class="n">row_id</span><span class="o">=</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">TTableException</span> <span class="k">as</span> <span class="n">x_except</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s1">&#39;Check row-id: Add entries with same row-id should be rejected&#39;</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;TableInsertException </span><span class="si">{</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">x_except</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Check row-id: Add entries with same row-id should be rejected&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;TableInsertException </span><span class="si">{</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">x_except</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
             <span class="k">break</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;table header = </span><span class="si">{</span><span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">value</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">x_table</span><span class="o">.</span><span class="n">get_header_row</span><span class="p">()</span><span class="o">.</span><span class="n">cells</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;table header = </span><span class="si">{</span><span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">value</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">x_table</span><span class="o">.</span><span class="n">get_header_row</span><span class="p">()</span><span class="o">.</span><span class="n">cells</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">debug_out</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">debug_out</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">debug_out</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s2">&quot;--- Output restricted on File and Size, change the position and translate the column names&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;--- Output restricted on File and Size, change the position and translate the column names&quot;</span><span class="p">)</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">filter_columns</span><span class="p">({</span><span class="s1">&#39;Size&#39;</span><span class="p">:</span> <span class="s1">&#39;Größe&#39;</span><span class="p">,</span> <span class="s1">&#39;File&#39;</span><span class="p">:</span> <span class="s1">&#39;Datei&#39;</span><span class="p">})</span>
-    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+    <span class="n">debug_out</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">debug_out</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">debug_out</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s1">&#39;--- Sort for column Size&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;--- Sort for column Size&#39;</span><span class="p">)</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">apply_filter_column</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">do_sort</span><span class="p">(</span><span class="s1">&#39;Size&#39;</span><span class="p">)</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s1">&#39;--- Restrict number of visible items&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;--- Restrict number of visible items&#39;</span><span class="p">)</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">visible_items</span> <span class="o">=</span> <span class="mi">5</span>
-    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+    <span class="n">debug_out</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">debug_out</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">debug_out</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s1">&#39;--- Navigate to next&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;--- Navigate to next&#39;</span><span class="p">)</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">navigate</span><span class="p">(</span><span class="n">where_togo</span><span class="o">=</span><span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">)</span>
-    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+    <span class="n">debug_out</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">debug_out</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">debug_out</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>
 
     <span class="c1"># x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[[&#39;Size &gt; 20000&#39;],[&#39;File like %py&#39;]])]</span>
     <span class="n">x_result</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_table</span><span class="o">.</span><span class="n">do_select</span><span class="p">(</span><span class="n">get_all</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">filter_descr</span><span class="o">=</span><span class="p">[[</span><span class="s2">&quot;Size &gt; 10000&quot;</span><span class="p">],[</span><span class="s2">&quot;File like %.py&quot;</span><span class="p">]])]</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;--- result = </span><span class="si">{</span><span class="n">x_result</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--- result = </span><span class="si">{</span><span class="n">x_result</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="n">x_table</span><span class="o">.</span><span class="n">visible_items</span> <span class="o">=</span> <span class="mi">100</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">filter_rows</span><span class="p">([[</span><span class="s2">&quot;Size &gt; 10000&quot;</span> <span class="p">],[</span><span class="s2">&quot;File like %.py&quot;</span><span class="p">]])</span>
@@ -735,7 +898,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
     <span class="n">TService</span><span class="o">.</span><span class="n">set_environment</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;C:\Users\alzer\Projects\github\eezz_full\webroot&#39;</span><span class="p">)</span>
 
-    <span class="n">x_log_path</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">logging_path</span> <span class="o">/</span> <span class="s1">&#39;table.log&#39;</span>
+    <span class="c1"># x_log_path = TService().logging_path / &#39;table.log&#39;</span>
     <span class="n">test_table</span><span class="p">()</span>
 </pre></div>
 

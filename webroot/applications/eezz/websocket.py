@@ -40,9 +40,9 @@ class TWebSocketAgent:
         return ''
 
     @abstractmethod
-    def handle_request(self, request_data: Any) -> str:
+    def handle_request(self, request_data: Any) -> dict:
         """ handle request expects a json structure """
-        return ''
+        return {}
 
     @abstractmethod
     def handle_download(self, description: str, raw_data: Any) -> str:
@@ -64,12 +64,43 @@ class TWebSocketException(Exception):
 
 
 class TWebSocketClient:
-    """ Implements a WEB socket service thread. This class is created for each WebSocket connection
+    """
+    The TWebSocketClient class handles the WebSocket client connection, transitioning a
+    standard HTTP connection to a WebSocket, maintaining socket communication, and managing
+    interaction with a specified WebSocket agent.
 
-    :param a_client_addr:   The communication socket to the web-browser
-    :type  a_client_addr:   Tuple[host, address]
-    :param a_agent:         The agent class handle to handle incoming request
-    :type  a_agent:         type[TWebSocketAgent]
+    This class is responsible for upgrading HTTP connections to WebSocket connections,
+    handling requests sent over WebSocket, and managing asynchronous and synchronous
+    processing of those requests. It interacts with a WebSocket agent class to delegate
+    specific tasks, handle incoming data frames, generate handshake responses, and maintain
+    the overall stability of the WebSocket communication channel.
+
+    :ivar m_headers: Stores HTTP headers relevant for WebSocket handshake.
+    :vartype m_headers: dict
+
+    :ivar m_socket: The socket object related to the client connection.
+    :vartype m_socket: Any
+
+    :ivar m_cnt: A counter used internally (specific usage/context not documented).
+    :vartype m_cnt: int
+
+    :ivar m_buffer: A buffer space used for storing data received over the WebSocket.
+    :vartype m_buffer: bytearray
+
+    :ivar m_protocol: The protocol name used during WebSocket handshake.
+    :vartype m_protocol: str
+
+    :ivar m_agent_class: The class type of the WebSocket agent associated with this client.
+    :vartype m_agent_class: type[TWebSocketAgent]
+
+    :ivar m_agent_client: An instance of the WebSocket agent class, facilitating task delegation.
+    :vartype m_agent_client: TWebSocketAgent
+
+    :ivar m_lock: A threading lock used to ensure thread safety during operations.
+    :vartype m_lock: Lock
+
+    :ivar m_threads: A dictionary mapping asynchronous callables to their respective threads.
+    :vartype m_threads: Dict[Callable, Thread]
     """
     def __init__(self, a_client_addr: tuple, a_agent: type[TWebSocketAgent]):
         self.m_headers      = None
@@ -87,7 +118,14 @@ class TWebSocketClient:
         pass
 
     def upgrade(self):
-        """ Upgrade HTTP connection to WEB socket """
+        """
+        Establishes a web socket connection by performing a handshake with the server.
+        This method handles receiving initial binary data, decoding it to UTF-8, generating
+        a handshake response, and sending this response back to establish a connection.
+        It also initializes a buffer used for further communications.
+
+        :raises TWebSocketException: if no data is received during the handshake process
+        """
         logger.debug('establish web socket')
         x_bin_data = self.m_socket.recv(1024)
         if len(x_bin_data) == 0:
@@ -100,9 +138,13 @@ class TWebSocketClient:
         self.m_buffer = bytearray(65536 * 2)
 
     def handle_request(self) -> None:
-        """ Receives an request and send a response
-        The given method is executed async, so there will be no blocking calls. After the call the result
-        is collected.
+        """
+        Handles incoming WebSocket requests by interpreting their JSON content and
+        executing the appropriate method based on the included command. The method
+        supports commands for 'download', 'file', 'initialize', and 'call'. The command
+        determines which backend process or asynchronous task should be triggered.
+
+        :return: None
         """
         x_json_str = self.read_websocket()
         x_json_obj = json.loads(x_json_str.decode('utf-8'))
@@ -116,50 +158,57 @@ class TWebSocketClient:
         if 'file' in x_json_obj:
             with self.m_lock:
                 x_byte_stream = self.read_websocket()
-                x_response    = self.m_agent_client.handle_download(x_json_obj, x_byte_stream)
+                x_response    = self.m_agent_client.handle_download('x_json_obj', x_byte_stream)
                 self.write_frame(x_response.encode('utf-8'))
             return
 
         if 'initialize' in x_json_obj:
-            self.handle_aync_request(request=x_json_obj)
+            x_init_update: dict  = self.handle_async_request(request=x_json_obj)
+
+            if x_init_update:
+                for x_id, x_task_jsn in x_init_update.get('tasks'):
+                    x_thread = TAsyncHandler(socket_server=self, id=x_id, request=x_task_jsn, do_loop=True)
+                    x_thread.start()
             return
 
         if 'call' in x_json_obj:
-            x_request = x_json_obj['call']
-            x_args    = x_request['args']
-            x_name    = x_request['function']
+            x_call_jsn  = x_json_obj['call']
+            x_id        = x_call_jsn['id']
 
-            logger.debug(f'websocket call {x_name}( {x_args} )')
-            x_obj, x_method, x_tag, x_descr = TService().get_method(x_request['id'], x_name)
-            x_thread  = self.m_threads.get(x_method)
-
-            # Wait for this method to terminate before launching a new request
-            if x_thread and x_thread.is_alive():
-                return
-
-            x_descr   = f'{x_descr}.{x_name}'
-            x_thread  = TAsyncHandler(socket_server=self, request=x_json_obj, method=x_method, args=x_args, description=x_descr)
-            self.m_threads[x_method] = x_thread
+            logger.debug(f'websocket call {x_call_jsn["function"]}')
+            x_thread  = TAsyncHandler(socket_server=self, id=x_id, request=x_json_obj, do_loop=False)
             x_thread.start()
-            # - x_response = self.m_agent_client.handle_request(x_json_obj)
-            # - self.write_frame(x_response.encode('utf-8'))
 
-    def handle_aync_request(self, request: dict) -> None:
-        """ This method is called after each method call request by user interface. The idea of an async call is,
-        that a user method is unpredictable long-lasting and could block the entire communication channel.
-        The environment takes care, that the same method is not executed as long as prior execution lasts.
+    def handle_async_request(self, request: dict) -> dict:
+        """
+        Handles an asynchronous request by utilizing a client to process the
+        request and subsequently sending the response. This function is
+        intended to ensure thread safety when accessing shared resources.
 
-        :param request: The original request to execute after EEZZ function call
-        :type  request: dict
+        :param request:
+            A dictionary containing the details of the request to be
+            processed. It typically includes all necessary information
+            required by the client for processing.
+        :return:
+            A string response generated by the client after handling the
+            request. The response is also sent in an encoded format.
         """
         with self.m_lock:
-            x_response = self.m_agent_client.handle_request(request)
+            x_json_obj = self.m_agent_client.handle_request(request)
+            x_response = json.dumps(x_json_obj)
             self.write_frame(x_response.encode('utf-8'))
+            return x_json_obj
 
     def read_websocket(self) -> bytes:
-        """ Read a chunk of data from stream
+        """
+        Reads data from a websocket, processing various websocket frame opcodes such as
+        text, binary, ping, and pong, until a final frame is encountered. Handles exceptions
+        during the reading process, logging them and shutting down the client connection if necessary.
 
-        :return: The chunk of data coming from browser
+        :return: The raw bytes data read from the websocket until a final frame is encountered.
+
+        :raises TWebSocketException: If a close frame is received or an unknown opcode is encountered.
+        :raises Exception: For any other unexpected exceptions during the reading process.
         """
         try:
             x_raw_data = bytes()
@@ -190,10 +239,19 @@ class TWebSocketClient:
             raise
 
     def gen_handshake(self, a_data: str):
-        """ Upgrade HTTP connection to WEB-socket
+        """
+        Generates a WebSocket handshake response based on the input request data. The
+        function parses the request headers, determines the appropriate WebSocket
+        protocol version and constructs the response necessary for the protocol
+        switch. This is essential for establishing a connection that adheres to
+        WebSocket protocol specifications.
 
-        :param a_data: Upgrade request data
-        :return:
+        :param a_data: The raw HTTP request string containing headers that are used
+                       to construct the WebSocket handshake response.
+        :type a_data: str
+        :return: A string representing the HTTP response for switching protocols,
+                 formatted for a WebSocket handshake.
+        :rtype: str
         """
         x_key           = 'accept'
         x_lines         = a_data.splitlines()
@@ -212,9 +270,17 @@ class TWebSocketClient:
         return x_handshake.getvalue()
 
     def gen_key(self):
-        """ Generates a key to establish a secure connection
+        """
+        Generates a WebSocket accept key by concatenating the client's key with a
+        GUID and hashing the result using SHA-1, followed by base64 encoding. This
+        process is described in RFC 6455, Section 4.2.2, which is part of the
+        WebSocket protocol specification. The key serves as a mechanism to ensure
+        that the connection request is valid and not coming from a source that
+        doesn't understand WebSockets, thereby providing a level of handshake
+        security.
 
-        :return: Base64 representation of the calculated hash
+        :return: The WebSocket accept key, encoded in base64 format
+        :rtype: str
         """
         x_hash     = hashlib.sha1()
         x_64key    = self.m_headers.get('Sec-WebSocket-Key').strip()
@@ -223,10 +289,20 @@ class TWebSocketClient:
         return base64.b64encode(x_hash.digest()).decode('utf-8')
 
     def read_frame_header(self):
-        """ Interpret the incoming data stream, starting with analysis of the first bytes
+        """
+        Reads the header of a WebSocket frame from the socket, processing information
+        related to control and payload data. This function extracts the fin bit, opcode,
+        mask vector, and payload length from the frame's header, which are crucial for
+        determining the frame's structure and for handling WebSocket connections
+        in a compliant manner.
 
-        :return: A tuple of all attributes, which enable the program to read the payload: \
-        final(byte), opcode(data-type), mask(encryption), len(payload size)
+        :return: A tuple containing the following elements:
+            - x_final (bool): Indicates if the frame is the final fragment.
+            - x_opcode (int): Specifies the opcode defining the frame's content type.
+            - x_mask_vector (bytes or None): The mask key if the payload is masked.
+            - x_payload_len (int): Length of the payload data.
+        :rtype: tuple
+        :raises TWebSocketException: If no data is received from the socket.
         """
         x_bytes = self.m_socket.recv(2)
         
@@ -253,12 +329,23 @@ class TWebSocketClient:
         return x_final, x_opcode, x_mask_vector, x_payload_len
 
     def read_frame(self, x_opcode, a_mask_vector, a_payload_len):
-        """ Read one frame
+        """
+        Reads a frame from a socket and processes it based on the given opcode, mask vector,
+        and payload length. If the payload length is zero, it returns immediately with an
+        empty bytearray. Otherwise, it reads the payload from the socket into an internal buffer.
 
-        :param x_opcode:        The opcode describes the data type
-        :param a_mask_vector:   The mask is used to decrypt and encrypt the data stream
-        :param a_payload_len:   The length of the data block
-        :return:                The buffer with the data
+        If a mask vector is provided, it applies the mask to the payload using byte-wise
+        XOR operations. The method supports both masked and unmasked frames typical of
+        web socket communication.
+
+        :param x_opcode: OpCode of the frame to be read, determining the type of frame.
+        :type x_opcode: int, typically a WebSocket OpCode
+        :param a_mask_vector: Mask vector for unmasking the frame's payload, if present.
+        :type a_mask_vector: Optional[bytes], 4-byte sequence if present
+        :param a_payload_len: Length of the payload that needs to be read from the socket.
+        :type a_payload_len: int
+        :return: A bytearray containing the unmasked payload of the read frame.
+        :rtype: bytearray
         """
         if a_payload_len == 0:
             return bytearray()
@@ -290,16 +377,21 @@ class TWebSocketClient:
         return self.m_buffer[:a_payload_len]
 
     def write_frame(self, a_data: bytes, a_opcode: hex = 0x1, a_final: hex = (1 << 7), a_mask_vector: list | None = None) -> None:
-        """ Write single frame
+        """
+        Constructs and sends a WebSocket frame using the specified parameters. The function handles masking
+        the payload if a mask vector is provided, maintains the frame structure as per the WebSocket protocol,
+        and sends the frame through the established socket connection.
 
-        :param a_data:      Data to send to browser
-        :type  a_data:      bytes
-        :param a_opcode:    Opcode defines the kind of data
-        :type  a_opcode:    byte
-        :param a_final:     Indicates if all data are written to stream
-        :type  a_final:     byte
-        :param a_mask_vector: Mask to use for secure communication
-        :type  a_mask_vector: List[byte,byte,byte,byte]
+        :param a_data: The payload data to be sent in the WebSocket frame.
+        :type a_data: bytes
+        :param a_opcode: The opcode for the frame, indicating the type of data being sent (e.g., text, binary).
+        :type a_opcode: hex, optional
+        :param a_final: A flag indicating if this is the final fragment in a message. Defaults to 1 << 7.
+        :type a_final: hex, optional
+        :param a_mask_vector: A list of four byte mask keys used for masking the payload data.
+                              If None, no masking is applied. Must be exactly 4 bytes if provided.
+        :type a_mask_vector: list or None, optional
+        :return: None
         """
         x_payload_len = len(a_data)
         x_bytes       = bytearray(10)
@@ -345,20 +437,33 @@ class TWebSocketClient:
 
 
 class TWebSocket(Thread):
-    """ Manage connections to the WEB socket interface.
-    TWebSocket implements the socket of a http.server.HTTPServer
+    """
+    TWebSocket is a thread-based server for handling WebSocket connections.
 
-    :param a_web_address: The connection information
-    :type  a_web_address: Tupel[host, address]
-    :param a_agent_class: The implementation of the EEZZ protocol
-    :type  a_agent_class: type[TWebSocketAgent]
+    This class provides the implementation for a WebSocket server that
+    listens for incoming WebSocket requests on a specified address and port.
+    It uses a separate client handler class to manage the communication with
+    each connected client and supports gracefully shutting down all sockets
+    when required. The server runs as a daemon thread, allowing it to operate
+    independently of the main application flow.
+
+    :ivar m_web_socket: The main server socket for accepting client connections.
+    :type m_web_socket: socket.socket
+    :ivar m_web_addr: The tuple containing the IP address and port where the server listens.
+    :type m_web_addr: tuple
+    :ivar m_clients: A dictionary mapping client sockets to their handler instances.
+    :type m_clients: dict
+    :ivar m_agent_class: The class type used for creating client agent instances.
+    :type m_agent_class: type[TWebSocketAgent]
+    :ivar m_running: A boolean flag indicating if the server is currently active and accepting connections.
+    :type m_running: bool
     """
     def __init__(self, a_web_address: tuple, a_agent_class: type[TWebSocketAgent]):
-        self.m_web_socket: socket = None
-        self.m_web_addr    = a_web_address
-        self.m_clients     = dict()
-        self.m_agent_class = a_agent_class
-        self.m_running     = True
+        self.m_web_socket: socket.socket | None  = None
+        self.m_web_addr:    tuple = a_web_address
+        self.m_clients:     dict  = dict()
+        self.m_agent_class: type[TWebSocketAgent] = a_agent_class
+        self.m_running:     bool  = True
         super().__init__(daemon=True, name='WebSocket')
     
     def shutdown(self):
@@ -370,7 +475,15 @@ class TWebSocket(Thread):
         pass
 
     def run(self):
-        """ Wait for incoming requests"""
+        """
+        Establishes a WebSocket server that listens for incoming connections and
+        handles client requests. The server operates in a loop where it waits for
+        socket events, manages client connections, and processes incoming WebSocket
+        messages. It handles errors by shutting down faulty connections and cleaning
+        up resources appropriately.
+
+        :raises: Exception if the server socket encounters an error
+        """
         self.m_web_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.m_web_socket.bind((self.m_web_addr[0], self.m_web_addr[1]))
         self.m_web_socket.listen(15)
@@ -410,6 +523,7 @@ class TWebSocket(Thread):
                         x_socket.close()
                         x_read_list.remove(x_socket)
                         self.m_clients.pop(x_socket)
+                        logger.info(f'shutdown connection: {aEx}')
 
 
 class TAsyncHandler(Thread):
@@ -432,24 +546,49 @@ class TAsyncHandler(Thread):
     :type  request:         dict[eezz-lark-key:value]
     :param description:     The name of the thread
     """
-    def __init__(self, method: Callable, args: dict, socket_server: TWebSocketClient, request: dict, description: str):
-        super().__init__(daemon=True, name=description)
-        self.method         = method
-        self.args           = args
+    def __init__(self, socket_server: TWebSocketClient, id: str, request: dict, do_loop: bool = False):
+        self.method_name = request['call']['function']
+        self.method_args = request['call']['args']
+        self.id          = id
+        x_obj, x_method, x_tag, x_descr = TService().get_method(id, self.method_name)
+        super().__init__(daemon = True, name = x_descr)
+
+        self.method         = x_method
         self.socket_server  = socket_server
         self.request        = request
+        self.running: bool  = True
+        self.do_loop: bool  = do_loop
 
     @logger.catch(reraise=True)
     def run(self):
-        try:
-            x_meta_args = self.args.pop('_meta')
-            x_loop      = x_meta_args['loop'] if x_meta_args and 'loop' in x_meta_args else 1
-        except KeyError:
-            x_loop      = 1
+        """
+        Executes the request in either asynchronous or synchronous mode based on
+        the request parameters. Continuously handles asynchronous requests while
+        the 'running' attribute is True. In synchronous mode, processes the
+        request once and returns the result.
 
-        for i in range(x_loop):
-            self.request['result'] = self.method(**self.args)
-            self.socket_server.handle_aync_request(self.request)
+        :return: None
+        """
+        while self.running:
+            self.running = self.do_loop
+            x_row        = self.method(**self.method_args) if self.method_args else self.method()
+            self.request['result-value'] = ''
+            self.request['result-type']  = ''
+
+            # execute value request:
+            if self.request.get('update'):
+                for x_key, x_value in self.request['update'].items():
+                    if isinstance(x_value, dict):
+                        x_id     = self.id
+                        x_object, x_method, x_tag, x_descr = TService().get_method(x_id, x_value['function'])
+                        x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
+                        x_result = x_method(**x_args) if x_args else x_method()
+                        self.request['result-value'] = {'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')}
+                    elif not x_value.startswith('this'):
+                        self.request['result-value'] = {'target': x_key, 'type': 'text',   'value': x_value.format(row=x_row)}
+
+            self.request['result'] = x_row
+            self.socket_server.handle_async_request(self.request)
 
 
 # ---- Module test section:

@@ -136,6 +136,8 @@ function dynamic_update(a_update_json) {
     else if (x_attr == 'subtree') {
         tree_expand(x_elem, a_update_json.value)
     }
+    else if (x_elem.tagName == 'IMG')
+        x_elem.setAttribute(x_attr, 'data:image/png;base64,' + a_update_json.value);
     else {
         x_elem.setAttribute(x_attr, a_update_json.value);
     }    
@@ -147,7 +149,7 @@ function tree_collapse(a_node) {
         if (a_node.nextSibling.getAttribute('data-eezz-subtree-id') == a_node.id) {
             a_node.nextSibling.remove();
         }
-        //a_node.lastChild.remove();
+        // a_node.lastChild.remove();
     }
 }
 
@@ -167,7 +169,7 @@ function tree_expand(a_node, subtree_descr) {
     var x_row           = document.createElement('tr');
     var x_td            = document.createElement('td');
 
-    x_td.setAttribute('colspan', x_nr_cols);
+    x_td.setAttribute('colspan', x_nr_cols+1);
     x_row.setAttribute('data-eezz-subtree-id', a_node['id']);
     x_row.appendChild(x_td);
 
@@ -190,15 +192,16 @@ function tree_expand(a_node, subtree_descr) {
         x_table.classList.add('clzz_node');
         x_tbody.classList.add('clzz_node');
         x_thead.innerHTML = subtree_descr.thead;
-        x_tbody.innerHTML = subtree_descr.tbody;
+
     }
 
     a_node.parentNode.insertBefore(x_row, a_node.nextSibling);
     a_node.setAttribute('data-eezz-subtree_state', 'expanded');
 
-    //x_td = document.createElement('td');
-    //x_td.style.width = '0px';
-    //a_node.insertBefore(x_td, null);
+    // x_td = document.createElement('td');
+    // x_td.classList.add('clzz_node_space')
+    // x_td.style.width = '50px';
+    // a_node.insertBefore(x_td, null);
 }
 
 // Function collects all eezz events from page using WEB-socket to
@@ -211,6 +214,7 @@ function eezzy_click(aEvent, aElement) {
     if (!x_post) {
         return;
     }
+
     // Generated elements: Return without modifications
     if (aElement.hasAttribute('data-eezz-template')) {
         x_response = JSON.stringify(x_json);
@@ -220,19 +224,45 @@ function eezzy_click(aEvent, aElement) {
 
     // User form elements: Collect the input data of this page.
     // The syntax for collection is as follows
-    // function( key = "id-of-element"."attribute-of-element", ... )
-    var x_args = x_json.args
-    for (x_key in x_args) {
-        var x_split   = x_args.x_key.split('.');
-        if (x_split.length != 2) {
-            continue;
+    // function: <name>, args: { name1: "id-of-element"."attribute-of-element", name2:... }
+    var x_function = x_json.call;
+    if (x_function) {
+        var x_args    = x_function.args;
+        var x_element = document.getElementById(x_function.id);
+        var x_attr;
+
+        for (x_key in x_args) {
+            var x_source = x_args[x_key];
+
+            if (x_source.startsWith('[')) {
+                var x_elem_list;
+                var x_elem;
+                var x_row_len = 0;
+                var x_index;
+
+                x_source    = x_source.replace('template.', 'data-eezz-template=');
+                x_elem_list = x_element.querySelectorAll(x_source);
+
+                for (var i = 0; i < x_elem_list.length; i++) {
+                    x_elem    = x_elem_list[i]
+                    x_index   = parseInt(x_elem.getAttribute('data-eezz-index'));
+                    x_row_len = Math.max(x_row_len, x_index);
+                }
+                var x_new_row = new Array(x_row_len + 1);
+                for (var i = 0; i < x_row_len + 1; i++) {
+                    x_elem    = x_elem_list[i];
+                    x_index   = parseInt(x_elem.getAttribute('data-eezz-index'));
+                    x_new_row[x_index] = x_elem['value'];
+                }
+                x_json.call.args[x_key] = x_new_row;
+            }
+            else {
+                x_attr = x_source.split('.');
+                x_elem = document.getElementById(x_attr[0]);
+                x_json.call.args[key] = x_elem.getAttribute(x_attr[1]);
+            }
         }
-        var x_element = document.getElementById(x_split[0]);
-        if (x_element == null) {
-            continue;
-        }
-        x_args.x_key  = x_element.getAttribute(x_split[1]);
+        x_response = JSON.stringify(x_json);
+        g_eezz_web_socket.send(x_response);
     }
-    x_response = JSON.stringify(x_json);
-    g_eezz_web_socket.send(x_response);
 }

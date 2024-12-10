@@ -28,12 +28,20 @@ from   pathlib           import Path
 
 @dataclass(kw_only=True)
 class TDatabaseColumn(TTableColumn):
-    """ Extension for column descriptor TTableColumn
+    """ Represents a database column as a subclass of a table column.
 
-    :param primary_key: Makes the column part of the primary key
-    :type  primary_key: bool
-    :param options:     Options for the database columns in "create table" statement like "not null"
-    :type  options:     str
+    This class provides additional features specific to database columns,
+    including the ability to specify whether a column is a primary key, options
+    related to its behavior or properties, and an alias for referencing the
+    column under a different name. It is designed to be extended for specific
+    use cases in managing and interacting with database tables.
+
+    :ivar primary_key: Boolean flag indicating if the column is a primary key.
+    :type primary_key: bool
+    :ivar options: Additional options or settings for the column.
+    :type options: str
+    :ivar alias: Alternative name for referring to the column.
+    :type alias: str
     """
     primary_key: bool = False  #: :meta private:
     options:     str  = ''     #: :meta private:
@@ -42,19 +50,34 @@ class TDatabaseColumn(TTableColumn):
 
 @dataclass(kw_only=True)
 class TDatabaseTable(TTable):
-    """ General database management
-    Purpose of this class is a sophisticate work with database using an internal cache. All database
-    operations are mapped to TTable. The column descriptor of TTable is used to generate the database table.
-    The number of rows selected from database will be restricted to the visible scope by default, thus
-    omits performance issues for huge tables.
+    """ Represents a database table, extending capabilities of a general table to include database interactions.
 
-    :param column_names: List of column names
-    :type  column_names: list[str]
-    :param title:        Table name
-    :type  title:        str
+    The TDatabaseTable class is designed to manage a table within a database context. It handles the
+    creation of database statements, synchronization with a database table, and data navigation and
+    manipulation operations such as inserting records and committing changes. It uses the database
+    path, name, and column descriptors to construct necessary SQL statements for operations.
+    Initialization involves setting up the data structure and checking for primary keys.
 
-    The following variables could be used to overwrite special actions on automated database actions.
-    You would need to overwrite the values after the creation of the class
+    :ivar column_names: List of column names for the database table.
+    :type column_names: list
+    :ivar database_name: The name of the database file to connect or create.
+    :type database_name: str
+    :ivar statement_select: SQL select statement for the table.
+    :type statement_select: str
+    :ivar statement_count: SQL count statement for the table records.
+    :type statement_count: str
+    :ivar statement_create: SQL create statement to initialize the table.
+    :type statement_create: str
+    :ivar statement_insert: SQL insert statement for adding data to the table.
+    :type statement_insert: str
+    :ivar statement_where: List of conditions for SQL where clause.
+    :type statement_where: list
+    :ivar database_path: File path for the database.
+    :type database_path: str
+    :ivar virtual_len: Virtual length of the dataset.
+    :type virtual_len: int
+    :ivar column_descr: Description of each column in the database table.
+    :type column_descr: List[TDatabaseColumn]
     """
     column_names:     list      = None
     database_name:    str       = 'default.db'      #: :meta private:
@@ -110,9 +133,20 @@ class TDatabaseTable(TTable):
         self.create_database()
 
     def prepare_statements(self):
-        """ :meta private:
-        Generate a set of consistent database statements, used to select and navigate in database
-        and to sync with TTable buffers
+        """ Prepare SQL statements for a database table based on provided column descriptions.
+
+        This method constructs SQL statements for creating, selecting, counting,
+        and inserting data into a database table. The statements are built using
+        the table title and column descriptions provided to the instance. The
+        resulting SQL statements include a 'CREATE TABLE' statement with primary
+        key constraint, a 'SELECT' statement to retrieve all data, a 'COUNT'
+        statement to tally the rows, and an 'INSERT OR REPLACE' statement for
+        adding or updating records.
+
+        :param self: The instance of the class containing table title and
+                     column descriptions required for preparing SQL statements.
+        :return: None. The function operates by side-effect, updating instance
+                 attributes with the generated SQL statements.
         """
         x_sections = list()
         x_sections.append(f'create table if not exists {self.title}')
@@ -133,9 +167,16 @@ class TDatabaseTable(TTable):
         return self.virtual_len
 
     def create_database(self) -> None:
-        """ Create the table on the database using
-        :py:attr:`eezz.table.TTable.column_names` and
-        :py:attr:`eezz.table.TTable.title`
+        """  Creates a new SQLite database using the specified database path. This method
+        registers adapters and converters for the `datetime` type to facilitate proper
+        storage and retrieval of datetime objects within the database.
+
+        The method connects to the SQLite database using the provided path,
+        executes the SQL statement designed to create the necessary database tables,
+        and then closes the connection ensuring the changes are committed.
+
+        :raises sqlite3.Error: If an error occurs while connecting to the database
+            or executing the SQL statement.
         """
         sqlite3.register_adapter(datetime, lambda x_val: x_val.isoformat())
         sqlite3.register_converter("datetime", lambda x_val: datetime.fromisoformat(x_val.decode()))
@@ -146,20 +187,28 @@ class TDatabaseTable(TTable):
             x_cursor.execute(self.statement_create)
 
     def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '', exists_ok: bool = True) -> TTableRow:
-        """ Append data to the internal table, creating a unique row-key
-        The row key is generated using the primary key values as comma separated list. You select from list as (no spaces)
-        do_select(row_id = 'key_value1,key_value2,...')
+        """ Appends a new row to the table with specified attributes and parameters.
+        The function checks for a `row_id` and generates one if not provided,
+        based on primary keys.
 
-        :param exists_ok:   If set to True, do not raise exception, just ignore the appending silently
-        :param table_row:   A list of values as row to insert
-        :type  table_row:   List[Any]
-        :param attrs:       Optional attributes for this row
-        :type  attrs:       dict
-        :param row_type:    Row type used to trigger template output for HTML
-        :param row_id:      Unique row-id, calculated internal, if not set
-        :type  row_id:      SHA256 hash of primary key values
-        :returns:           List of rows with length of TTable.visible_items
-        :rtype:             List[TTableRow]
+        Attributes are defaulted to include a '_database'
+        key with value 'new'. This is used to manage values to be commited to the database with commit.
+
+        The method accepts parameters to specify the type
+        of the row, presence check, and any additional attributes.
+
+        :param table_row: List of values representing the table row to append.
+        :type table_row: list
+        :param attrs: Optional dictionary of additional attributes. Defaults to None.
+        :type attrs: dict, optional
+        :param row_type: Type of the row, default is 'body'.
+        :type row_type: str
+        :param row_id: Identifier for the row. If not provided, it is generated automatically.
+        :type row_id: str
+        :param exists_ok: Indicates if appending should proceed without error if row exists. Defaults to True.
+        :type exists_ok: bool
+        :return: A reference to the appended table row.
+        :rtype: TTableRow
         """
         x_row_descr = list(zip(table_row, self.column_descr))
         if not row_id:
@@ -173,8 +222,12 @@ class TDatabaseTable(TTable):
         return x_row
 
     def commit(self):
-        """ Write all new entries to database, which have been added using method
-        :py:meth:`~eezz.database.TDatabaseTable.append`
+        """ Commits new rows in the data to the database. This method iterates through
+        entries marked as 'new' in their '_database' attribute, removes this marker,
+        and then inserts the entries into the database using the provided insert
+        statement and column names.
+
+        :raises sqlite3.Error: If there is an error executing the database operations.
         """
         x_row: TTableRow
         with sqlite3.connect(self.database_path) as x_connection:
@@ -185,12 +238,19 @@ class TDatabaseTable(TTable):
                 x_cursor.execute(self.statement_insert.format(*self.column_names), tuple(x_row.get_values_list()))
 
     def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:
-        """ Navigate in block mode
+        """ Navigate to a specified position within a data structure. This method
+        allows navigation through different points based on the parameters provided. If the `position`
+        is set to 0, synchronization is disabled by setting `is_synchron` to False.
+        This allows to select data and restrict the number of data records transferred to the application.
+        It allows the user to navigate in the selected data set if needed
 
-        :param where_togo: Navigation direction
-        :type  where_togo: TNavigation
-        :param position:   Use database access if position > 0, disabling absolute positioning for database cursor\
-        and make it easy to distinguish different access types.
+        :param where_togo: The direction or target to which the navigation should occur. Defaults to
+                           `TNavigation.NEXT`.
+        :type where_togo: TNavigation
+        :param position: The index or position to navigate to. If the value is 0, internal synchronization
+                         will be set to False. Defaults to 0.
+        :type position: int
+        :return: None
         """
         super().navigate(where_togo=where_togo, position=position)
         if position == 0:
@@ -198,9 +258,14 @@ class TDatabaseTable(TTable):
 
     @override
     def get_visible_rows(self, get_all=False) -> list:
-        """ Get visible rows. Works on local buffer for :py:attr:`eezz.database.TDatabaseTable.is_synchron`
+        """ Retrieves a list of visible rows from the data source. By default, it
+        synchronizes the data if not already synchronized, clears any existing data
+        in the process, and appends new data based on the current row filter
+        description. The method subsequently yields visible rows as determined by
+        the superclass implementation.
 
-        :param get_all: Ignore TTable.visible_items for this call
+        :param get_all: A boolean to determine if all rows should be retrieved.
+        :return: A list of visible rows.
         """
         if not self.is_synchron:
             self.is_synchron = True

@@ -101,12 +101,21 @@
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseColumn">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">TDatabaseColumn</span><span class="p">(</span><span class="n">TTableColumn</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot; Extension for column descriptor TTableColumn</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a database column as a subclass of a table column.</span>
 
-<span class="sd">    :param primary_key: Makes the column part of the primary key</span>
-<span class="sd">    :type  primary_key: bool</span>
-<span class="sd">    :param options:     Options for the database columns in &quot;create table&quot; statement like &quot;not null&quot;</span>
-<span class="sd">    :type  options:     str</span>
+<span class="sd">    This class provides additional features specific to database columns,</span>
+<span class="sd">    including the ability to specify whether a column is a primary key, options</span>
+<span class="sd">    related to its behavior or properties, and an alias for referencing the</span>
+<span class="sd">    column under a different name. It is designed to be extended for specific</span>
+<span class="sd">    use cases in managing and interacting with database tables.</span>
+
+<span class="sd">    :ivar primary_key: Boolean flag indicating if the column is a primary key.</span>
+<span class="sd">    :type primary_key: bool</span>
+<span class="sd">    :ivar options: Additional options or settings for the column.</span>
+<span class="sd">    :type options: str</span>
+<span class="sd">    :ivar alias: Alternative name for referring to the column.</span>
+<span class="sd">    :type alias: str</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">primary_key</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1">#: :meta private:</span>
     <span class="n">options</span><span class="p">:</span>     <span class="nb">str</span>  <span class="o">=</span> <span class="s1">&#39;&#39;</span>     <span class="c1">#: :meta private:</span>
@@ -118,19 +127,35 @@
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">TDatabaseTable</span><span class="p">(</span><span class="n">TTable</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot; General database management</span>
-<span class="sd">    Purpose of this class is a sophisticate work with database using an internal cache. All database</span>
-<span class="sd">    operations are mapped to TTable. The column descriptor of TTable is used to generate the database table.</span>
-<span class="sd">    The number of rows selected from database will be restricted to the visible scope by default, thus</span>
-<span class="sd">    omits performance issues for huge tables.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a database table, extending capabilities of a general table to include database interactions.</span>
 
-<span class="sd">    :param column_names: List of column names</span>
-<span class="sd">    :type  column_names: list[str]</span>
-<span class="sd">    :param title:        Table name</span>
-<span class="sd">    :type  title:        str</span>
+<span class="sd">    The TDatabaseTable class is designed to manage a table within a database context. It handles the</span>
+<span class="sd">    creation of database statements, synchronization with a database table, and data navigation and</span>
+<span class="sd">    manipulation operations such as inserting records and committing changes. It uses the database</span>
+<span class="sd">    path, name, and column descriptors to construct necessary SQL statements for operations.</span>
+<span class="sd">    Initialization involves setting up the data structure and checking for primary keys.</span>
 
-<span class="sd">    The following variables could be used to overwrite special actions on automated database actions.</span>
-<span class="sd">    You would need to overwrite the values after the creation of the class</span>
+<span class="sd">    :ivar column_names: List of column names for the database table.</span>
+<span class="sd">    :type column_names: list</span>
+<span class="sd">    :ivar database_name: The name of the database file to connect or create.</span>
+<span class="sd">    :type database_name: str</span>
+<span class="sd">    :ivar statement_select: SQL select statement for the table.</span>
+<span class="sd">    :type statement_select: str</span>
+<span class="sd">    :ivar statement_count: SQL count statement for the table records.</span>
+<span class="sd">    :type statement_count: str</span>
+<span class="sd">    :ivar statement_create: SQL create statement to initialize the table.</span>
+<span class="sd">    :type statement_create: str</span>
+<span class="sd">    :ivar statement_insert: SQL insert statement for adding data to the table.</span>
+<span class="sd">    :type statement_insert: str</span>
+<span class="sd">    :ivar statement_where: List of conditions for SQL where clause.</span>
+<span class="sd">    :type statement_where: list</span>
+<span class="sd">    :ivar database_path: File path for the database.</span>
+<span class="sd">    :type database_path: str</span>
+<span class="sd">    :ivar virtual_len: Virtual length of the dataset.</span>
+<span class="sd">    :type virtual_len: int</span>
+<span class="sd">    :ivar column_descr: Description of each column in the database table.</span>
+<span class="sd">    :type column_descr: List[TDatabaseColumn]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">column_names</span><span class="p">:</span>     <span class="nb">list</span>      <span class="o">=</span> <span class="kc">None</span>
     <span class="n">database_name</span><span class="p">:</span>    <span class="nb">str</span>       <span class="o">=</span> <span class="s1">&#39;default.db&#39;</span>      <span class="c1">#: :meta private:</span>
@@ -185,10 +210,24 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">prepare_statements</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">create_database</span><span class="p">()</span>
 
+<div class="viewcode-block" id="TDatabaseTable.prepare_statements">
+<a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.prepare_statements">[docs]</a>
     <span class="k">def</span> <span class="nf">prepare_statements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private:</span>
-<span class="sd">        Generate a set of consistent database statements, used to select and navigate in database</span>
-<span class="sd">        and to sync with TTable buffers</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prepare SQL statements for a database table based on provided column descriptions.</span>
+
+<span class="sd">        This method constructs SQL statements for creating, selecting, counting,</span>
+<span class="sd">        and inserting data into a database table. The statements are built using</span>
+<span class="sd">        the table title and column descriptions provided to the instance. The</span>
+<span class="sd">        resulting SQL statements include a &#39;CREATE TABLE&#39; statement with primary</span>
+<span class="sd">        key constraint, a &#39;SELECT&#39; statement to retrieve all data, a &#39;COUNT&#39;</span>
+<span class="sd">        statement to tally the rows, and an &#39;INSERT OR REPLACE&#39; statement for</span>
+<span class="sd">        adding or updating records.</span>
+
+<span class="sd">        :param self: The instance of the class containing table title and</span>
+<span class="sd">                     column descriptions required for preparing SQL statements.</span>
+<span class="sd">        :return: None. The function operates by side-effect, updating instance</span>
+<span class="sd">                 attributes with the generated SQL statements.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_sections</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;create table if not exists </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
@@ -202,7 +241,8 @@
         <span class="n">x_sections</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;insert or replace into </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;?&#39;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">]))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">statement_insert</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="sa">f</span><span class="s1">&#39; values (</span><span class="si">{</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">statement_insert</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="sa">f</span><span class="s1">&#39; values (</span><span class="si">{</span><span class="n">x_sections</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">])</span></div>
+
 
     <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Returns the result for a request: select count(*) ...&quot;&quot;&quot;</span>
@@ -211,9 +251,17 @@
 <div class="viewcode-block" id="TDatabaseTable.create_database">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.create_database">[docs]</a>
     <span class="k">def</span> <span class="nf">create_database</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Create the table on the database using</span>
-<span class="sd">        :py:attr:`eezz.table.TTable.column_names` and</span>
-<span class="sd">        :py:attr:`eezz.table.TTable.title`</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a new SQLite database using the specified database path. This method</span>
+<span class="sd">        registers adapters and converters for the `datetime` type to facilitate proper</span>
+<span class="sd">        storage and retrieval of datetime objects within the database.</span>
+
+<span class="sd">        The method connects to the SQLite database using the provided path,</span>
+<span class="sd">        executes the SQL statement designed to create the necessary database tables,</span>
+<span class="sd">        and then closes the connection ensuring the changes are committed.</span>
+
+<span class="sd">        :raises sqlite3.Error: If an error occurs while connecting to the database</span>
+<span class="sd">            or executing the SQL statement.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sqlite3</span><span class="o">.</span><span class="n">register_adapter</span><span class="p">(</span><span class="n">datetime</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x_val</span><span class="p">:</span> <span class="n">x_val</span><span class="o">.</span><span class="n">isoformat</span><span class="p">())</span>
         <span class="n">sqlite3</span><span class="o">.</span><span class="n">register_converter</span><span class="p">(</span><span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x_val</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">x_val</span><span class="o">.</span><span class="n">decode</span><span class="p">()))</span>
@@ -227,25 +275,34 @@
 <div class="viewcode-block" id="TDatabaseTable.append">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.append">[docs]</a>
     <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_row</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;body&#39;</span><span class="p">,</span> <span class="n">row_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">exists_ok</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Append data to the internal table, creating a unique row-key</span>
-<span class="sd">        The row key is generated using the primary key values as comma separated list. You select from list as (no spaces)</span>
-<span class="sd">        do_select(row_id = &#39;key_value1,key_value2,...&#39;)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Appends a new row to the table with specified attributes and parameters.</span>
+<span class="sd">        The function checks for a `row_id` and generates one if not provided,</span>
+<span class="sd">        based on primary keys.</span>
 
-<span class="sd">        :param exists_ok:   If set to True, do not raise exception, just ignore the appending silently</span>
-<span class="sd">        :param table_row:   A list of values as row to insert</span>
-<span class="sd">        :type  table_row:   List[Any]</span>
-<span class="sd">        :param attrs:       Optional attributes for this row</span>
-<span class="sd">        :type  attrs:       dict</span>
-<span class="sd">        :param row_type:    Row type used to trigger template output for HTML</span>
-<span class="sd">        :param row_id:      Unique row-id, calculated internal, if not set</span>
-<span class="sd">        :type  row_id:      SHA256 hash of primary key values</span>
-<span class="sd">        :returns:           List of rows with length of TTable.visible_items</span>
-<span class="sd">        :rtype:             List[TTableRow]</span>
+<span class="sd">        Attributes are defaulted to include a &#39;_database&#39;</span>
+<span class="sd">        key with value &#39;new&#39;. This is used to manage values to be commited to the database with commit.</span>
+
+<span class="sd">        The method accepts parameters to specify the type</span>
+<span class="sd">        of the row, presence check, and any additional attributes.</span>
+
+<span class="sd">        :param table_row: List of values representing the table row to append.</span>
+<span class="sd">        :type table_row: list</span>
+<span class="sd">        :param attrs: Optional dictionary of additional attributes. Defaults to None.</span>
+<span class="sd">        :type attrs: dict, optional</span>
+<span class="sd">        :param row_type: Type of the row, default is &#39;body&#39;.</span>
+<span class="sd">        :type row_type: str</span>
+<span class="sd">        :param row_id: Identifier for the row. If not provided, it is generated automatically.</span>
+<span class="sd">        :type row_id: str</span>
+<span class="sd">        :param exists_ok: Indicates if appending should proceed without error if row exists. Defaults to True.</span>
+<span class="sd">        :type exists_ok: bool</span>
+<span class="sd">        :return: A reference to the appended table row.</span>
+<span class="sd">        :rtype: TTableRow</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_row_descr</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">table_row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">row_id</span><span class="p">:</span>
             <span class="n">x_primary</span>   <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="ow">not</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">primary_key</span><span class="p">,</span> <span class="n">x_row_descr</span><span class="p">)</span>
-            <span class="n">row_id</span>      <span class="o">=</span> <span class="n">SHA256</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_primary</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+            <span class="n">row_id</span>      <span class="o">=</span> <span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_primary</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">attrs</span><span class="p">:</span>
             <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
@@ -257,8 +314,13 @@
 <div class="viewcode-block" id="TDatabaseTable.commit">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.commit">[docs]</a>
     <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Write all new entries to database, which have been added using method</span>
-<span class="sd">        :py:meth:`~eezz.database.TDatabaseTable.append`</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Commits new rows in the data to the database. This method iterates through</span>
+<span class="sd">        entries marked as &#39;new&#39; in their &#39;_database&#39; attribute, removes this marker,</span>
+<span class="sd">        and then inserts the entries into the database using the provided insert</span>
+<span class="sd">        statement and column names.</span>
+
+<span class="sd">        :raises sqlite3.Error: If there is an error executing the database operations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_row</span><span class="p">:</span> <span class="n">TTableRow</span>
         <span class="k">with</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">database_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_connection</span><span class="p">:</span>
@@ -272,12 +334,19 @@
 <div class="viewcode-block" id="TDatabaseTable.navigate">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.navigate">[docs]</a>
     <span class="k">def</span> <span class="nf">navigate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">where_togo</span><span class="p">:</span> <span class="n">TNavigation</span> <span class="o">=</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Navigate in block mode</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Navigate to a specified position within a data structure. This method</span>
+<span class="sd">        allows navigation through different points based on the parameters provided. If the `position`</span>
+<span class="sd">        is set to 0, synchronization is disabled by setting `is_synchron` to False.</span>
+<span class="sd">        This allows to select data and restrict the number of data records transferred to the application.</span>
+<span class="sd">        It allows the user to navigate in the selected data set if needed</span>
 
-<span class="sd">        :param where_togo: Navigation direction</span>
-<span class="sd">        :type  where_togo: TNavigation</span>
-<span class="sd">        :param position:   Use database access if position &gt; 0, disabling absolute positioning for database cursor\</span>
-<span class="sd">        and make it easy to distinguish different access types.</span>
+<span class="sd">        :param where_togo: The direction or target to which the navigation should occur. Defaults to</span>
+<span class="sd">                           `TNavigation.NEXT`.</span>
+<span class="sd">        :type where_togo: TNavigation</span>
+<span class="sd">        :param position: The index or position to navigate to. If the value is 0, internal synchronization</span>
+<span class="sd">                         will be set to False. Defaults to 0.</span>
+<span class="sd">        :type position: int</span>
+<span class="sd">        :return: None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">navigate</span><span class="p">(</span><span class="n">where_togo</span><span class="o">=</span><span class="n">where_togo</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -288,9 +357,14 @@
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.get_visible_rows">[docs]</a>
     <span class="nd">@override</span>
     <span class="k">def</span> <span class="nf">get_visible_rows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get_all</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Get visible rows. Works on local buffer for :py:attr:`eezz.database.TDatabaseTable.is_synchron`</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Retrieves a list of visible rows from the data source. By default, it</span>
+<span class="sd">        synchronizes the data if not already synchronized, clears any existing data</span>
+<span class="sd">        in the process, and appends new data based on the current row filter</span>
+<span class="sd">        description. The method subsequently yields visible rows as determined by</span>
+<span class="sd">        the superclass implementation.</span>
 
-<span class="sd">        :param get_all: Ignore TTable.visible_items for this call</span>
+<span class="sd">        :param get_all: A boolean to determine if all rows should be retrieved.</span>
+<span class="sd">        :return: A list of visible rows.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span> <span class="o">=</span> <span class="kc">True</span>

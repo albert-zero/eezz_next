@@ -15,13 +15,22 @@ from loguru     import logger
 
 
 class TTableTree(TTable):
-    """
-    Represents a tree structure of tables where each node is a table and can contain other tables as children.
+    """ Represents a tree structure built on top of a table. This class extends
+    the functionalities of a basic table to allow hierarchical organization
+    of data, resembling a directory tree. It provides methods to append rows
+    with unique identifiers, handle selection of nodes, read directories,
+    and manage the expansion states of nodes.
 
-    :ivar nodes:        List of table nodes within the tree.
-    :type nodes:        List[TTable]
-    :ivar root_path:    Path of the table node in the directory structure.
-    :type nodes:        Path
+    :ivar root_path: The root path for the tree structure, initialized from
+        the given path string.
+    :type root_path: Path
+    :ivar nodes: A list containing the tree's nodes, initialized with the
+        current instance.
+    :type nodes: List[TTable]
+    :ivar expanded: A boolean indicating whether the current node is expanded.
+    :type expanded: bool
+    :ivar selected: The currently selected node within the tree structure.
+    :type selected: TTableTree
     """
     def __init__(self, column_names: list[str], title: str, path: str) -> None:
         super().__init__(column_names=column_names, title=title)
@@ -32,8 +41,7 @@ class TTableTree(TTable):
 
     @override
     def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '', exists_ok=False) -> TTableRow:
-        """
-        Append a new row to the table with optional attributes and a specific row type.
+        """ Append a new row to the table with optional attributes and a specific row type.
 
         This method takes a list of table row values and the optionally attributes row-type.
         The incoming row-ID must be set to a file entry in specified table path.
@@ -57,14 +65,21 @@ class TTableTree(TTable):
 
     @abstractmethod
     def read_dir(self):
-        """ Implement this method to fill the table using self.root_path
+        """
+        Defines an interface for a directory reading system, requiring all subclasses
+        to implement the method for reading directories. This abstract class ensures
+        that all concrete implementations provide a consistent approach to reading
+        the contents of a directory.
+
+        Methods documented in this class should not have their details present in the
+        class-level documentation. The details should be specified in the method
+        docstring itself.
         """
         pass
 
     @override
     def on_select(self, index: str) -> TTableRow:
-        """
-        Handles the selection of a table row by a given index within a tree.
+        """ Handles the selection of a table row by a given index within a tree.
 
         This method iterates through the nodes and checks if a row is selected by
         calling the parent class's on_select method. If a row is found, it returns
@@ -80,8 +95,7 @@ class TTableTree(TTable):
                 return x_row
 
     def open_dir(self, path: str) -> TTableRow | None:
-        """
-        This class provides functionalities to expand or collapse node elements in a tree
+        """ This class provides functionalities to expand or collapse node elements in a tree
         based on their index. Expansion status is toggled, i.e., if an element
         is currently collapsed, it will be expanded and vice versa.
 
@@ -110,8 +124,7 @@ class TTableTree(TTable):
         return None
 
     def read_file(self, path: str) -> bytes:
-        """
-        Reads the contents of a file specified by the given path and returns the
+        """ Reads the contents of a file specified by the given path and returns the
         data in binary format. If the file does not exist or cannot be read,
         the function returns an empty binary string.
 

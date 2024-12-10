@@ -78,6 +78,7 @@
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#H"><strong>H</strong></a>
+ | <a href="#I"><strong>I</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
@@ -120,21 +121,21 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="eezz.html#eezz.table.TTableRow.cells">cells (eezz.table.TTableRow attribute)</a>
-</li>
       <li><a href="eezz.html#eezz.document.TDocuments.column_names">column_names (eezz.document.TDocuments attribute)</a>
 </li>
       <li><a href="eezz.html#eezz.database.TDatabaseTable.commit">commit() (eezz.database.TDatabaseTable method)</a>
 </li>
+      <li><a href="eezz.html#eezz.http_agent.THttpAgent.compile_data">compile_data() (eezz.http_agent.THttpAgent static method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="eezz.html#eezz.http_agent.THttpAgent.compile_data">compile_data() (eezz.http_agent.THttpAgent method)</a>
-</li>
       <li><a href="eezz.html#eezz.session.TSession.connect">connect() (eezz.session.TSession method)</a>
 </li>
       <li><a href="eezz.html#eezz.database.TDatabaseTable.create_database">create_database() (eezz.database.TDatabaseTable method)</a>
 </li>
       <li><a href="eezz.html#eezz.document.TDocuments.create_document">create_document() (eezz.document.TDocuments method)</a>
+</li>
+      <li><a href="eezz.html#eezz.table.TTable.create_filter">create_filter() (eezz.table.TTable method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -161,6 +162,8 @@
       <li><a href="eezz.html#eezz.server.THttpHandler.do_POST">do_POST() (eezz.server.THttpHandler method)</a>
 </li>
       <li><a href="eezz.html#eezz.table.TTable.do_select">do_select() (eezz.table.TTable method)</a>
+</li>
+      <li><a href="eezz.html#eezz.table.TTable.do_sort">do_sort() (eezz.table.TTable method)</a>
 </li>
       <li><a href="eezz.html#eezz.service.TService.document_path">document_path (eezz.service.TService property)</a>
 </li>
@@ -284,8 +287,6 @@
 </li>
       <li><a href="eezz.html#eezz.document.TDocuments.encrypt_key_with_device">encrypt_key_with_device() (eezz.document.TDocuments method)</a>
 </li>
-      <li><a href="eezz.html#eezz.tabletree.TTableTree.exco">exco() (eezz.tabletree.TTableTree method)</a>
-</li>
   </ul></td>
 </tr></table>
 
@@ -381,6 +382,18 @@
   </ul></td>
 </tr></table>
 
+<h2 id="I">I</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="eezz.html#eezz.table.TTable.id">id (eezz.table.TTable attribute)</a>
+
+      <ul>
+        <li><a href="eezz.html#eezz.table.TTableRow.id">(eezz.table.TTableRow property)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -447,6 +460,8 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="eezz.html#eezz.table.TTable.navigation">navigation (eezz.table.TTable attribute)</a>
+</li>
       <li><a href="eezz.html#eezz.table.TNavigation.NEXT">NEXT (eezz.table.TNavigation attribute)</a>
 </li>
       <li><a href="eezz.html#eezz.table.TSort.NONE">NONE (eezz.table.TSort attribute)</a>
@@ -461,14 +476,16 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="eezz.html#eezz.service.TService.objects">objects (eezz.service.TService property)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="eezz.html#eezz.table.TTable.on_select">on_select() (eezz.table.TTable method)</a>
 
       <ul>
         <li><a href="eezz.html#eezz.tabletree.TTableTree.on_select">(eezz.tabletree.TTableTree method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="eezz.html#eezz.tabletree.TTableTree.open_dir">open_dir() (eezz.tabletree.TTableTree method)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -481,10 +498,12 @@
 </li>
       <li><a href="eezz.html#eezz.document.TDocuments.prepare_download">prepare_download() (eezz.document.TDocuments method)</a>
 </li>
-      <li><a href="eezz.html#eezz.table.TNavigation.PREV">PREV (eezz.table.TNavigation attribute)</a>
+      <li><a href="eezz.html#eezz.database.TDatabaseTable.prepare_statements">prepare_statements() (eezz.database.TDatabaseTable method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="eezz.html#eezz.table.TNavigation.PREV">PREV (eezz.table.TNavigation attribute)</a>
+</li>
       <li><a href="eezz.html#eezz.table.TTable.print">print() (eezz.table.TTable method)</a>
 </li>
       <li><a href="eezz.html#eezz.service.TService.private_key">private_key (eezz.service.TService property)</a>
@@ -504,6 +523,8 @@
       <li><a href="eezz.html#eezz.tabletree.TTableTree.read_dir">read_dir() (eezz.tabletree.TTableTree method)</a>
 </li>
       <li><a href="eezz.html#eezz.document.TDocuments.read_document_header">read_document_header() (eezz.document.TDocuments method)</a>
+</li>
+      <li><a href="eezz.html#eezz.tabletree.TTableTree.read_file">read_file() (eezz.tabletree.TTableTree method)</a>
 </li>
       <li><a href="eezz.html#eezz.websocket.TWebSocketClient.read_frame">read_frame() (eezz.websocket.TWebSocketClient method)</a>
 </li>
@@ -651,6 +672,8 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="eezz.html#eezz.service.TServiceCompiler.update_function">update_function() (eezz.service.TServiceCompiler static method)</a>
+</li>
       <li><a href="eezz.html#eezz.websocket.TWebSocketClient.upgrade">upgrade() (eezz.websocket.TWebSocketClient method)</a>
 </li>
   </ul></td>

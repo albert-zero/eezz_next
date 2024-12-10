@@ -16,7 +16,7 @@ from Crypto.Hash import SHA1
 import base64
 
 from pathlib   import Path
-from typing    import Any, Callable
+from typing    import Any, Callable, List
 from bs4       import Tag, BeautifulSoup, NavigableString
 from itertools import product, chain
 from table     import TTable, TTableCell, TTableRow
@@ -35,7 +35,7 @@ class THttpAgent(TWebSocketAgent):
         self.documents: TDocuments | None = None
 
     @logger.catch
-    def handle_request(self, request_data: dict) -> str | None:
+    def handle_request(self, request_data: dict) -> dict | None:
         """ Handle WEB socket requests
 
         * **initialize**: The browser sends the complete HTML for analysis.
@@ -44,12 +44,22 @@ class THttpAgent(TWebSocketAgent):
         :param request_data: The request send by the browser
         :return: Response in JSON stream, containing valid HTML parts for the browser
         """
-        x_updates  = list()
+        x_updates = list()
+        x_tasks   = list()
+        x_result  = dict()
+        x_id      = ''
+
         if 'initialize' in request_data:
             x_soup   = BeautifulSoup(request_data['initialize'], 'html.parser', multi_valued_attributes=None)
             for x in x_soup.css.select('table[data-eezz-compiled]'):
                 x_html = self.generate_html_table(x, x['id'])
                 x_id   = x['id']
+
+                if x.attrs.get('data-eezz-json'):
+                    x_gen_request = {'call': {'function': 'get_header_row', 'args': {}, 'id': x_id}}
+                    x_gen_request.update(json.loads(x['data-eezz-json']))
+                    x_tasks.append((x_id, x_gen_request))
+
                 x_updates.append({'target': f'{x_id}.caption.innerHTML', 'value': x_html['caption']})
                 x_updates.append({'target': f'{x_id}.thead.innerHTML',   'value': x_html['thead']})
                 x_updates.append({'target': f'{x_id}.tbody.innerHTML',   'value': x_html['tbody']})
@@ -63,14 +73,14 @@ class THttpAgent(TWebSocketAgent):
             if TService().translate:
                 x_translate = TTranslate()
                 x_translate.generate_pot(x_soup, request_data['title'])
-            x_result = {'update': x_updates, 'event': 'init'}
-            return json.dumps(x_result)
+            x_result.update({'update': x_updates, 'event': 'init', 'tasks': x_tasks})
+            return x_result
 
         # A call request consists of a method to call and a set ot tags to update (updates might be an empty list)
         # The update is a list of key-value pairs separated by a colon
         # The key is the html-element-id and the attribute separated by dot
         # The value is a valid HTML string to replace either the attribute value or part of the element (for example table.body)
-        if 'call' in request_data:
+        if 'call' in request_data and 'update' in request_data:
             try:
                 # Only interested in the x_tag object, which is stored as key(object, method-name) in the TService database
                 # The method itself is executed in module TWebSocketClient
@@ -79,15 +89,13 @@ class THttpAgent(TWebSocketAgent):
                 x_row       = request_data['result']
 
                 x_obj, x_method, x_tag, x_descr  = TService().get_method(x_event_id, x_event['function'])
-
                 for x_key, x_value in request_data['update'].items():
                     if x_key == 'this.tbody':
                         x_html = self.generate_html_table(x_tag, x_tag['id'])
                         x_updates.append({'target': f'{x_tag["id"]}.tbody.innerHTML', 'value': x_html['tbody']})
                     elif x_key == 'this.subtree':
-                        x_row:   TTableRow  = request_data['result']
-                        x_id                = x_row.id
-                        x_table: TTable     = x_row.child
+                        x_id            = x_row.id
+                        x_table: TTable = x_row.child
 
                         if x_table is None:
                             # There is no subtree: Send empty value to collapse the tree view
@@ -98,29 +106,21 @@ class THttpAgent(TWebSocketAgent):
                             x_tag_list = x_tag.css.select('tr[data-eezz-json]')
 
                             for x in x_tag_list:
-                                try:
+                                if x.get('call'):
                                     x['call']['id'] = x_id
-                                except KeyError:
-                                    pass
 
                             x_html = self.generate_html_table(x_tag, x_id)
                             x_id   = x_row.id
-                            x_updates.append({'target': f'{x_id}.subtreeTemplate',
-                                              'value': {'option': x_value, 'template': x_html['template'], 'thead': x_html['thead'], 'tbody': x_html['tbody']}})
+                            x_updates.append({'target': f'{x_id}.subtreeTemplate', 'value': {'option': x_value, 'template': x_html['template'], 'thead': x_html['thead'], 'tbody': x_html['tbody']}})
                     else:
-                        # update returns a row. Value may contain a function call request:
-                        if isinstance(x_value, dict):
-                            x_object, x_method, x_tag, x_descr = TService().get_method(x_event_id, x_value['function'])
-                            x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()}
-                            x_result = x_method(**x_args)
-                            x_updates.append({'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')})
-                        else:
-                            x_updates.append({'target': x_key, 'value': x_value.format(row=x_row)})
+                        x_row_value = request_data['result-value']
+                        x_updates.append({'target': x_row_value['target'], 'type': x_row_value['type'], 'value': x_row_value['value']})
+
             except KeyError as ex:
                 logger.warning(f'KeyError {ex.args}')
 
             x_result = {'update': x_updates}
-            return json.dumps(x_result)
+            return x_result
 
     def setup_download(self, request_data: dict) -> str:
         self.documents = TDocuments()
@@ -129,7 +129,7 @@ class THttpAgent(TWebSocketAgent):
 
     def handle_download(self, request_data: dict, raw_data: Any) -> str:
         """ Handle file downloads: The browser slices the file into chunks and the agent has to
-         re-arrange the stream using the file name and the sequence number
+         re-arrange the stream usingi the file name and the sequence number
 
          :param request_data: The request data are encoded in dictionary format
          :param raw_data: The rae data chunk to download
@@ -234,6 +234,7 @@ class THttpAgent(TWebSocketAgent):
                 if x_json:
                     x_tag['data-eezz-json'] = json.dumps(x_json)
 
+                # logger.debug(f'{x_data} ==> {x_list_items}')
                 if x_tag.has_attr('data-eezz-template') and x_tag['data-eezz-template'] == 'websocket':
                     x_path      = Path(x_service.resource_path / 'websocket.js')
                     x_ws_descr  = """var g_eezz_socket_addr = "ws://{host}:{port}";\n """.format(host=TService().host, port=TService().websocket_addr, args='')
@@ -360,28 +361,37 @@ class THttpAgent(TWebSocketAgent):
 
     def generate_html_grid(self, a_tag: Tag) -> dict:
         """ Besides the table, supported display is grid (via class clzz_grid or select """
-        x_row_template  = a_tag.css.select('[data-eezz-compiled]')
+        x_row_template  = a_tag.css.select('[data-eezz-template=row]')
         x_table         = TService().get_object(a_tag.attrs['id'])
         x_row_viewport  = x_table.get_visible_rows()
         x_table_header  = x_table.get_header_row()
         x_format_row    = [([x_tag for x_tag in x_row_template if x_tag.has_attr('data-eezz-match') and x_tag['data-eezz-match'] in x_row.type], x_row) for x_row in x_row_viewport]
+
         x_list_children = [self.generate_html_grid_item(x_tag[0], x_row, x_table_header) for x_tag, x_row in x_format_row]
         return {"tbody": ''.join([str(x) for x in x_list_children])}
 
-    def generate_html_grid_item(self, a_tag: Tag, a_row: TTableRow, a_header: TTableRow) -> Tag:
+    def generate_html_grid_item(self, tag_template: Tag, a_row: TTableRow, a_header: TTableRow) -> Tag:
         """ Generates elements of the same kind, derived from a template and update content
         according the row values
 
-        :param a_tag:       Template
-        :param a_row:       Row with data to parse
-        :param a_header:    Row meta information
-        :return:            Generated HTML tag
+        :param tag_template: Template
+        :param a_row:        Row with data to parse
+        :param a_header:     Row meta information
+        :return:             Generated HTML tag
         """
-        x_fmt_attrs = {x: self.format_attributes(x, y, lambda z: z.format(row=a_row)) for x, y in a_tag.attrs.items()}
-        x_fmt_row   = {x: y for x, y in zip(a_header.cells, a_row.cells)}
-        x_new_tag   = Tag(name=a_tag.name, attrs=x_fmt_attrs)
-        x_new_tag.string = a_tag.string.format(**x_fmt_row)
-        return x_new_tag
+        # Generate name-value pairs for this row:
+        x_format_cell   = {x: y for x, y in zip(a_header.get_values_list(), a_row.cells)}
+        x_new_element   = deepcopy(tag_template)
+        x_cell_template = x_new_element.css.select('[data-eezz-template=cell]')
+
+        for x_tag in x_cell_template:
+            if x_ref := x_tag.attrs.get('data-eezz-reference'):
+                if x_cell := x_format_cell.get(x_ref):
+                    if x_tag.string:
+                        x_tag.string.format(cell=x_cell)
+                    x_tag.attrs['data-eezz-index'] = str(x_cell.index)
+                    x_tag.attrs  = {x_key: x_val.format(cell=x_cell) for x_key, x_val in x_tag.attrs.items() if isinstance(x_val, str)}
+        return x_new_element
 
 
 if __name__ == '__main__':

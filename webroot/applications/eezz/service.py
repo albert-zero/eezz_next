@@ -210,6 +210,10 @@ class TServiceCompiler(Transformer):
         return '.'.join([str(x) for x in item])
 
     @staticmethod
+    def selector_string(item):
+        return f'[{'.'.join(item)}]'
+
+    @staticmethod
     def list_updates(item):
         """ :meta private: Accumulate 'update' statements """
         return list(itertools.accumulate(item, lambda a, b: a | b))[-1]
@@ -256,7 +260,16 @@ class TServiceCompiler(Transformer):
 
     def template_section(self, item):
         """ :meta private: Create tag attributes """
-        if item[0] in ('name', 'match', 'template'):
+        template = {'data-eezz-template': item[0]}
+        self.m_tag['data-eezz-template'] = item[0]
+        if len(item) > 1:
+            template['data-eezz-reference']   = item[1]
+            self.m_tag['data-eezz-reference'] = item[1]
+        return template
+
+    def parameter_section(self, item):
+        """ :meta private: Create tag attributes """
+        if item[0] in ('name', 'match'):
             self.m_tag[f'data-eezz-{item[0]}'] = item[1]
         return {item[0]: item[1]}
 
@@ -387,8 +400,8 @@ if __name__ == '__main__':
     x_source = """ event: on_select(index={row.row_id}), update: elem1.innerHTML = {object.path}, elem2.innerHTML = {object.row_id}  """
     x_result = test_parser(source=x_source)
 
-    logger.debug("template statement 1")
-    x_source = "template: cell, event: do_sort(index={cell.index}), update: this.tbody"
+    logger.debug("template statement 3")
+    x_source = "template: cell, event: do_sort(index={cell}), update: this.tbody"
     x_result = test_parser(source=x_source)
 
     x_update  = x_result['update']
@@ -402,10 +415,13 @@ if __name__ == '__main__':
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
 
-    x_source = 'update : path_label.innerHTML={row.row_id}, text.innerHTML=my_function(filename={row.row_id}, id=abc)'
+    x_source = "event: FormInput.append(table_row = [field_index.value])"
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
 
+    x_source = "event: FormInput.append(table_row = [template.cell])"
+    x_result = test_parser(source=x_source)
+    logger.debug(f'{x_source} ==> {x_result}')
 
     logger.success('test finished')
     """
