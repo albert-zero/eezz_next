@@ -8,6 +8,7 @@
                   | "download"  ":" document "," files          -> download
                   | "template"  ":" string ( "(" value_string ")" )?  -> template_section
                   | string      ":" string                      -> parameter_section
+                  | qualified_string ":" value_string           -> setenv
 
 document          : "document"  "(" list_arguments ")"
 files             : "files"     "(" list_arguments ")"
@@ -16,13 +17,14 @@ list_updates      : [ update_item  ("," update_item  )* ]
 
 update_item       : qualified_string "=" function_call        -> update_function
                   | qualified_string "=" update_string
-                  | update_function
+                  | function_call                             -> update_task
                   | qualified_string
 
 ?update_string    : string
                   | format_string
+                  | qualified_string
 
-update_function   : string "(" list_update_strings ")"
+update_function   : qualified_string "(" list_update_strings ")"
 
 ?list_update_strings : [ update_string ("," update_string)* ]
 
@@ -34,13 +36,18 @@ update_function   : string "(" list_update_strings ")"
                   | qualified_string
                   | quoted_string
                   | selector_string
+                  | number
+                  | array_element
+
+array_element     : "[" string (","  string)* "]"
 
 ?function_call    : qualified_string "(" list_arguments ")"
 
 string            : CNAME                                   -> simple_str
+number            : /[0-9]+/                                -> simple_str
 ?quoted_string    : ESCAPED_STRING                          -> escaped_str
 ?qualified_string : [ string ("." string  )* ]
-?format_string    : "{" [ string ("." string  )* ] "}" | "*"
+format_string     : "{" [ string ("." string  )* ] "}"
 selector_string   : "[" [ string ("." string  )* ] "]"
 
 %import common.ESCAPED_STRING

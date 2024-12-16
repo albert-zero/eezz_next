@@ -70,8 +70,11 @@ function eezz_connect() {
                 var x_update_json = x_array_descr[i];
 
                 try {
-                    if (typeof window[x_update_json.target] === 'function') {
-                        window[x_update_json.target]( x_update_json.value );
+                    if ('javascript' == x_update_json['type']) {
+                        var x_func = x_update_json["target"];
+                        if (typeof window[x_func] === 'function') {
+                            window[x_func](x_update_json);
+                        }
                         continue;
                     }
 
@@ -116,7 +119,15 @@ function dynamic_update(a_update_json) {
         return;
     }
 
+    if (a_update_json.type == 'base64') {
+        a_update_json.value = window.atob(a_update_json.value);
+    }
+
     for (var i = 1; i < x_dest.length; i++) {
+        if (x_dest[i] == 'style') {
+            x_elem.style[x_attr] = a_update_json.value;
+            return;
+        }
         x_elem = x_elem.getElementsByTagName(x_dest[i])[0];
     }
 
@@ -125,22 +136,22 @@ function dynamic_update(a_update_json) {
         return;
     }
 
+    if (x_attr == 'subtree') {
+        tree_expand(x_elem, a_update_json.value);
+        return;
+    }
+
     if (x_attr == 'innerHTML') {
-        if (a_update_json.type == 'base64') {
-            x_elem.innerHTML = window.atob(a_update_json.value);
-        }
-        else {
-            x_elem.innerHTML = a_update_json.value;
-        }
+        x_elem.innerHTML = a_update_json.value;
+        return;
     }
-    else if (x_attr == 'subtree') {
-        tree_expand(x_elem, a_update_json.value)
-    }
-    else if (x_elem.tagName == 'IMG')
+
+    if (x_elem.tagName == 'IMG') {
         x_elem.setAttribute(x_attr, 'data:image/png;base64,' + a_update_json.value);
-    else {
-        x_elem.setAttribute(x_attr, a_update_json.value);
-    }    
+        return;
+    }
+
+    x_elem.setAttribute(x_attr, a_update_json.value);
 }
 
 // Collapse a tree element
@@ -204,6 +215,84 @@ function tree_expand(a_node, subtree_descr) {
     // a_node.insertBefore(x_td, null);
 }
 
+// Read one file as set of chunks
+function readOneFile(a_file, a_reference, a_response, volume) {
+    var x_chunk_size   = 1000000;
+    var x_stream_descr = {
+            'opcode':       'continue',
+            'name':         a_file.name,
+            'chunk_size':   x_chunk_size,
+            'source':       a_reference};
+
+    var x_finish_descr = {
+            'opcode':       'finished',
+            'volume':       volume,
+            'source':       a_reference};
+
+    var x_sequence = 0;
+    var x_finish_response = JSON.parse(JSON.stringify(a_response));
+
+    // Generate dummy function call for TTable:
+
+    for (var i = 0; i < a_file.size; i += x_chunk_size) {
+        (function(x_one_file, x_start_offset) {
+            var x_current_chunk = Math.min(x_chunk_size, x_one_file.size - x_start_offset);
+
+            var aReader = new FileReader();
+            var aBlob   = a_file.slice(x_start_offset, x_start_offset + x_current_chunk);
+
+            x_stream_descr['name']       = a_file.name;
+            x_stream_descr['size']       = a_file.size;
+            x_stream_descr['sequence']   = x_sequence;
+            for (var x_key in a_response.update) {
+                if (a_response.update[x_key]['args']) {
+                    a_response.update[x_key]['args']['file']        = x_stream_descr;
+                    x_finish_response.update[x_key]['args']['file'] = x_finish_descr;
+                }
+            }
+
+            aReader.onloadend    = (function(x_store_response) {
+                    var x_response_str = JSON.stringify(x_store_response);
+                    return function(e) {
+                        g_eezz_web_socket.send(x_response_str);
+                    }; })(x_finish_response);
+            aReader.onprogress   = (function(x_store_response) { return function(e) {}; })(a_response);
+            aReader.onload       = (function(x_store_response) {
+                    var x_response_str = JSON.stringify(x_store_response);
+                    return function(e) {
+                        g_eezz_web_socket.send(e.target.result);
+                        g_eezz_web_socket.send(x_response_str);
+                    }; })(a_response);
+
+            aReader.readAsArrayBuffer(aBlob);
+        } )(a_file, i);
+        x_sequence += 1;
+    }
+}
+
+/* Read files:                       */
+/* --------------------------------- */
+function read_files(a_descr) {
+    asyncFileCnt   = 0;
+    var x_source_list = a_descr['value'].files;
+    var x_response    = a_descr;
+
+    for (var i = 0; i < x_source_list.length; i++) {
+        var x_reference      = x_source_list[i];
+        var x_elements       = document.querySelectorAll('[data-eezz-reference = ' + x_source_list[i] + ']');
+        var x_file_element   = x_elements[0];
+        var x_update_str     = x_file_element.  getAttribute('data-eezz-json');
+        var x_update         = JSON.parse(x_update_str);
+        x_response['update'] = x_update.update;
+
+        // each element might have one or more selected files
+	    for (var j = 0; j < x_file_element.files.length; j++) {
+	        var x_file  = x_file_element.files[j];
+            readOneFile(x_file, x_reference, x_response, x_file_element.files.length);
+	    }
+    }
+}
+
 // Function collects all eezz events from page using WEB-socket to
 // send a request to the server
 function eezzy_click(aEvent, aElement) {
@@ -234,22 +323,23 @@ function eezzy_click(aEvent, aElement) {
         for (x_key in x_args) {
             var x_source = x_args[x_key];
 
-            if (x_source.startsWith('[')) {
+            if (x_source.startsWith('[template.')) {
                 var x_elem_list;
                 var x_elem;
                 var x_row_len = 0;
                 var x_index;
 
-                x_source    = x_source.replace('template.', 'data-eezz-template=');
-                x_elem_list = x_element.querySelectorAll(x_source);
+                x_source      = x_source.replace('template.', 'data-eezz-template=');
+                // x_source      = '[data-eezz-template="cell"]'
+                x_elem_list   = x_element.querySelectorAll(x_source);
 
                 for (var i = 0; i < x_elem_list.length; i++) {
-                    x_elem    = x_elem_list[i]
+                    x_elem    = x_elem_list[i];
                     x_index   = parseInt(x_elem.getAttribute('data-eezz-index'));
                     x_row_len = Math.max(x_row_len, x_index);
                 }
                 var x_new_row = new Array(x_row_len + 1);
-                for (var i = 0; i < x_row_len + 1; i++) {
+                for (var i = 0; i < x_elem_list.length; i++) {
                     x_elem    = x_elem_list[i];
                     x_index   = parseInt(x_elem.getAttribute('data-eezz-index'));
                     x_new_row[x_index] = x_elem['value'];

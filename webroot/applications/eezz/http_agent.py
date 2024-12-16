@@ -113,34 +113,14 @@ class THttpAgent(TWebSocketAgent):
                             x_id   = x_row.id
                             x_updates.append({'target': f'{x_id}.subtreeTemplate', 'value': {'option': x_value, 'template': x_html['template'], 'thead': x_html['thead'], 'tbody': x_html['tbody']}})
                     else:
-                        x_row_value = request_data['result-value']
-                        x_updates.append({'target': x_row_value['target'], 'type': x_row_value['type'], 'value': x_row_value['value']})
+                        for x in request_data['result-value']:
+                            x_updates.append(x)
 
             except KeyError as ex:
                 logger.warning(f'KeyError {ex.args}')
 
             x_result = {'update': x_updates}
             return x_result
-
-    def setup_download(self, request_data: dict) -> str:
-        self.documents = TDocuments()
-        self.documents.prepare_download(request=request_data)
-        return json.dumps(request_data['update'])
-
-    def handle_download(self, request_data: dict, raw_data: Any) -> str:
-        """ Handle file downloads: The browser slices the file into chunks and the agent has to
-         re-arrange the stream usingi the file name and the sequence number
-
-         :param request_data: The request data are encoded in dictionary format
-         :param raw_data: The rae data chunk to download
-         :return: Progress information to the update destination of the event
-         """
-        x_event  = request_data['file']
-        x_update = request_data['update']
-        x_update['progress'] = ''
-
-        self.documents.handle_download(x_event, raw_data)
-        return json.dumps(x_update)
 
     def do_get(self, a_resource: Path | str, a_query: dict) -> str:
         """ Response to an HTML GET command
@@ -363,7 +343,7 @@ class THttpAgent(TWebSocketAgent):
         """ Besides the table, supported display is grid (via class clzz_grid or select """
         x_row_template  = a_tag.css.select('[data-eezz-template=row]')
         x_table         = TService().get_object(a_tag.attrs['id'])
-        x_row_viewport  = x_table.get_visible_rows()
+        x_row_viewport  = list(x_table.get_visible_rows())
         x_table_header  = x_table.get_header_row()
         x_format_row    = [([x_tag for x_tag in x_row_template if x_tag.has_attr('data-eezz-match') and x_tag['data-eezz-match'] in x_row.type], x_row) for x_row in x_row_viewport]
 
@@ -390,7 +370,9 @@ class THttpAgent(TWebSocketAgent):
                     if x_tag.string:
                         x_tag.string.format(cell=x_cell)
                     x_tag.attrs['data-eezz-index'] = str(x_cell.index)
-                    x_tag.attrs  = {x_key: x_val.format(cell=x_cell) for x_key, x_val in x_tag.attrs.items() if isinstance(x_val, str)}
+
+                    # -- logger.debug(x_tag.attrs)
+                    x_tag.attrs  = {x_key: x_val for x_key, x_val in x_tag.attrs.items() if isinstance(x_val, str)}
         return x_new_element
 
 

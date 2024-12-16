@@ -13,6 +13,7 @@ The TWebSocket implements the protocol according to
 
 """
 import io
+import re
 import struct
 import socket
 # from   Crypto.Hash import SHA
@@ -25,9 +26,12 @@ import json
 
 from   abc         import abstractmethod
 from   threading   import Thread, Lock
-from   typing      import Any, Callable, Dict
+from   typing      import Any, Callable, Dict, Tuple
 from   service     import TService
 from   loguru      import logger
+
+from   service     import test_parser
+from   table       import TTable
 
 
 class TWebSocketAgent:
@@ -35,19 +39,9 @@ class TWebSocketAgent:
     TWebSocketClient is called with the class type, leaving the TWebSocketClient to generate an instance
     """
     @abstractmethod
-    def setup_download(self, request_data: dict) -> str:
-        """ This method is called before a download of files starts """
-        return ''
-
-    @abstractmethod
     def handle_request(self, request_data: Any) -> dict:
         """ handle request expects a json structure """
         return {}
-
-    @abstractmethod
-    def handle_download(self, description: str, raw_data: Any) -> str:
-        """ handle download expects a json structure, describing the file and the data """
-        return ''
 
     def shutdown(self):
         """ Implement shutdown to release allocated resources """
@@ -112,6 +106,7 @@ class TWebSocketClient:
         self.m_agent_client = a_agent()
         self.m_lock         = Lock()
         self.m_threads: Dict[Callable, Thread] = {}
+        self.store_resp: bytes = bytes()
 
     def shutdown(self):
         # self.m_async.shutdown()
@@ -146,22 +141,10 @@ class TWebSocketClient:
 
         :return: None
         """
-        x_json_str = self.read_websocket()
+        x_json_str, x_binary = self.read_websocket()
         x_json_obj = json.loads(x_json_str.decode('utf-8'))
 
         logger.debug(f'handle request {x_json_obj}')
-        if 'download' in x_json_obj:
-            x_response = self.m_agent_client.setup_download(x_json_obj)
-            self.write_frame(x_response.encode('utf-8'))
-            return
-
-        if 'file' in x_json_obj:
-            with self.m_lock:
-                x_byte_stream = self.read_websocket()
-                x_response    = self.m_agent_client.handle_download('x_json_obj', x_byte_stream)
-                self.write_frame(x_response.encode('utf-8'))
-            return
-
         if 'initialize' in x_json_obj:
             x_init_update: dict  = self.handle_async_request(request=x_json_obj)
 
@@ -176,7 +159,7 @@ class TWebSocketClient:
             x_id        = x_call_jsn['id']
 
             logger.debug(f'websocket call {x_call_jsn["function"]}')
-            x_thread  = TAsyncHandler(socket_server=self, id=x_id, request=x_json_obj, do_loop=False)
+            x_thread  = TAsyncHandler(socket_server=self, id=x_id, request=x_json_obj, byte_stream=x_binary)
             x_thread.start()
 
     def handle_async_request(self, request: dict) -> dict:
@@ -199,7 +182,7 @@ class TWebSocketClient:
             self.write_frame(x_response.encode('utf-8'))
             return x_json_obj
 
-    def read_websocket(self) -> bytes:
+    def read_websocket(self) -> Tuple[bytes, bytes]:
         """
         Reads data from a websocket, processing various websocket frame opcodes such as
         text, binary, ping, and pong, until a final frame is encountered. Handles exceptions
@@ -212,14 +195,18 @@ class TWebSocketClient:
         """
         try:
             x_raw_data = bytes()
+            x_binary   = bytes()
+            x_continue = False
+
             while True:
                 x_final, x_opcode, x_mask_vector, x_payload_len = self.read_frame_header()
                 if x_opcode   == 0x8:
                     raise TWebSocketException("closed connection")
-                elif x_opcode == 0x1:
+                elif x_opcode == 0x1:  # text frame
                     x_raw_data += self.read_frame(x_opcode, x_mask_vector, x_payload_len)
-                elif x_opcode == 0x2:
-                    x_raw_data += self.read_frame(x_opcode, x_mask_vector, x_payload_len)
+                elif x_opcode == 0x2:  # binary frame
+                    x_binary   = self.read_frame(x_opcode, x_mask_vector, x_payload_len)
+                    x_continue = True
                 elif x_opcode == 0x9:
                     x_utf_data = self.read_frame(x_opcode, x_mask_vector, x_payload_len)
                     self.write_frame(a_data=x_utf_data[:x_payload_len], a_opcode=0xA, a_final=(1 << 7))
@@ -230,7 +217,10 @@ class TWebSocketClient:
                     raise TWebSocketException(f"unknown opcode={x_opcode}")
 
                 if x_final:
-                    return x_raw_data
+                    if not x_continue:
+                        return x_raw_data, x_binary
+                    x_continue = False
+
         except Exception as xEx:
             if self.m_agent_client:
                 logger.info(f'{str(xEx)} : shutdown')
@@ -530,23 +520,22 @@ class TAsyncHandler(Thread):
     """ Execute method in background task.
     This class is designed to be put into an async thread to execute a user method, without blocking the websocket.
     After the method returns, the AsyncHandler creates the websocket response.
-    It's also possible to specify a loop counter for successive calls to the same method. The loop count is
-    given with the "_metha.loop" attribute. Some minimal time interval has to be calculated by the user method.
+    It's also possible to specify dp_loop to allow successive calls to the same method.
     This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.
 
-    :param method:          The method to be executed
-    :type  method:          Callable
-    :param args:            The arguments for this method as key/value pairs plus meta-arguments with the reserved key\
-    _meta, here with a loop request: ``{'_meta': {'loop': 100,...}}``. \
-    The loop continues until the user method returns None
-    :type  args:            Dict[name, value]
-    :param socket_server:   The server to send the result
+    :param socket_server:   The server to send the result. None for test and validation only
     :type  socket_server:   TWebSocketClient
-    :param request:         The request, which is waiting for the method to return
-    :type  request:         dict[eezz-lark-key:value]
-    :param description:     The name of the thread
+    :param request:         The browser JavaScript request, containing the method to call. The request takes the
+    result of the method call and returns it to the rendering machine to return it to JavaScript.
+    :type  request:         dict[key:value]
+    :param byte_stream:     A binary input stream, which is mixed into the request before the method call
+    :type  byte_stream:     bytes
+    :param do_loop:         If True the thread does not return, but allows the method to trigger any number of
+    update events for the browser.
+    :type  do_loop:         bool
     """
-    def __init__(self, socket_server: TWebSocketClient, id: str, request: dict, do_loop: bool = False):
+    def __init__(self, socket_server: TWebSocketClient | None, id: str, request: dict, byte_stream: bytes = bytes(), do_loop: bool = False):
+        self.byte_stream = byte_stream
         self.method_name = request['call']['function']
         self.method_args = request['call']['args']
         self.id          = id
@@ -561,8 +550,7 @@ class TAsyncHandler(Thread):
 
     @logger.catch(reraise=True)
     def run(self):
-        """
-        Executes the request in either asynchronous or synchronous mode based on
+        """ Executes the request in either asynchronous or synchronous mode based on
         the request parameters. Continuously handles asynchronous requests while
         the 'running' attribute is True. In synchronous mode, processes the
         request once and returns the result.
@@ -572,37 +560,71 @@ class TAsyncHandler(Thread):
         while self.running:
             self.running = self.do_loop
             x_row        = self.method(**self.method_args) if self.method_args else self.method()
-            self.request['result-value'] = ''
+            self.request['result-value'] = list()
             self.request['result-type']  = ''
 
             # execute value request:
             if self.request.get('update'):
                 for x_key, x_value in self.request['update'].items():
-                    if isinstance(x_value, dict):
+                    x_request_value = None
+                    if 'call' in x_key and 'function' in x_value:
+                        x_id     = self.id
+                        x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
+                        for x, y in x_value['args'].items():
+                            if x_re := re.search(r'{(row.)(\S+)}', y):
+                                x_args.update({x: getattr(x_row, x_re.group(2), '')})
+                        x_callback = {'function': 'get_selected_row', 'args': {}, 'id': x_id}
+                        x_request_value = {'call': x_callback, 'target': x_value['function'], 'type': 'javascript', 'value': x_args}
+                    elif isinstance(x_value, dict):
                         x_id     = self.id
                         x_object, x_method, x_tag, x_descr = TService().get_method(x_id, x_value['function'])
-                        x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
+                        # -- x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
+                        x_args   = {x_key: x_val for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
+
+                        for x, y in x_args.items():
+                            if isinstance(y, str) and re.search(r'{stream}', y):
+                                x_args[x] = self.byte_stream
                         x_result = x_method(**x_args) if x_args else x_method()
-                        self.request['result-value'] = {'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')}
-                    elif not x_value.startswith('this'):
-                        self.request['result-value'] = {'target': x_key, 'type': 'text',   'value': x_value.format(row=x_row)}
+                        x_request_value = {'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')}
+
+                    if x_request_value:
+                        self.request['result-value'].append(x_request_value)
+
+                for x_key, x_value in self.request['update'].items():
+                    x_request_value = None
+                    if isinstance(x_value, str) and not x_value.startswith('this'):
+                        x_request_value = {'target': x_key, 'type': 'text', 'value': x_value.format(row=x_row)}
+                        # reference to earlier calculations
+                        for x in self.request['result-value']:
+                            if x_value == x.get('target', ''):
+                                x_request_value = {'target': x_key, 'type': x.get('type', 'text'), 'value': x.get('value', '')}
+
+                    if x_request_value:
+                        self.request['result-value'].append(x_request_value)
 
             self.request['result'] = x_row
-            self.socket_server.handle_async_request(self.request)
+            if self.socket_server:
+                self.socket_server.handle_async_request(self.request)
 
 
-# ---- Module test section:
-def test_tcm():
-    """ :meta private:
-    simulate a time consuming method (tcm)"""
-    for i in range(10):
-        time.sleep(1)
-        print('.', end='')
-    print('')
+class TTestAsync(TTable):
+    """ :meta private: for test only """
+    def ___init__(self, column_names):
+        self.column_names = column_names
+        super().__init__(column_names=column_names)
+
+    def test_tcm(self):
+        """ :meta private:
+        simulate a time consuming method (tcm)"""
+        print(self.column_names)
+        for i in range(10):
+            time.sleep(1)
+            print('.', end='')
+        print('')
 
 
 class TestSocketServer(TWebSocketClient):
-    """ :meta private:
+    """ :meta private: For test only
     Simulate a request handler, waiting for a method to finish"""
     def handle_aync_request(self, request: dict):
         print(request)
@@ -611,13 +633,20 @@ class TestSocketServer(TWebSocketClient):
 def test_async_hadler():
     """ :meta private:
     Test for TAsyncHandler thread """
-    print('Test TAsyncHandler: async method call and socket server output \n')
-    x_req    = {'test': 'threads'}
-    x_ss     = TestSocketServer(a_client_addr=('',), a_agent=TWebSocketAgent)
-    x_thread = TAsyncHandler(method=test_tcm, args={}, socket_server=x_ss, request=x_req, description='test')
+    logger.debug('Test TAsyncHandler: async method call and socket server output \n')
+
+    TService.set_environment(root_path='/Users/alzer/Projects/github/eezz_full/webroot')
+
+    x_source = """ assign: eezz.websocket.TTestAsync(column_names=[a,b,c]), name: TTest """
+    x_result = test_parser(source=x_source)
+    logger.debug(x_result)
+
+    x_req    = {'call': {'function': 'test_tcm', 'args': {}}, 'id': 'Directory'}
+    x_thread = TAsyncHandler(socket_server=None, id='Directory', request=x_req, byte_stream=b'')
     x_thread.start()
-    print('Main thread waiting for the method to return')
+    logger.success('Main thread waiting for the method to return')
     x_thread.join()
+    logger.success('finished')
 
 
 if __name__ == '__main__':

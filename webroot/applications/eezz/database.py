@@ -46,6 +46,7 @@ class TDatabaseColumn(TTableColumn):
     primary_key: bool = False  #: :meta private:
     options:     str  = ''     #: :meta private:
     alias:       str  = ''     #: :meta private:
+    hidden:      bool = False  #: :meta private:
 
 
 @dataclass(kw_only=True)
@@ -150,7 +151,7 @@ class TDatabaseTable(TTable):
         """
         x_sections = list()
         x_sections.append(f'create table if not exists {self.title}')
-        x_sections.append(', '.join([f'{x.header} {x.type} {x.options}' for x in self.column_descr]))
+        x_sections.append(', '.join([f'{x.header} {x.type} {x.options}' for x in self.column_descr if not x.hidden]))
         x_sections.append(', '.join([f'{x.header}' for x in itertools.filterfalse(lambda y: not y.primary_key, self.column_descr)]))
         self.statement_create = f'{x_sections[0]}  ({x_sections[1]}, primary key ({x_sections[2]}))'
 
@@ -235,7 +236,8 @@ class TDatabaseTable(TTable):
             x_new_row = itertools.filterfalse(lambda xf_row: xf_row.attrs.get('_database', None) != 'new', self.data)
             for x_row in x_new_row:
                 x_row.attrs.pop('_database', None)
-                x_cursor.execute(self.statement_insert.format(*self.column_names), tuple(x_row.get_values_list()))
+                x_values = [x for x, y in zip(x_row.get_values_list(), self.column_descr) if not y.hidden]
+                x_cursor.execute(self.statement_insert.format(*self.column_names), tuple(x_values))
 
     def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:
         """ Navigate to a specified position within a data structure. This method

@@ -17,9 +17,6 @@ import re
 import itertools
 import json
 import sys
-import logging
-
-from Crypto.PublicKey.RSA import RsaKey
 from   bs4                  import Tag
 from   pathlib              import Path
 from   importlib            import import_module
@@ -214,6 +211,14 @@ class TServiceCompiler(Transformer):
         return f'[{'.'.join(item)}]'
 
     @staticmethod
+    def array_element(item):
+        return item
+
+    @staticmethod
+    def setenv(item):
+        return {item[0]: item[1]}
+
+    @staticmethod
     def list_updates(item):
         """ :meta private: Accumulate 'update' statements """
         return list(itertools.accumulate(item, lambda a, b: a | b))[-1]
@@ -237,6 +242,11 @@ class TServiceCompiler(Transformer):
     def update_item(item):
         """ :meta private: Parse 'update' expression"""
         return {item[0]: item[1]} if len(item) == 2 else {item[0]: item[0]}
+
+    @staticmethod
+    def update_task(item):
+        x_function, x_args = item[0].children
+        return {'call': {'function': x_function, 'args': x_args}}
 
     @staticmethod
     def update_function(item):
@@ -269,7 +279,7 @@ class TServiceCompiler(Transformer):
 
     def parameter_section(self, item):
         """ :meta private: Create tag attributes """
-        if item[0] in ('name', 'match'):
+        if item[0] in ('name', 'match', 'file', 'progress', 'type'):
             self.m_tag[f'data-eezz-{item[0]}'] = item[1]
         return {item[0]: item[1]}
 
@@ -419,7 +429,15 @@ if __name__ == '__main__':
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
 
-    x_source = "event: FormInput.append(table_row = [template.cell])"
+    x_source = """
+                        event:  create_doc(row = [template.cell]),
+                        update: read_files(doc = {row.files})
+                        """
+
+    x_source = """  
+                   event:  prepare_document(values = [template.cell]),
+                        update: read_files(files = {row.files}, stream = {stream})
+                """
     x_result = test_parser(source=x_source)
     logger.debug(f'{x_source} ==> {x_result}')
 

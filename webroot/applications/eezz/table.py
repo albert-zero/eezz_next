@@ -319,7 +319,8 @@ class TTable(UserList):
 
         # Init the UserList and keep track on the table instances
         super().__init__()
-        self.table_index = dict()
+        self.table_index   = dict()
+        self.visible_items = int(self.visible_items)
 
         if not self.column_descr:
             self.column_descr = [TTableColumn(index=x_inx, header=x_str, alias=x_str, width=len(x_str), sort=False)
@@ -457,6 +458,9 @@ class TTable(UserList):
             for x in self.header_row.cells_filter:
                 x.value = self.column_names_alias[x.value]
         return self.header_row
+
+    def get_selected_row(self):
+        return self.selected_row
 
     def get_next_values(self, search_filter: Callable[[TTableRow], bool]) -> tuple:
         """ Iterates over rows in the dataset and yields a tuple of values for each

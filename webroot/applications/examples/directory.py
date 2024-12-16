@@ -11,6 +11,7 @@ from   typing      import List, override
 from   base64      import b64encode
 import time
 
+
 class TDirView(TTable):
     """ Example class printing directory content """
     def __init__(self, title: str, path: str):
