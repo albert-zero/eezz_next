@@ -34,6 +34,7 @@ class TEezz {
 eezz = new TEezz();
 
 // Open and controlling the WEB socket
+// ------------------------------------------------------------------------------------------
 function eezz_connect() {
     console.log('connect websocket ...');
 	g_eezz_web_socket        = new WebSocket(g_eezz_socket_addr);
@@ -108,14 +109,28 @@ function eezz_connect() {
 
 // Dynamic update: The inner-HTML of the element is calculated by the server
 // The result is send via WEB socket as json = {tag-name: html, ...}
+// ------------------------------------------------------------------------------------------
 function dynamic_update(a_update_json) {
     var x_dest      = a_update_json.target.split('.'); 
     var x_attr      = x_dest.pop();
     var x_elem_root = document.getElementById(x_dest[0]);
     var x_elem      = x_elem_root;
 
-    if (x_attr == 'subtreeTemplate') {
-        tree_expand(x_elem, a_update_json.value);
+    if (x_attr == 'subtree') {
+        if (a_update_json.value.startsWith('this')) {
+            tree_expand(x_elem, a_update_json.value);
+        }
+        else {
+            x_tree_view_list = x_attr.split('.');
+            x_elem  = document.getElementById(x_tree_view_list[0]);
+            x_elem  = x_elem.querySelector('[data-eezz-template=row]');
+            x_elem.innerHTML = a_update_json.value;
+        }
+        return;
+    }
+
+    if (x_elem.tagName == 'IMG') {
+        x_elem.setAttribute(x_attr, 'data:image/png;base64,' + a_update_json.value);
         return;
     }
 
@@ -136,18 +151,8 @@ function dynamic_update(a_update_json) {
         return;
     }
 
-    if (x_attr == 'subtree') {
-        tree_expand(x_elem, a_update_json.value);
-        return;
-    }
-
     if (x_attr == 'innerHTML') {
         x_elem.innerHTML = a_update_json.value;
-        return;
-    }
-
-    if (x_elem.tagName == 'IMG') {
-        x_elem.setAttribute(x_attr, 'data:image/png;base64,' + a_update_json.value);
         return;
     }
 
@@ -155,6 +160,7 @@ function dynamic_update(a_update_json) {
 }
 
 // Collapse a tree element
+// ------------------------------------------------------------------------------------------
 function tree_collapse(a_node) {
     if (a_node.nextSibling) {
         if (a_node.nextSibling.getAttribute('data-eezz-subtree-id') == a_node.id) {
@@ -166,12 +172,14 @@ function tree_collapse(a_node) {
 
 // Inserts a sub-tree into a tree <TR> element, which is defined a given element id
 // The constrains are: subtree.tagName is table, and it contains a thead and a tbody
+// ------------------------------------------------------------------------------------------
 function tree_expand(a_node, subtree_descr) {
     // Create a new node
     if (!subtree_descr.template) {
         tree_collapse(a_node);
         return;
     }
+
     if (subtree_descr.tbody == '') {
         return;
     }
@@ -193,7 +201,7 @@ function tree_expand(a_node, subtree_descr) {
     x_table.setAttribute('data-eezz-subtree-id',  a_node['id']);
     x_caption.remove();
 
-    if (subtree_descr.option == 'restricted') {
+    if (subtree_descr.option == 'body') {
         x_table.classList.add('clzz_node');
         x_tbody.classList.add('clzz_node');
         x_thead.remove();
@@ -203,7 +211,6 @@ function tree_expand(a_node, subtree_descr) {
         x_table.classList.add('clzz_node');
         x_tbody.classList.add('clzz_node');
         x_thead.innerHTML = subtree_descr.thead;
-
     }
 
     a_node.parentNode.insertBefore(x_row, a_node.nextSibling);
@@ -216,6 +223,7 @@ function tree_expand(a_node, subtree_descr) {
 }
 
 // Read one file as set of chunks
+// ------------------------------------------------------------------------------------------
 function readOneFile(a_file, a_reference, a_response, volume) {
     var x_chunk_size   = 1000000;
     var x_stream_descr = {
@@ -270,8 +278,8 @@ function readOneFile(a_file, a_reference, a_response, volume) {
     }
 }
 
-/* Read files:                       */
-/* --------------------------------- */
+// Read files:
+// ------------------------------------------------------------------------------------------
 function read_files(a_descr) {
     asyncFileCnt   = 0;
     var x_source_list = a_descr['value'].files;
@@ -293,8 +301,25 @@ function read_files(a_descr) {
     }
 }
 
+// ------------------------------------------------------------------------------------------
+function eezz_onload(aElement) {
+    var x_json = JSON.parse(aElement.getAttribute('data-eezz-json'));
+    for (x_key in x_json) {
+        if (x_key.startswith('this')) {
+            x_new_key = x_key.replace('this', aElement['id']);
+            x_json.update[x_new_key] = x_json[x_key];
+        }
+    }
+    x_json['call'] = {'function': 'get_selected_row', 'args': {}, 'id': x_json.call['id']}
+    setTimeout(function(a_args) {
+        x_response = JSON.stringify(a_args);
+        g_eezz_web_socket.send(x_response);
+     }, 0, x_json);
+}
+
 // Function collects all eezz events from page using WEB-socket to
 // send a request to the server
+// ------------------------------------------------------------------------------------------
 function eezzy_click(aEvent, aElement) {
     var x_post     = true;
     var x_response = "";

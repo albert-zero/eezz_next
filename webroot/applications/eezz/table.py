@@ -2,11 +2,12 @@
 """
     This module implements the following classes:
 
-    * :py:class:`eezz.table.TTableCell`:   Defines properties of a table cell
-    * :py:class:`eezz.table.TTableRow`:    Defines properties of a table row, containing a list of TTableCells
-    * :py:class:`eezz.table.TTableColumn`: Defines properties of a table column
-    * :py:class:`eezz.table.TTable`:       Defines properties of a table, containing a list of TTableRows
-    * :py:class:`eezz.table.TTableException`: Exception on checking the row-id, which has to be unique
+    * :py:class:`eezz.table.TTableCell`:        Defines properties of a table cell
+    * :py:class:`eezz.table.TTableCellDetail`:  Defines a list of cell details, used to store multiple values
+    * :py:class:`eezz.table.TTableRow`:         Defines properties of a table row, containing a list of TTableCells
+    * :py:class:`eezz.table.TTableColumn`:      Defines properties of a table column
+    * :py:class:`eezz.table.TTable`:            Defines properties of a table, containing a list of TTableRows
+    * :py:class:`eezz.table.TTableException`:   Exception on checking the row-id, which has to be unique
 
     TTable is used for formatted ASCII output of a table structure.
     It allows to access the table data for further processing e.g. for HTML output. The class handles an
@@ -29,17 +30,14 @@ import  re
 import  sys
 from    collections.abc  import Callable
 from    collections import UserList
-from    dataclasses import dataclass, field
-from    itertools   import filterfalse, chain
-from    typing      import List, Dict, NewType, Any, ClassVar
+from    dataclasses import dataclass
+from    itertools   import filterfalse
+from    typing      import List, Dict, NewType, Any
 from    enum        import Enum
 from    pathlib     import Path
 from    datetime    import datetime, timezone
 from    copy        import deepcopy
-from    abc         import abstractmethod
 from    Crypto.Hash import SHA1
-
-from typing_extensions import override
 
 from    service     import TService
 from    threading   import Condition, Lock
@@ -89,6 +87,12 @@ class TSort(Enum):
     DESC    = 2  #: :meta private:
 
 
+@dataclass
+class TTableCellDetail:
+    value:  str = None
+    source: str = None
+
+
 @dataclass(kw_only=True)
 class TTableCell:
     """
@@ -111,12 +115,21 @@ class TTableCell:
     :ivar attrs: User attributes.
     :type attrs: dict
     """
-    name:       str                 #: :meta private: Name of the column
-    value:      Any                 #: :meta private: Value of the cell
-    width:      int     = 10        #: :meta private: calculated width of a cell
-    index:      int     = 0         #: :meta private: calculated index of a cell
-    type:       str     = 'str'     #: :meta private: calculated type (could also be user defined)
-    attrs:      dict    = None      #: :meta private: user attributes
+    name:   str                     #: :meta private: Name of the column
+    value:  Any                     #: :meta private: Value of the cell
+    width:  int         = 10        #: :meta private: calculated width of a cell
+    index:  int         = 0         #: :meta private: calculated index of a cell
+    type:   str         = 'str'     #: :meta private: calculated type (could also be user defined)
+    attrs:  dict        = None      #: :meta private: user attributes
+    details: List[TTableCellDetail]  = None      #: :meta private: detail list of dict
+
+    @property
+    def detail(self):
+        return self.details
+
+    @detail.setter
+    def detail(self, values: list):
+        self.details = [TTableCellDetail(value=x, source=self.name) for x in values]
 
 
 @dataclass(kw_only=True)
@@ -271,17 +284,20 @@ class TTable(UserList):
         >>> my_table = TTable(column_names=['FileName', 'Size'], title='Directory')
         >>> # for file in Path('.').iterdir():
         >>> #    my_table.append(table_row=[file, file.stat().st_size])
-        >>> row = my_table.append(table_row=['.idea',        4096])
-        >>> row = my_table.append(table_row=['directory.py', 1699])
-        >>> row = my_table.append(table_row=['__init__.py',    37])
-        >>> row = my_table.append(table_row=['__pycache__',  4096])
-        >>> my_table.print()
+        >>> row1 = my_table.append(table_row=['.idea',        4096])
+        >>> row2 = my_table.append(table_row=['directory.py', 1699])
+        >>> row3 = my_table.append(table_row=['__init__.py',    37])
+        >>> row4 = my_table.append(table_row=['__pycache__',  4096])
+        >>> debug_out = io.StringIO()
+        >>> my_table.print(file=debug_out)
+        >>> print(debug_out.getvalue()[:-1])
         Table: Directory
         | FileName     | Size |
         | .idea        | 4096 |
         | directory.py | 1699 |
         | __init__.py  |   37 |
         | __pycache__  | 4096 |
+
 
         This is a possible extension of a format for type iban, breaking the string into chunks of 4:
 
@@ -316,7 +332,6 @@ class TTable(UserList):
         """ Post init for a data class
         The value for self.format_types could be customized for own data type formatting
         The formatter sends size aad value of the column and receives the formatted string """
-
         # Init the UserList and keep track on the table instances
         super().__init__()
         self.table_index   = dict()
@@ -365,17 +380,20 @@ class TTable(UserList):
 
         >>> my_table = TTable(column_names=['FileName', 'Size'], title='Directory')
         >>> my_table.filter_columns(column_names={'Size':'Größe', 'FileName': 'Datei'})
-        >>> row = my_table.append(['.idea',        4096])
-        >>> row = my_table.append(['directory.py', 1886])
-        >>> row = my_table.append(['__init__.py',    37])
-        >>> row = my_table.append(['__pycache__',  4096])
-        >>> my_table.print()
+        >>> row1 = my_table.append(['.idea',        4096])
+        >>> row2 = my_table.append(['directory.py', 1886])
+        >>> row3 = my_table.append(['__init__.py',    37])
+        >>> row4 = my_table.append(['__pycache__',  4096])
+        >>> debug_out = io.StringIO()
+        >>> my_table.print(file=debug_out)
+        >>> print(debug_out.getvalue()[:-1])
         Table: Directory
         | Größe | Datei        |
         |  4096 | .idea        |
         |  1886 | directory.py |
         |    37 | __init__.py  |
         |  4096 | __pycache__  |
+
         """
         # Create a list of column index and a translation of the column header entry
         self.column_names_filter = list()
@@ -414,8 +432,9 @@ class TTable(UserList):
         :rtype:             TTableRow
         """
         # define the type with the first line inserted
-        x_inx       = len(self.data)
-        x_row_descr = list(zip(table_row, self.column_descr))
+        x_inx        = len(self.data)
+        x_row_values = [x[0] if isinstance(x, list) else x for x in table_row]
+        x_row_descr  = list(zip(x_row_values, self.column_descr))
 
         # Check for a valid row_id
         if row_id == '':
@@ -434,6 +453,11 @@ class TTable(UserList):
 
         x_cells = [TTableCell(name=x_descr.header, width=len(str(x_cell)), value=x_cell, index=x_descr.index, type=x_descr.type) for x_cell, x_descr in x_row_descr]
         x_row   = TTableRow(index=x_inx, cells=x_cells, attrs=attrs, type=row_type, row_id=row_id, column_descr=self.column_names)
+
+        # Store the detail descriptions
+        for x, y in zip(x_cells, table_row):
+            if isinstance(y, list):
+                x.detail = y
 
         super(UserList, self).append(x_row)
         self.table_index[row_id] = x_row
@@ -524,7 +548,7 @@ class TTable(UserList):
         x_cursor    = x_database.cursor()
         x_ty_map    = {'int': 'integer', 'str': 'text', 'float': 'real'}
         x_options   = '' if get_all else f' limit {self.visible_items} offset {self.offset}'
-        x_sorted    = list(itertools.filterfalse(lambda x: not x.sort, self.column_descr))
+        x_sorted    = list(itertools.filterfalse(lambda x_col: not x_col.sort, self.column_descr))
         x_sort_stm  = ''
 
         for x in x_sorted:
@@ -553,7 +577,8 @@ class TTable(UserList):
             x_cursor.execute(f"""select * from {self.title} {x_options}""")
         yield from x_cursor.fetchall()
 
-    def create_filter(self, filter_descr: List[List[str]]) -> tuple:
+    @staticmethod
+    def create_filter(filter_descr: List[List[str]]) -> tuple:
         """ Constructs a SQL filter query and its corresponding arguments
         from a structured filter description. The filter description
         consists of nested lists representing conditions connected by
@@ -601,8 +626,8 @@ class TTable(UserList):
             return None
 
         x_filter_row = dict()
-        for x in filterfalse(lambda xx_col: not xx_col.filter, self.column_descr):
-            x_filter_row.update({x.header: re.compile(x.filter)})
+        for x_col in filterfalse(lambda xx_col: not xx_col.filter, self.column_descr):
+            x_filter_row.update({x_col.header: re.compile(x_col.filter)})
 
         # columns: List[str], values: List[str]
         # Apply the filter for column layout
@@ -692,19 +717,16 @@ class TTable(UserList):
             table to the specified output.
         """
         x_offset        = ' ' * 6 * level
-        x_column_descr  = [self.column_descr[x] for x in self.column_names_filter] if self.apply_filter_column \
-                      else self.column_descr
+        x_column_descr  = [self.column_descr[x] for x in self.column_names_filter] if self.apply_filter_column else self.column_descr
 
         print(f'{x_offset}Table: {self.title}', file=file)
-        x_formatted_row = '|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.alias)  for x_col in x_column_descr])  if self.apply_filter_column \
-                    else ('|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.header) for x_col in x_column_descr]))
+        x_formatted_row = '|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.alias)  for x_col in x_column_descr])  if self.apply_filter_column else ('|'.join([' {{:<{}}} '.format(x_col.width).format(x_col.header) for x_col in x_column_descr]))
         print(f'{x_offset}|{x_formatted_row}|', file=file)
 
         for x_row in self.get_visible_rows():
             x_cells         = [x_row.cells[x] for x in self.column_names_filter] if self.apply_filter_column else x_row.cells
             x_row_descr     = zip(x_cells, x_column_descr)
-            x_format_descr  = [(x_descr.type, x_descr.width,     x_cell.value) if x_descr.type in self.format_types
-                          else ('str',        x_descr.width, str(x_cell.value)) for x_cell, x_descr in x_row_descr]
+            x_format_descr  = [(x_descr.type, x_descr.width,     x_cell.value) if x_descr.type in self.format_types else ('str',        x_descr.width, str(x_cell.value)) for x_cell, x_descr in x_row_descr]
 
             x_formatted_row = '|'.join([self.format_types[x_type](x_width, x_value) for x_type, x_width, x_value in x_format_descr])
             print(f'{x_offset}|{x_formatted_row}|', file=file)
@@ -762,17 +784,15 @@ def test_table():
     logger.debug(debug_out.getvalue())
 
     # x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[['Size > 20000'],['File like %py']])]
-    x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[["Size > 10000"],["File like %.py"]])]
+    x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[["Size > 10000"], ["File like %.py"]])]
     logger.debug(f'--- result = {x_result}')
 
     x_table.visible_items = 100
-    x_table.filter_rows([["Size > 10000" ],["File like %.py"]])
+    x_table.filter_rows([["Size > 10000"], ["File like %.py"]])
     x_table.print()
 
 
 if __name__ == '__main__':
     """:meta private:"""
     TService.set_environment(root_path=r'C:\Users\alzer\Projects\github\eezz_full\webroot')
-
-    # x_log_path = TService().logging_path / 'table.log'
     test_table()

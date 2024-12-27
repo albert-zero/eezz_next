@@ -13,10 +13,8 @@ The TWebSocket implements the protocol according to
 
 """
 import io
-import re
 import struct
 import socket
-# from   Crypto.Hash import SHA
 import hashlib
 import base64
 import time
@@ -150,16 +148,24 @@ class TWebSocketClient:
 
             if x_init_update:
                 for x_id, x_task_jsn in x_init_update.get('tasks'):
-                    x_thread = TAsyncHandler(socket_server=self, id=x_id, request=x_task_jsn, do_loop=True)
+                    x_thread = TAsyncHandler(socket_server=self, fkt_id=x_id, request=x_task_jsn, do_loop=True)
                     x_thread.start()
             return
 
         if 'call' in x_json_obj:
+            # Put declaration and bytestream together.
+            # JavaScript attribute is "this.bytestream": Step through all update function args and check for replacement
+            if x_dict_update := x_json_obj['update']:
+                for x_target, x_function in x_dict_update.items():
+                    if isinstance(x_function, dict) and x_function.get('args'):
+                        x_args = x_function.get('args')
+                        x_function['args'] = {x: x_binary if y and y == 'this.bytestream' else y for x, y in x_args.items()}
+
             x_call_jsn  = x_json_obj['call']
             x_id        = x_call_jsn['id']
 
             logger.debug(f'websocket call {x_call_jsn["function"]}')
-            x_thread  = TAsyncHandler(socket_server=self, id=x_id, request=x_json_obj, byte_stream=x_binary)
+            x_thread  = TAsyncHandler(socket_server=self, fkt_id=x_id, request=x_json_obj)
             x_thread.start()
 
     def handle_async_request(self, request: dict) -> dict:
@@ -525,21 +531,20 @@ class TAsyncHandler(Thread):
 
     :param socket_server:   The server to send the result. None for test and validation only
     :type  socket_server:   TWebSocketClient
+    :param fkt_id:          Reference tp the function object
+    :type  fkt_id:          str
     :param request:         The browser JavaScript request, containing the method to call. The request takes the
     result of the method call and returns it to the rendering machine to return it to JavaScript.
     :type  request:         dict[key:value]
-    :param byte_stream:     A binary input stream, which is mixed into the request before the method call
-    :type  byte_stream:     bytes
     :param do_loop:         If True the thread does not return, but allows the method to trigger any number of
     update events for the browser.
     :type  do_loop:         bool
     """
-    def __init__(self, socket_server: TWebSocketClient | None, id: str, request: dict, byte_stream: bytes = bytes(), do_loop: bool = False):
-        self.byte_stream = byte_stream
+    def __init__(self, socket_server: TWebSocketClient | None, fkt_id: str, request: dict, do_loop: bool = False):
         self.method_name = request['call']['function']
         self.method_args = request['call']['args']
-        self.id          = id
-        x_obj, x_method, x_tag, x_descr = TService().get_method(id, self.method_name)
+        self.id          = fkt_id
+        x_obj, x_method, x_tag, x_descr = TService().get_method(self.id, self.method_name)
         super().__init__(daemon = True, name = x_descr)
 
         self.method         = x_method
@@ -568,11 +573,8 @@ class TAsyncHandler(Thread):
                 for x_key, x_value in self.request['update'].items():
                     x_request_value = None
                     if 'call' in x_key and 'function' in x_value:
-                        x_id     = self.id
-                        x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
-                        for x, y in x_value['args'].items():
-                            if x_re := re.search(r'{(row.)(\S+)}', y):
-                                x_args.update({x: getattr(x_row, x_re.group(2), '')})
+                        x_id       = self.id
+                        x_args     = x_value['args']
                         x_callback = {'function': 'get_selected_row', 'args': {}, 'id': x_id}
                         x_request_value = {'call': x_callback, 'target': x_value['function'], 'type': 'javascript', 'value': x_args}
                     elif isinstance(x_value, dict):
@@ -580,10 +582,6 @@ class TAsyncHandler(Thread):
                         x_object, x_method, x_tag, x_descr = TService().get_method(x_id, x_value['function'])
                         # -- x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
                         x_args   = {x_key: x_val for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
-
-                        for x, y in x_args.items():
-                            if isinstance(y, str) and re.search(r'{stream}', y):
-                                x_args[x] = self.byte_stream
                         x_result = x_method(**x_args) if x_args else x_method()
                         x_request_value = {'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')}
 
@@ -611,7 +609,7 @@ class TTestAsync(TTable):
     """ :meta private: for test only """
     def ___init__(self, column_names):
         self.column_names = column_names
-        super().__init__(column_names=column_names)
+        super().__init__()
 
     def test_tcm(self):
         """ :meta private:
@@ -642,7 +640,7 @@ def test_async_hadler():
     logger.debug(x_result)
 
     x_req    = {'call': {'function': 'test_tcm', 'args': {}}, 'id': 'Directory'}
-    x_thread = TAsyncHandler(socket_server=None, id='Directory', request=x_req, byte_stream=b'')
+    x_thread = TAsyncHandler(socket_server=None, fkt_id='Directory', request=x_req)
     x_thread.start()
     logger.success('Main thread waiting for the method to return')
     x_thread.join()
@@ -652,4 +650,3 @@ def test_async_hadler():
 if __name__ == '__main__':
     """:meta private:"""
     test_async_hadler()
-

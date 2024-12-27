@@ -11,28 +11,22 @@ import copy
 import re
 from copy import deepcopy
 
-from loguru    import logger
-from Crypto.Hash import SHA1
-import base64
-
 from pathlib   import Path
-from typing    import Any, Callable, List
+from typing    import Callable
 from bs4       import Tag, BeautifulSoup, NavigableString
 from itertools import product, chain
 from table     import TTable, TTableCell, TTableRow
 from websocket import TWebSocketAgent
 from service   import TService, TServiceCompiler, TTranslate
 from lark      import Lark, UnexpectedCharacters, Tree, UnexpectedEOF
-from document  import TDocuments
 from loguru    import logger
-
 
 class THttpAgent(TWebSocketAgent):
     """ Agent handles WEB socket events """
 
     def __init__(self):
         super().__init__()
-        self.documents: TDocuments | None = None
+        self.soup = None
 
     @logger.catch
     def handle_request(self, request_data: dict) -> dict | None:
@@ -50,8 +44,8 @@ class THttpAgent(TWebSocketAgent):
         x_id      = ''
 
         if 'initialize' in request_data:
-            x_soup   = BeautifulSoup(request_data['initialize'], 'html.parser', multi_valued_attributes=None)
-            for x in x_soup.css.select('table[data-eezz-compiled]'):
+            self.soup   = BeautifulSoup(request_data['initialize'], 'html.parser', multi_valued_attributes=None)
+            for x in self.soup.css.select('table[data-eezz-compiled]'):
                 x_html = self.generate_html_table(x, x['id'])
                 x_id   = x['id']
 
@@ -64,15 +58,20 @@ class THttpAgent(TWebSocketAgent):
                 x_updates.append({'target': f'{x_id}.thead.innerHTML',   'value': x_html['thead']})
                 x_updates.append({'target': f'{x_id}.tbody.innerHTML',   'value': x_html['tbody']})
 
-            for x in  x_soup.css.select('select[data-eezz-compiled], .clzz_grid[data-eezz-compiled]'):
+            for x in  self.soup.css.select('select[data-eezz-compiled], .clzz_grid[data-eezz-compiled]'):
                 x_html = self.generate_html_grid(x)
                 x_id   = x['id']
                 x_updates.append({'target': f'{x_id}.innerHTML', 'value': x_html['tbody']})
 
+                if x.attrs.get('data-eezz-json'):
+                    x_gen_request = {'call': {'function': 'get_header_row', 'args': {}, 'id': x_id}}
+                    x_gen_request.update(json.loads(x['data-eezz-json']))
+                    x_tasks.append((x_id, x_gen_request))
+
             # manage translation if service started with command line option --translate:
             if TService().translate:
                 x_translate = TTranslate()
-                x_translate.generate_pot(x_soup, request_data['title'])
+                x_translate.generate_pot(self.soup, request_data['title'])
             x_result.update({'update': x_updates, 'event': 'init', 'tasks': x_tasks})
             return x_result
 
@@ -93,6 +92,11 @@ class THttpAgent(TWebSocketAgent):
                     if x_key == 'this.tbody':
                         x_html = self.generate_html_table(x_tag, x_tag['id'])
                         x_updates.append({'target': f'{x_tag["id"]}.tbody.innerHTML', 'value': x_html['tbody']})
+                    elif x_key == 'this.subtree_view':
+                        tag_tree_template = self.soup.css.select(f'#{x_value}')[0]
+                        tag_row_template  = tag_tree_template.soup.css.select('[data-eezz-template=row]')[0]
+                        x_subtree_view    = self.generate_html_grid_item(tag_row_template, x_row)
+                        x_updates.append({'target': f'{x_value}.innerHTML', 'value': str(x_subtree_view)})
                     elif x_key == 'this.subtree':
                         x_id            = x_row.id
                         x_table: TTable = x_row.child
@@ -111,7 +115,7 @@ class THttpAgent(TWebSocketAgent):
 
                             x_html = self.generate_html_table(x_tag, x_id)
                             x_id   = x_row.id
-                            x_updates.append({'target': f'{x_id}.subtreeTemplate', 'value': {'option': x_value, 'template': x_html['template'], 'thead': x_html['thead'], 'tbody': x_html['tbody']}})
+                            x_updates.append({'target': f'{x_id}.subtree', 'value': {'option': x_value, 'template': x_html['template'], 'thead': x_html['thead'], 'tbody': x_html['tbody']}})
                     else:
                         for x in request_data['result-value']:
                             x_updates.append(x)
@@ -344,13 +348,12 @@ class THttpAgent(TWebSocketAgent):
         x_row_template  = a_tag.css.select('[data-eezz-template=row]')
         x_table         = TService().get_object(a_tag.attrs['id'])
         x_row_viewport  = list(x_table.get_visible_rows())
-        x_table_header  = x_table.get_header_row()
         x_format_row    = [([x_tag for x_tag in x_row_template if x_tag.has_attr('data-eezz-match') and x_tag['data-eezz-match'] in x_row.type], x_row) for x_row in x_row_viewport]
 
-        x_list_children = [self.generate_html_grid_item(x_tag[0], x_row, x_table_header) for x_tag, x_row in x_format_row]
+        x_list_children = [self.generate_html_grid_item(x_tag[0], x_row) for x_tag, x_row in x_format_row]
         return {"tbody": ''.join([str(x) for x in x_list_children])}
 
-    def generate_html_grid_item(self, tag_template: Tag, a_row: TTableRow, a_header: TTableRow) -> Tag:
+    def generate_html_grid_item(self, tag_template: Tag, a_row: TTableRow) -> Tag:
         """ Generates elements of the same kind, derived from a template and update content
         according the row values
 
@@ -360,19 +363,43 @@ class THttpAgent(TWebSocketAgent):
         :return:             Generated HTML tag
         """
         # Generate name-value pairs for this row:
-        x_format_cell   = {x: y for x, y in zip(a_header.get_values_list(), a_row.cells)}
-        x_new_element   = deepcopy(tag_template)
-        x_cell_template = x_new_element.css.select('[data-eezz-template=cell]')
+        x_format_cell    = {x: y for x, y in zip(a_row.column_descr, a_row.cells)}
+        x_new_element    = deepcopy(tag_template)
 
-        for x_tag in x_cell_template:
-            if x_ref := x_tag.attrs.get('data-eezz-reference'):
-                if x_cell := x_format_cell.get(x_ref):
-                    if x_tag.string:
-                        x_tag.string.format(cell=x_cell)
-                    x_tag.attrs['data-eezz-index'] = str(x_cell.index)
+        if x_cell_templates := x_new_element.css.select('[data-eezz-template=cell]'):
+            for x_tag in x_cell_templates:
+                x_ref   = x_tag.attrs.get('data-eezz-reference')
+                x_cell  = x_format_cell.get(x_ref, None)
+                x_attrs = {x_key: x_val.format(cell=x_cell) for x_key, x_val in x_tag.attrs.items() if not x_key.startswith('data-eezz')}
 
-                    # -- logger.debug(x_tag.attrs)
-                    x_tag.attrs  = {x_key: x_val for x_key, x_val in x_tag.attrs.items() if isinstance(x_val, str)}
+                for x_key, x_val in x_attrs.items():
+                    x_tag.attrs.update({x_key: x_val})
+                x_tag.attrs['data-eezz-index'] = str(x_cell.index)
+                x_tag.attrs['id'] = f'{a_row.row_id}.{x_cell.index}'
+                if x_tag.string:
+                    x_tag.string = x_tag.string.format(cell=x_cell)
+
+        if x_cell_templates := x_new_element.css.select('[data-eezz-template=detail]'):
+            for x_tag in x_cell_templates:
+                x_ref        = x_tag.attrs.get('data-eezz-reference')
+                x_cell       = x_format_cell.get(x_ref, None)
+                x_details    = x_cell.details
+                x_detail_tag = x_tag
+
+                for j, x_detail in enumerate(x_details):
+                    if j > 0:
+                        x_new_tag    = deepcopy(x_tag)
+                        x_detail_tag.insert_after(x_new_tag)
+                        x_detail_tag = x_new_tag
+
+                    x_attrs = {x_key: x_val.format(detail=x_detail) for x_key, x_val in x_tag.attrs.items() if isinstance(x_val, str)}
+                    for x_key, x_val in x_attrs.items():
+                        x_detail_tag.attrs.update({x_key: x_val})
+                    x_detail_tag.attrs['data-eezz-index'] = f'{str(x_cell.index)}.{j}'
+                    x_tag.attrs['id'] = f'{a_row.row_id}.{x_cell.index}.{j}'
+                    if x_detail_tag.string:
+                        x_tag.string = x_tag.string.format(cell=x_cell)
+
         return x_new_element
 
 

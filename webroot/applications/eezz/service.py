@@ -159,7 +159,7 @@ class TService:
         try:
             x_module    = import_module(y)
             x_class     = getattr(x_module, z)
-            x_object    = x_class(**attrs)
+            x_object    = x_class(**attrs) if attrs else x_class()
             self.objects.update({obj_id: (x_object, a_tag, description)})
             logger.debug(f'assign {obj_id} {x}/{y}/{z}')
         except AttributeError as x_except:
@@ -229,9 +229,13 @@ class TServiceCompiler(Transformer):
         return list(itertools.accumulate(item, lambda a, b: a | b))[-1]
 
     @staticmethod
+    def onload_section(item):
+        return {'onload': item[0]}
+
+    @staticmethod
     def update_section(item):
         """ :meta private: Parse 'update' section """
-        return {'update':   item[0]}
+        return {'update': item[0]}
 
     @staticmethod
     def download(item):
@@ -430,14 +434,12 @@ if __name__ == '__main__':
     logger.debug(x_result)
 
     x_source = """
-                        event:  create_doc(row = [template.cell]),
-                        update: read_files(doc = {row.files})
-                        """
+                            template: cell (detail),     
+                            onload: this.src = read_file(file = this.file),                                                   
+                            update: 
+                                progress_detail.style.width = download_file(file = this.file, stream = this.bytestream),
+                                progress_detail.innerHTML   = progress_detail.style.width   """
 
-    x_source = """  
-                   event:  prepare_document(values = [template.cell]),
-                        update: read_files(files = {row.files}, stream = {stream})
-                """
     x_result = test_parser(source=x_source)
     logger.debug(f'{x_source} ==> {x_result}')
 

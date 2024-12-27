@@ -63,22 +63,10 @@ class TDatabaseTable(TTable):
     :type column_names: list
     :ivar database_name: The name of the database file to connect or create.
     :type database_name: str
-    :ivar statement_select: SQL select statement for the table.
-    :type statement_select: str
-    :ivar statement_count: SQL count statement for the table records.
-    :type statement_count: str
-    :ivar statement_create: SQL create statement to initialize the table.
-    :type statement_create: str
-    :ivar statement_insert: SQL insert statement for adding data to the table.
-    :type statement_insert: str
-    :ivar statement_where: List of conditions for SQL where clause.
-    :type statement_where: list
     :ivar database_path: File path for the database.
     :type database_path: str
     :ivar virtual_len: Virtual length of the dataset.
     :type virtual_len: int
-    :ivar column_descr: Description of each column in the database table.
-    :type column_descr: List[TDatabaseColumn]
     """
     column_names:     list      = None
     database_name:    str       = 'default.db'      #: :meta private:
@@ -151,7 +139,7 @@ class TDatabaseTable(TTable):
         """
         x_sections = list()
         x_sections.append(f'create table if not exists {self.title}')
-        x_sections.append(', '.join([f'{x.header} {x.type} {x.options}' for x in self.column_descr if not x.hidden]))
+        x_sections.append(', '.join([f'{x.header} {x.type} {x.options}' for x in self.column_descr]))
         x_sections.append(', '.join([f'{x.header}' for x in itertools.filterfalse(lambda y: not y.primary_key, self.column_descr)]))
         self.statement_create = f'{x_sections[0]}  ({x_sections[1]}, primary key ({x_sections[2]}))'
 
@@ -236,7 +224,7 @@ class TDatabaseTable(TTable):
             x_new_row = itertools.filterfalse(lambda xf_row: xf_row.attrs.get('_database', None) != 'new', self.data)
             for x_row in x_new_row:
                 x_row.attrs.pop('_database', None)
-                x_values = [x for x, y in zip(x_row.get_values_list(), self.column_descr) if not y.hidden]
+                x_values = [x for x, y in zip(x_row.get_values_list(), self.column_descr)]
                 x_cursor.execute(self.statement_insert.format(*self.column_names), tuple(x_values))
 
     def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:

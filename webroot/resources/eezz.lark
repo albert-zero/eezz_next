@@ -4,6 +4,7 @@
 ?statement        : "event"     ":" function_call               -> funct_assignment
                   | "assign"    ":" function_call               -> table_assignment
                   | "update"    ":" list_updates                -> update_section
+                  | "onload"    ":" list_updates                -> onload_section
                   | "post_init" ":" function_call               -> post_init
                   | "download"  ":" document "," files          -> download
                   | "template"  ":" string ( "(" value_string ")" )?  -> template_section
