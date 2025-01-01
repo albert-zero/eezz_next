@@ -86,7 +86,7 @@ module eezz.document
 
 .. automodule:: eezz.document
 
-   .. autoclass:: TDocuments(path, name)
+   .. autoclass:: TDocument(path, name)
       :members:
       :undoc-members:
       :show-inheritance:

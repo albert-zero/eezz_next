@@ -533,11 +533,9 @@ class TAsyncHandler(Thread):
     :type  socket_server:   TWebSocketClient
     :param fkt_id:          Reference tp the function object
     :type  fkt_id:          str
-    :param request:         The browser JavaScript request, containing the method to call. The request takes the
-    result of the method call and returns it to the rendering machine to return it to JavaScript.
+    :param request:         The browser JavaScript request, containing the method to call. The request takes the result of the method call and returns it to the rendering machine to return it to JavaScript.
     :type  request:         dict[key:value]
-    :param do_loop:         If True the thread does not return, but allows the method to trigger any number of
-    update events for the browser.
+    :param do_loop:         If True the thread does not return, but allows the method to trigger any number of update events for the browser.
     :type  do_loop:         bool
     """
     def __init__(self, socket_server: TWebSocketClient | None, fkt_id: str, request: dict, do_loop: bool = False):

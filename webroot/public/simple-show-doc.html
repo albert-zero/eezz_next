@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<head>
+    <script data-eezz="template:websocket"></script>
+    <link rel="stylesheet" href="/css/eezz.css">
+    <style>
+        .clzz_grid {
+          display: grid;
+          grid-template-columns: auto auto auto;
+          background-color: gray;
+          gap: 15px;
+        }
+
+        .clzz_sub_grid {
+          display: grid;
+          // grid-row: 1;
+          background-color: skyblue;
+          gap: 15px;
+        }
+
+        .clzz_sub_grid_item {
+          border: 1px solid rgba(0, 0, 0, 0.8);
+          margin:  3px;
+          padding: 3px;
+          font-size: 14px;
+        }
+
+        .grid-item {
+          border: 1px solid rgba(0, 0, 0, 0.8);
+          padding: 3px;
+          font-size: 14px;
+        }
+        
+        table {
+            position: relative
+            display: inline-block;
+            background-color: white;
+            left: 30px;
+        }
+
+        .clz_output {
+            background-color: yellow;
+            border: 1px solid black;
+        }
+
+        table[data-eezz-subtree-id] {
+            border-left: 2px solid black;
+            // background-color: gray;
+        }
+
+        tr td:first-child {
+             // border: 1px solid black;
+             // background-color: gray;
+        }
+
+    </style>
+
+</head>
+<html lang="en">
+<body>
+    <h2 id="eezz-status"></h2>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <h1>Show Compound Document</h1>
+
+    <table id="ListDocument" style="border: 1px solid black;"
+        data-eezz='assign: examples.directory.TDocuments(title=SimpleView)'>
+        <tbody>
+            <tr data-eezz="template: row, match: body,
+                            event  : on_select(index={row.row_id}),
+                            update : this.subtree_view = ShowDocument">
+                <td class='clzz_{cell.type}' 
+                    data-eezz="template: cell">{cell.value}</td></tr>
+        </tbody>
+    </table>
+
+    <div class="clzz_grid" id="ShowDocument">
+        <div class="grid-item" style="position:relative;" 
+            data-eezz="template: row" data-eezz-match="body">
+
+            <div class="clzz_sub_grid">
+
+                <span class="grid-cell" data-eezz="template: cell (CTitle)">  {cell.value}</span>
+                <span class="grid-cell" data-eezz="template: cell (CName)">   {cell.value}</span>
+                <span class="grid-cell" data-eezz="template: cell (CDescr)">  {cell.value}</span>
+                <span class="grid-cell" data-eezz="template: cell (CPrice)">  {cell.value}</span>
+                <span class="grid-cell" data-eezz="template: cell (CValid)">  {cell.value}</span>
+
+
+                <div class="grid-cell" style="display: inline-block; padding: 2px 5px 2px 5px;">
+                    <img class="grid-cell" alt="main"
+                        data-eezz="
+                            template: detail (CMain)
+                            update:   this.src = read_file(file={detail.source})
+                            onload:   eezz_onload"
+                            /></div>
+
+                <div class="grid-cell" style="display: inline-block; padding: 2px 5px 5px 5px;">
+                    <img class="grid-cell"  alt="detail"
+                        src = "{detail.location}"
+                        data-eezz="
+                            template: detail (CDetail)
+                            /></div>
+
+        </div>
+    </div> 
+
+</body>
+</html>

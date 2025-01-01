@@ -7,6 +7,9 @@
 
 
 """
+import os
+from   datetime import datetime, timezone
+
 from table      import TTable, TTableRow
 from typing     import override, List
 from abc        import abstractmethod
@@ -21,59 +24,39 @@ class TTableTree(TTable):
     with unique identifiers, handle selection of nodes, read directories,
     and manage the expansion states of nodes.
 
-    :ivar root_path: The root path for the tree structure, initialized from
-        the given path string.
-    :type root_path: Path
-    :ivar nodes: A list containing the tree's nodes, initialized with the
-        current instance.
-    :type nodes: List[TTable]
-    :ivar expanded: A boolean indicating whether the current node is expanded.
-    :type expanded: bool
-    :ivar selected: The currently selected node within the tree structure.
-    :type selected: TTableTree
+    :ivar Path root_path:       The root path for the tree structure, initialized from the given path string.
+    :ivar List[TTable] nodes:   A list containing the tree's nodes, initialized with the current instance.
+    :ivar bool expanded:        A boolean indicating whether the current node is expanded.
+    :ivar TTableTree selected: The currently selected node within the tree structure.
     """
     def __init__(self, column_names: list[str], title: str, path: str) -> None:
         super().__init__(column_names=column_names, title=title)
         self.root_path            = Path(path)
         self.nodes: List[TTable]  = [self]
         self.expanded: bool       = False
-        self.selected: TTableTree = None
+        self.selected: TTableTree | None = None
 
     @override
     def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '', exists_ok=False) -> TTableRow:
         """ Append a new row to the table with optional attributes and a specific row type.
 
-        This method takes a list of table row values and the optionally attributes row-type.
-        The incoming row-ID must be set to a file entry in specified table path.
-        A new unique row-ID is calculated combining TTableTree.root_path and row-ID, which allows to
-        address the row in the entire tree as "index" parameter
-
-        Then, it appends the row to the table.
-
-        :param table_row:   A list representing the contents of the table row.
-        :param row_id:      A string representing a file in a directory.
-        :param attrs:       A dictionary of attributes to set for the table row (default is None).
-        :param row_type:    A string representing the type of row, e.g., 'is_file', 'is_dir' (default is 'body').
-        :param exists_ok:   If True, supress exception, trying to insert the same row-ID
+        :param list table_row:  A list representing the contents of the table row.
+        :param str row_id:      A string representing a file in a directory.
+        :param dict attrs:      A dictionary of attributes to set for the table row (default is None).
+        :param str row_type:    A string representing the type of row, e.g., 'is_file', 'is_dir' (default is 'body').
+        :param bool exists_ok:  If True, supress exception, trying to insert the same row-ID
         :return: An instance of TTableRow representing the appended row.
         """
         if not row_id:
             row_id = '/'.join([str(x) for x in table_row if isinstance(x, str)])
         x_path = self.root_path / row_id
-        x_hash = x_path.as_posix() # SHA1.new(x_path.encode('utf8')).hexdigest()
+        x_hash = x_path.as_posix()
         return super().append(table_row, row_id=x_hash, row_type=row_type)
 
     @abstractmethod
     def read_dir(self):
-        """
-        Defines an interface for a directory reading system, requiring all subclasses
-        to implement the method for reading directories. This abstract class ensures
-        that all concrete implementations provide a consistent approach to reading
-        the contents of a directory.
-
-        Methods documented in this class should not have their details present in the
-        class-level documentation. The details should be specified in the method
-        docstring itself.
+        """ Defines an interface for a directory reading system, requiring all subclasses
+        to implement the method for reading directories.
         """
         pass
 
@@ -85,8 +68,8 @@ class TTableTree(TTable):
         calling the parent class's on_select method. If a row is found, it returns
         the selected table row.
 
-        :param index:   The index of the table row to select.
-        :type index:    str
+        :param  index:  The index of the table row to select.
+        :type   index:  str
         :return:        The selected table row if found.
         :rtype:         TTableRow
         """
@@ -101,6 +84,10 @@ class TTableTree(TTable):
 
         If the subtree is expensive to calculate, override this method and omit the
         clearing of data .
+
+        :param path:    Path in the hierarchy to open
+        :type  path:    str
+        :return:        The TTableRow containing the new TTable as child
         """
         for x_table in self.nodes:
             if x_row := super(TTableTree, x_table).on_select(path):
@@ -115,7 +102,7 @@ class TTableTree(TTable):
                     x_row.child.clear()
                     x_row.child = None
                 else:
-                    x_row.child = self.__class__(title=self.title, path=x_row.row_id)
+                    x_row.child = self.__class__(title=self.title, path=x_row.row_id, column_names=self.column_names)
                     x_row.child.expanded = True
                     x_row.child.read_dir()
                     self.nodes.append(x_row.child)
@@ -139,10 +126,6 @@ class TTableTree(TTable):
                 x_buffer = f.read()
             return x_buffer
         return b''
-
-
-import os
-from   datetime import datetime, timezone
 
 
 class TTestTree(TTableTree):

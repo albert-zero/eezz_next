@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<head>
+    <script data-eezz="template:websocket"></script>
+    <link rel="stylesheet" href="/css/eezz.css">
+    <style>
+        .clzz_grid {
+          display: grid;
+          grid-template-columns: auto auto auto;
+          background-color: gray;
+          column-gap: 3px;
+        }
+
+        .clzz_sub_grid {
+          display: grid;
+          grid-template-columns: auto auto;
+          background-color: skyblue;
+          padding: 10px;
+        }
+
+        .clzz_sub_grid_item {
+          border: 1px solid rgba(0, 0, 0, 0.8);
+          margin:  3px;
+          padding: 3px;
+          font-size: 14px;
+        }
+
+        .grid-item {
+          border: 1px solid rgba(0, 0, 0, 0.8);
+          padding: 3px;
+          font-size: 14px;
+        }
+        
+        table {
+            position: relative
+            display: inline-block;
+            background-color: white;
+            left: 30px;
+        }
+
+        .clz_output {
+            background-color: yellow;
+            border: 1px solid black;
+        }
+
+        table[data-eezz-subtree-id] {
+            border-left: 2px solid black;
+            // background-color: gray;
+        }
+
+        tr td:first-child {
+             // border: 1px solid black;
+             // background-color: gray;
+        }
+
+    </style>
+
+</head>
+<html lang="en">
+<body>
+    <h2 id="eezz-status"></h2>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <h1>Generate Compound Document</h1>
+
+    <div class="clzz_grid" id="Document" 
+        data-eezz='assign: examples.bookshelf.TSimpleShelf(shelf_name=Second, visible_items=1)'>
+
+        <div class="grid-item" style="position:relative;" 
+            data-eezz="template: row" data-eezz-match="body">
+
+            <div class="clzz_sub_grid">
+
+            <label class = "clzz_sub_grid_item">Name</label>   
+            <input  type = "text" class = "clzz_sub_grid_item"
+                    data-eezz = "template: cell (title)" 
+                    size="10"/>
+
+            <label class = "clzz_sub_grid_item">Description</label>        
+            <input  type = "text" class = "clzz_sub_grid_item"
+                    data-eezz = "template: cell (descr)" 
+                    size="10"/>
+
+            <label class = "clzz_sub_grid_item">Price</label>        
+            <input  type = "number" class = "clzz_sub_grid_item" 
+                    value       = ""   
+                    data-eezz   = "template: cell (price)"
+                    data-type   = "currency"  
+                    size="10"/>
+
+            <label class = "clzz_sub_grid_item">Valid Until</label>        
+            <input  type = "date" class = "clzz_sub_grid_item"
+                    data-eezz = "template: cell (valid)" 
+                    size="10"/>
+
+
+            <label class = "clzz_sub_grid_item">Picture</label>
+            <div class = "clzz_sub_grid_item" style="display: grid; grid-template-row: auto auto; row-gap: 4px;">
+                <input  type = "file"
+                        data-eezz="
+                            template: cell (main),                            
+                            update: 
+                                progress_main.style.width = download_file(file = this.file, stream = this.bytestream),
+                                progress_main.innerHTML   = progress_main.style.width    
+                            "/>
+
+                <div class = "clzz_progress_background" style="width:200px; background-color:red">
+                    <div id="progress_main" class = "clzz_progress_foreground" 
+                        style="width: 50%; background-color:green">50%</div></div>
+            </div>
+
+            <label class = "clzz_sub_grid_item">Detail</label>
+            <div class = "clzz_sub_grid_item" style="display: grid; grid-template-row: auto auto; row-gap: 4px;">
+                <input  type = "file"
+                        data-eezz="
+                            template: cell (detail),                                                        
+                            update: 
+                                progress_detail.style.width = download_file(file = this.file, stream = this.bytestream),
+                                progress_detail.innerHTML   = progress_detail.style.width"/>
+
+                <div class = "clzz_progress_background" style="width:200px; background-color:red">
+                    <div id="progress_detail" class = "clzz_progress_foreground"
+                        style="width: 50%; background-color:green">50%</div></div>
+            </div>
+
+            <input  type ="button"
+                    id          =  "commit"
+                    value       =  "submit"
+                    data-eezz   =  "
+                        event:  prepare_document(values = [template.cell]),
+                        update: read_files(files = [main, detail])
+                        "/>
+        </div>
+
+        
+    </div> 
+
+</body>
+</html>

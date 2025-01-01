@@ -88,9 +88,6 @@
 <span class="kn">import</span> <span class="nn">itertools</span>
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">sys</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-
-<span class="kn">from</span> <span class="nn">Crypto.PublicKey.RSA</span> <span class="kn">import</span> <span class="n">RsaKey</span>
 <span class="kn">from</span>   <span class="nn">bs4</span>                  <span class="kn">import</span> <span class="n">Tag</span>
 <span class="kn">from</span>   <span class="nn">pathlib</span>              <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span>   <span class="nn">importlib</span>            <span class="kn">import</span> <span class="n">import_module</span>
@@ -124,76 +121,88 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">private_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RSA</span><span class="o">.</span><span class="n">RsaKey</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">TService</span><span class="o">.</span><span class="n">_private_key</span><span class="p">:</span>
             <span class="n">TService</span><span class="o">.</span><span class="n">_private_key</span> <span class="o">=</span> <span class="n">RSA</span><span class="o">.</span><span class="n">construct</span><span class="p">((</span><span class="n">TService</span><span class="o">.</span><span class="n">_mod</span><span class="p">,</span> <span class="n">TService</span><span class="o">.</span><span class="n">_exp</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_private_key</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RSA</span><span class="o">.</span><span class="n">RsaKey</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">TService</span><span class="o">.</span><span class="n">_public_key</span><span class="p">:</span>
             <span class="n">TService</span><span class="o">.</span><span class="n">_public_key</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">private_key</span><span class="o">.</span><span class="n">public_key</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_public_key</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">root_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">TService</span><span class="o">.</span><span class="n">_root_path</span><span class="p">:</span>
             <span class="n">TService</span><span class="o">.</span><span class="n">_root_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_root_path</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">resource_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;resources&#39;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">public_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;public&#39;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">application_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;applications&#39;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">document_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;database&#39;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">database_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="s1">&#39;eezz.db&#39;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">locales_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_path</span> <span class="o">/</span> <span class="s1">&#39;locales&#39;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">logging_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;logs&#39;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">host</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_host</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">websocket_addr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_websocket_addr</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">objects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">TService</span><span class="o">.</span><span class="n">_global_objects</span><span class="p">:</span>
             <span class="n">TService</span><span class="o">.</span><span class="n">_global_objects</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_global_objects</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">translate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">TService</span><span class="o">.</span><span class="n">_translate</span>
 
-<div class="viewcode-block" id="TService.set_environment">
-<a class="viewcode-back" href="../../eezz.html#eezz.service.TService.set_environment">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">set_environment</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">root_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;8000&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="bp">cls</span><span class="o">.</span><span class="n">_root_path</span>      <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root_path</span><span class="p">)</span>
         <span class="bp">cls</span><span class="o">.</span><span class="n">_host</span>           <span class="o">=</span> <span class="n">host</span>
-        <span class="bp">cls</span><span class="o">.</span><span class="n">_websocket_addr</span> <span class="o">=</span> <span class="n">address</span></div>
-
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_websocket_addr</span> <span class="o">=</span> <span class="n">address</span>
 
 <div class="viewcode-block" id="TService.get_method">
 <a class="viewcode-back" href="../../eezz.html#eezz.service.TService.get_method">[docs]</a>
@@ -243,7 +252,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">x_module</span>    <span class="o">=</span> <span class="n">import_module</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
             <span class="n">x_class</span>     <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">x_module</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
-            <span class="n">x_object</span>    <span class="o">=</span> <span class="n">x_class</span><span class="p">(</span><span class="o">**</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">x_object</span>    <span class="o">=</span> <span class="n">x_class</span><span class="p">(</span><span class="o">**</span><span class="n">attrs</span><span class="p">)</span> <span class="k">if</span> <span class="n">attrs</span> <span class="k">else</span> <span class="n">x_class</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">obj_id</span><span class="p">:</span> <span class="p">(</span><span class="n">x_object</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">,</span> <span class="n">description</span><span class="p">)})</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;assign </span><span class="si">{</span><span class="n">obj_id</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">z</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">x_except</span><span class="p">:</span>
@@ -298,6 +307,21 @@
         <span class="k">return</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">item</span><span class="p">])</span>
 
     <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">selector_string</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;[</span><span class="si">{</span><span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="si">}</span><span class="s1">]&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">array_element</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">setenv</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span>
+
+    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">list_updates</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Accumulate &#39;update&#39; statements &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">accumulate</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">|</span> <span class="n">b</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
@@ -308,9 +332,14 @@
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">accumulate</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">|</span> <span class="n">b</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
     <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">onload_section</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;onload&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
+
+    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">update_section</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;update&#39; section &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;update&#39;</span><span class="p">:</span>   <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;update&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">download</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
@@ -322,13 +351,17 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Parse &#39;update&#39; expression&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
 
-<div class="viewcode-block" id="TServiceCompiler.update_function">
-<a class="viewcode-back" href="../../eezz.html#eezz.service.TServiceCompiler.update_function">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">update_task</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
+        <span class="n">x_function</span><span class="p">,</span> <span class="n">x_args</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;call&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">x_function</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">x_args</span><span class="p">}}</span>
+
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">update_function</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
         <span class="n">x_function</span><span class="p">,</span> <span class="n">x_args</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">children</span>
-        <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="p">{</span><span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">x_function</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">x_args</span><span class="p">}}</span></div>
-
+        <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="p">{</span><span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">x_function</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">x_args</span><span class="p">}}</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">assignment</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
@@ -347,7 +380,16 @@
 
     <span class="k">def</span> <span class="nf">template_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Create tag attributes &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;match&#39;</span><span class="p">,</span> <span class="s1">&#39;template&#39;</span><span class="p">):</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;data-eezz-template&#39;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span><span class="p">[</span><span class="s1">&#39;data-eezz-template&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">template</span><span class="p">[</span><span class="s1">&#39;data-eezz-reference&#39;</span><span class="p">]</span>   <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span><span class="p">[</span><span class="s1">&#39;data-eezz-reference&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">template</span>
+
+    <span class="k">def</span> <span class="nf">parameter_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Create tag attributes &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;match&#39;</span><span class="p">,</span> <span class="s1">&#39;file&#39;</span><span class="p">,</span> <span class="s1">&#39;progress&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;data-eezz-</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span>
 
@@ -485,8 +527,8 @@
     <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot; event: on_select(index=</span><span class="si">{row.row_id}</span><span class="s2">), update: elem1.innerHTML = </span><span class="si">{object.path}</span><span class="s2">, elem2.innerHTML = </span><span class="si">{object.row_id}</span><span class="s2">  &quot;&quot;&quot;</span>
     <span class="n">x_result</span> <span class="o">=</span> <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;template statement 1&quot;</span><span class="p">)</span>
-    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;template: cell, event: do_sort(index=</span><span class="si">{cell.index}</span><span class="s2">), update: this.tbody&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;template statement 3&quot;</span><span class="p">)</span>
+    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;template: cell, event: do_sort(index=</span><span class="si">{cell}</span><span class="s2">), update: this.tbody&quot;</span>
     <span class="n">x_result</span> <span class="o">=</span> <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
 
     <span class="n">x_update</span>  <span class="o">=</span> <span class="n">x_result</span><span class="p">[</span><span class="s1">&#39;update&#39;</span><span class="p">]</span>
@@ -500,10 +542,19 @@
     <span class="n">x_result</span> <span class="o">=</span> <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">x_result</span><span class="p">)</span>
 
-    <span class="n">x_source</span> <span class="o">=</span> <span class="s1">&#39;update : path_label.innerHTML=</span><span class="si">{row.row_id}</span><span class="s1">, text.innerHTML=my_function(filename=</span><span class="si">{row.row_id}</span><span class="s1">, id=abc)&#39;</span>
+    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;event: FormInput.append(table_row = [field_index.value])&quot;</span>
     <span class="n">x_result</span> <span class="o">=</span> <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">x_result</span><span class="p">)</span>
 
+    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                            template: cell (detail),     </span>
+<span class="s2">                            onload: this.src = read_file(file = this.file),                                                   </span>
+<span class="s2">                            update: </span>
+<span class="s2">                                progress_detail.style.width = download_file(file = this.file, stream = this.bytestream),</span>
+<span class="s2">                                progress_detail.innerHTML   = progress_detail.style.width   &quot;&quot;&quot;</span>
+
+    <span class="n">x_result</span> <span class="o">=</span> <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_source</span><span class="si">}</span><span class="s1"> ==&gt; </span><span class="si">{</span><span class="n">x_result</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s1">&#39;test finished&#39;</span><span class="p">)</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>

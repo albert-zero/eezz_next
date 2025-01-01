@@ -117,15 +117,17 @@ function dynamic_update(a_update_json) {
     var x_elem      = x_elem_root;
 
     if (x_attr == 'subtree') {
-        if (a_update_json.value.startsWith('this')) {
+        if (a_update_json.value == '') {
+            tree_collapse(x_element);
+            return;
+        }
+        if (a_update_json.value.option.startsWith('this')) {
             tree_expand(x_elem, a_update_json.value);
+            return;
         }
-        else {
-            x_tree_view_list = x_attr.split('.');
-            x_elem  = document.getElementById(x_tree_view_list[0]);
-            x_elem  = x_elem.querySelector('[data-eezz-template=row]');
-            x_elem.innerHTML = a_update_json.value;
-        }
+        x_dest = a_update_json.value.option.split('.');
+        x_elem = document.getElementById(x_dest[0]);
+        x_elem.innerHTML = a_update_json.value.tbody;
         return;
     }
 
@@ -173,14 +175,14 @@ function tree_collapse(a_node) {
 // Inserts a sub-tree into a tree <TR> element, which is defined a given element id
 // The constrains are: subtree.tagName is table, and it contains a thead and a tbody
 // ------------------------------------------------------------------------------------------
-function tree_expand(a_node, subtree_descr) {
+function tree_expand(a_node, subtree_value) {
     // Create a new node
-    if (!subtree_descr.template) {
+    if (!subtree_value.template) {
         tree_collapse(a_node);
         return;
     }
 
-    if (subtree_descr.tbody == '') {
+    if (subtree_value.tbody == '') {
         return;
     }
 
@@ -192,26 +194,33 @@ function tree_expand(a_node, subtree_descr) {
     x_row.setAttribute('data-eezz-subtree-id', a_node['id']);
     x_row.appendChild(x_td);
 
-    x_td.innerHTML      = subtree_descr.template;
+    x_td.innerHTML      = subtree_value.template;
     var x_table         = x_td.getElementsByTagName('table')[0];
     var x_caption       = x_td.getElementsByTagName('caption')[0];
     var x_thead         = x_td.getElementsByTagName('thead')[0];
     var x_tbody         = x_td.getElementsByTagName('tbody')[0];
+    // todo: var x_tfoot         = x_td.getElementsByTagName('tfoot')[0];
 
     x_table.setAttribute('data-eezz-subtree-id',  a_node['id']);
     x_caption.remove();
 
-    if (subtree_descr.option == 'body') {
-        x_table.classList.add('clzz_node');
-        x_tbody.classList.add('clzz_node');
-        x_thead.remove();
-        x_tbody.innerHTML = subtree_descr.tbody;
+    if (subtree_value.option.includes('tfoot')) {
+        // todo: x_tfoot.innerHTML = subtree_value.tfoot;
     }
     else {
-        x_table.classList.add('clzz_node');
-        x_tbody.classList.add('clzz_node');
-        x_thead.innerHTML = subtree_descr.thead;
+        // todo: x_foot.remove();
     }
+
+    if (subtree_value.option.includes('thead')) {
+        x_thead.innerHTML = subtree_value.thead;
+    }
+    else {
+        x_thead.remove();
+    }
+
+    x_table.classList.add('clzz_node');
+    x_tbody.classList.add('clzz_node');
+    x_tbody.innerHTML = subtree_value.tbody;
 
     a_node.parentNode.insertBefore(x_row, a_node.nextSibling);
     a_node.setAttribute('data-eezz-subtree_state', 'expanded');

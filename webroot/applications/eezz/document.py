@@ -2,10 +2,11 @@
 """
 This module implements the following classes
 
-    * :py:class:`eezz.document.TManifest`: The Manifest contains the attributes and the content of a document.
+    * :py:class:`eezz.document.TManifest`: The Manifest contains the attributes and the content of a document.\
     This includes for example author, creation date and embedded external files.
-    * :py:class:`eezz.document.TDocument`:  A document consists of one or more embedded files and the Manifest.
+    * :py:class:`eezz.document.TDocument`:  A document consists of one or more embedded files and the Manifest.\
     The class implements methods for file download and creating a TAR archive.
+
     A document has always a reference to a shelf, which contains documents with the same Manifest layout
 
 """
@@ -84,7 +85,7 @@ class TManifest:
 @dataclass(kw_only=True)
 class TDocument:
     """ Manages documents
-    A document is a zipped TAR file, with a Metafile and a collection of data files.
+    A document is a zipped TAR file, w  ith a Metafile and a collection of data files.
 
     :ivar Path          path:            Documents bookshelf path
     :ivar List[str]     attributes:      List of attributes like author and title
@@ -137,10 +138,11 @@ class TDocument:
 
         :param file:    File descriptor with details on file and byte stream
         :type  file:    dict
-        :param stream   File stream, usually a chunk of
-        :param stream   bytearray
-        :return;        The percentage of transferred document size as bytearray, terminated with the percent sign
+        :param stream:  File stream, usually a chunk of
+        :param stream:  bytearray
+        :return:        The percentage of transferred document size as bytearray, terminated with the percent sign
         :rtype:         bytearray
+
         """
         if file['opcode'] == 'finished':
             # Check if we got all elements of a single source:

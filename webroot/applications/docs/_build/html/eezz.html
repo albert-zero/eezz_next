@@ -66,7 +66,7 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-eezz.document">module eezz.document</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.document.TDocuments"><code class="docutils literal notranslate"><span class="pre">TDocuments</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.document.TDocument"><code class="docutils literal notranslate"><span class="pre">TDocument</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-eezz.filesrv">module eezz.filesrv</a><ul>
@@ -161,11 +161,12 @@
 <span id="module-eezz-table"></span><h2>module eezz.table<a class="headerlink" href="#module-eezz.table" title="Link to this heading"></a></h2>
 <p>This module implements the following classes:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableCell</span></code></a>:   Defines properties of a table cell</p></li>
-<li><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableRow</span></code></a>:    Defines properties of a table row, containing a list of TTableCells</p></li>
-<li><p><a class="reference internal" href="#eezz.table.TTableColumn" title="eezz.table.TTableColumn"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableColumn</span></code></a>: Defines properties of a table column</p></li>
-<li><p><a class="reference internal" href="#eezz.table.TTable" title="eezz.table.TTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTable</span></code></a>:       Defines properties of a table, containing a list of TTableRows</p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableException</span></code>: Exception on checking the row-id, which has to be unique</p></li>
+<li><p><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableCell</span></code></a>:        Defines properties of a table cell</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableCellDetail</span></code>:  Defines a list of cell details, used to store multiple values</p></li>
+<li><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableRow</span></code></a>:         Defines properties of a table row, containing a list of TTableCells</p></li>
+<li><p><a class="reference internal" href="#eezz.table.TTableColumn" title="eezz.table.TTableColumn"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableColumn</span></code></a>:      Defines properties of a table column</p></li>
+<li><p><a class="reference internal" href="#eezz.table.TTable" title="eezz.table.TTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTable</span></code></a>:            Defines properties of a table, containing a list of TTableRows</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.table.TTableException</span></code>:   Exception on checking the row-id, which has to be unique</p></li>
 </ul>
 <p>TTable is used for formatted ASCII output of a table structure.
 It allows to access the table data for further processing e.g. for HTML output. The class handles an
@@ -182,8 +183,8 @@ A TTableCell object could hold a TTable object for recursive tree structures.</p
 <dt class="sig sig-object py" id="eezz.table.TTable">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UserList</span></code></p>
-<p>The table is derived from User-list to enable sort and list management
-This is a dataclass, so the arguments become properties</p>
+<p>The table extends UserList to enable list management and inherits methods like sort
+This class is decorated as dataclass</p>
 <dl class="field-list simple" id="ttable-parameter-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -202,11 +203,13 @@ The callable takes two variables, the width and the value.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># for file in Path(&#39;.&#39;).iterdir():</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1">#    my_table.append(table_row=[file, file.stat().st_size])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;.idea&#39;</span><span class="p">,</span>        <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;directory.py&#39;</span><span class="p">,</span> <span class="mi">1699</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>    <span class="mi">37</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span>  <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row1</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;.idea&#39;</span><span class="p">,</span>        <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row2</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;directory.py&#39;</span><span class="p">,</span> <span class="mi">1699</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row3</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>    <span class="mi">37</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row4</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span>  <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">debug_out</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">debug_out</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">debug_out</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 <span class="go">Table: Directory</span>
 <span class="go">| FileName     | Size |</span>
 <span class="go">| .idea        | 4096 |</span>
@@ -236,10 +239,8 @@ accordingly. The added row is indexed and stored within the table structure.</p>
 <li><p><strong>table_row</strong> (<em>list</em>) – List of values representing a single row in the table.</p></li>
 <li><p><strong>attrs</strong> (<em>dict</em><em>, </em><em>optional</em>) – Optional dictionary of attributes for the table row.</p></li>
 <li><p><strong>row_type</strong> (<em>str</em>) – Type of the row, default is ‘body’.</p></li>
-<li><p><strong>row_id</strong> (<em>str</em>) – Unique identifier for the row. If not provided, defaults
-to the row index.</p></li>
-<li><p><strong>exists_ok</strong> (<em>bool</em>) – If True, allows appending of a row with an existing
-row_id without raising an exception.</p></li>
+<li><p><strong>row_id</strong> (<em>str</em>) – Unique identifier for the row. If not provided, defaults to the row index.</p></li>
+<li><p><strong>exists_ok</strong> (<em>bool</em>) – If True, allows appending of a row with an existing row_id without raising an exception.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -253,18 +254,14 @@ row_id without raising an exception.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.table.TTable.create_filter">
-<span class="sig-name descname"><span class="pre">create_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_descr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.create_filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.create_filter" title="Link to this definition"></a></dt>
-<dd><p>Constructs a SQL filter query and its corresponding arguments
-from a structured filter description. The filter description
-consists of nested lists representing conditions connected by
-logical “and” and “or” operators. Each condition within “and” is
-specified as a string with a column name, an operator, and a value.</p>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">create_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_descr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.create_filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.create_filter" title="Link to this definition"></a></dt>
+<dd><p>Constructs a SQL filter query and its corresponding arguments from a structured filter description.
+The filter description consists of nested lists representing conditions connected by logical “and” and “or”
+operators. Each condition within “and” is specified as a string with a column name, an operator, and a value.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>filter_descr</strong> (<em>List</em><em>[</em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em>) – A list of lists where each inner list
-contains strings representing individual
-conditions in the format
-“&lt;column_name&gt; &lt;operator&gt; &lt;value&gt;”.</p>
+<dd class="field-odd"><p><strong>filter_descr</strong> (<em>List</em><em>[</em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em>) – A list of lists where each inner list contains strings representing individual
+conditions in the format “&lt;column_name&gt; &lt;operator&gt; &lt;value&gt;”.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A tuple containing the constructed SQL filter query as
@@ -350,11 +347,13 @@ visible columns</p>
 <p>Example:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span> <span class="o">=</span> <span class="n">TTable</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="s1">&#39;Size&#39;</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Directory&#39;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">filter_columns</span><span class="p">(</span><span class="n">column_names</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Size&#39;</span><span class="p">:</span><span class="s1">&#39;Größe&#39;</span><span class="p">,</span> <span class="s1">&#39;FileName&#39;</span><span class="p">:</span> <span class="s1">&#39;Datei&#39;</span><span class="p">})</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;.idea&#39;</span><span class="p">,</span>        <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;directory.py&#39;</span><span class="p">,</span> <span class="mi">1886</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>    <span class="mi">37</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span>  <span class="mi">4096</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row1</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;.idea&#39;</span><span class="p">,</span>        <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row2</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;directory.py&#39;</span><span class="p">,</span> <span class="mi">1886</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row3</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__init__.py&#39;</span><span class="p">,</span>    <span class="mi">37</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row4</span> <span class="o">=</span> <span class="n">my_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39;__pycache__&#39;</span><span class="p">,</span>  <span class="mi">4096</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">debug_out</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">my_table</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">debug_out</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">debug_out</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 <span class="go">Table: Directory</span>
 <span class="go">| Größe | Datei        |</span>
 <span class="go">|  4096 | .idea        |</span>
@@ -366,13 +365,6 @@ visible columns</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.table.TTable.filter_rows">
-<span class="sig-name descname"><span class="pre">filter_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row_filter_descr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTable.filter_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.filter_rows" title="Link to this definition"></a></dt>
-<dd><p>Set the row filter: Each inner list is joined with ‘AND’.
-The outer list joins the inner lists with ‘OR’</p>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="eezz.table.TTable.get_header_row">
 <span class="sig-name descname"><span class="pre">get_header_row</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></span><a class="reference internal" href="_modules/eezz/table.html#TTable.get_header_row"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.get_header_row" title="Link to this definition"></a></dt>
 <dd><p>Retrieves the header row of a table, applying a filter to the columns if
@@ -381,8 +373,7 @@ the visible columns according to the order specified in <cite>column_names_filte
 and maps these columns to new names specified in <cite>column_names_alias</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The table header row, potentially filtered and with aliased column
-names, encapsulated in a <cite>TTableRow</cite> object.</p>
+<dd class="field-odd"><p>The table header row, potentially filtered and with aliased column names, encapsulated in a <cite>TTableRow</cite> object.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow">TTableRow</a></p>
@@ -400,14 +391,18 @@ the criteria.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>search_filter</strong> – A callable function that takes a TTableRow object
-and returns a boolean indicating whether the row
-matches the criteria.</p>
+and returns a boolean indicating whether the row matches the criteria.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Tuple of values from each matched row.</p>
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.table.TTable.get_selected_row">
+<span class="sig-name descname"><span class="pre">get_selected_row</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TTable.get_selected_row"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TTable.get_selected_row" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.table.TTable.get_visible_rows">
@@ -417,8 +412,8 @@ on column descriptions and filter expressions, and can be further controlled
 by whether all rows should be retrieved or just a limited visible set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>get_all</strong> (<em>bool</em>) – Determines whether to retrieve all rows without counting
-against the visible items limit. Defaults to False.</p>
+<dd class="field-odd"><p><strong>get_all</strong> (<em>bool</em>) – Determines whether to retrieve all rows without counting against the visible items limit.
+Defaults to False.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A generator yielding visible rows that match the filter criteria.</p>
@@ -446,12 +441,10 @@ next, previous, absolute position, top, or last items in the structure.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>where_togo</strong> – Determines the navigation strategy. The navigation
-can be to the ‘NEXT’ item, ‘PREV’ item, an ‘ABS’olute
-position, ‘TOP’ of the data, or the ‘LAST’ item.</p></li>
-<li><p><strong>position</strong> – Used when the ‘ABS’ navigation strategy is selected.
-Determines the target position for the offset in the
-data structure.</p></li>
+<li><p><strong>where_togo</strong> – Determines the navigation strategy. The navigation can be to the
+‘NEXT’ item, ‘PREV’ item, an ‘ABS’olute position, ‘TOP’ of the data, or the ‘LAST’ item.</p></li>
+<li><p><strong>position</strong> – Used when the ‘ABS’ navigation strategy is selected. Determines the target position for
+the offset in the data structure.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -474,8 +467,7 @@ exists. If the row exists, it sets the selected row to it and
 returns the row. If the row does not exist, it returns None.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>index</strong> – The unique identifier for the table row that is
-to be selected.</p>
+<dd class="field-odd"><p><strong>index</strong> – The unique identifier for the table row that is to be selected.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The selected table row if it exists, otherwise None.</p>
@@ -522,12 +514,13 @@ of custom attributes if necessary.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Variables<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> – Name of the column.</p></li>
-<li><p><strong>value</strong> – Value of the cell.</p></li>
-<li><p><strong>width</strong> – Calculated width of a cell.</p></li>
-<li><p><strong>index</strong> – Calculated index of a cell.</p></li>
-<li><p><strong>type</strong> – Calculated type (could also be user defined).</p></li>
-<li><p><strong>attrs</strong> – User attributes.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name of the column.</p></li>
+<li><p><strong>value</strong> (<em>Any</em>) – Value of the cell.</p></li>
+<li><p><strong>width</strong> (<em>int</em>) – Calculated width of a cell.</p></li>
+<li><p><strong>index</strong> (<em>int</em>) – Calculated index of a cell.</p></li>
+<li><p><strong>type</strong> (<em>str</em>) – Calculated type (could also be user defined).</p></li>
+<li><p><strong>attrs</strong> (<em>dict</em>) – User attributes.</p></li>
+<li><p><strong>details</strong> – List of values, which could be used to address objects of the same kind.</p></li>
 </ul>
 </dd>
 </dl>
@@ -660,38 +653,7 @@ organized in chunks of rows given by property
 <dt class="sig sig-object py" id="eezz.table.TSort">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.table.</span></span><span class="sig-name descname"><span class="pre">TSort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/table.html#TSort"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.table.TSort" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
-<p>Represents a sorting order enumeration providing different sorting
-states that can be used to specify how elements should be sorted in
-an application.</p>
-<p>This class can be used to define sorting order preferences for lists
-or collections, supporting ascending, descending, or no specific
-order. It provides a clear and concise way to handle sorting logic
-without using plain integers or strings, ensuring better
-readability and maintainability of the code.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Variables<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>NONE</strong> – Represents no specific sorting order.</p></li>
-<li><p><strong>ASC</strong> – Represents ascending sorting order.</p></li>
-<li><p><strong>DESC</strong> – Represents descending sorting order.</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TSort.ASC">
-<span class="sig-name descname"><span class="pre">ASC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#eezz.table.TSort.ASC" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TSort.DESC">
-<span class="sig-name descname"><span class="pre">DESC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#eezz.table.TSort.DESC" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.table.TSort.NONE">
-<span class="sig-name descname"><span class="pre">NONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#eezz.table.TSort.NONE" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
+<p>sorting order for a table column.</p>
 </dd></dl>
 
 </section>
@@ -837,14 +799,8 @@ Initialization involves setting up the data structure and checking for primary k
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>column_names</strong> – List of column names for the database table.</p></li>
 <li><p><strong>database_name</strong> – The name of the database file to connect or create.</p></li>
-<li><p><strong>statement_select</strong> – SQL select statement for the table.</p></li>
-<li><p><strong>statement_count</strong> – SQL count statement for the table records.</p></li>
-<li><p><strong>statement_create</strong> – SQL create statement to initialize the table.</p></li>
-<li><p><strong>statement_insert</strong> – SQL insert statement for adding data to the table.</p></li>
-<li><p><strong>statement_where</strong> – List of conditions for SQL where clause.</p></li>
 <li><p><strong>database_path</strong> – File path for the database.</p></li>
 <li><p><strong>virtual_len</strong> – Virtual length of the dataset.</p></li>
-<li><p><strong>column_descr</strong> – Description of each column in the database table.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1001,213 +957,106 @@ use cases in managing and interacting with database tables.</p>
 <p>This module implements the following classes</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.document.TManifest</span></code>:   Document header representation. The header is a dictionary with a given     structure and a defined set of keys and sub-keys. The manifest defines the database table and access.     The manifest is the structure, which is signed and which is used to identify and verify the document.</p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.document.TDocument</span></code>:  A document consists of more than one file and the manifest. Part of the     document is encrypted. The document key could be used in combination with a mobile device to decrypt the file.</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.document.TManifest</span></code>: The Manifest contains the attributes and the content of a document.    This includes for example author, creation date and embedded external files.</p></li>
+<li><p><a class="reference internal" href="#eezz.document.TDocument" title="eezz.document.TDocument"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.document.TDocument</span></code></a>:  A document consists of one or more embedded files and the Manifest.    The class implements methods for file download and creating a TAR archive.</p></li>
 </ul>
+<p>A document has always a reference to a shelf, which contains documents with the same Manifest layout</p>
 </div></blockquote>
-<p>The document module allows download of files in chunks and encryption/decryption.
-The method <code class="xref py py-meth docutils literal notranslate"><span class="pre">eezz.document.TDocument.zip()</span></code> creates a partial encrypted archive with a signed header. the
-manifest. The method unzip will check this header before unpacking.
-There is a rudimentary idea implemented to trade self-consistent multi media files, using eezz server as transaction
-platform.</p>
 <dl class="py class">
-<dt class="sig sig-object py" id="eezz.document.TDocuments">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.document.</span></span><span class="sig-name descname"><span class="pre">TDocuments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/document.html#TDocuments"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TDatabaseTable</span></code></p>
+<dt class="sig sig-object py" id="eezz.document.TDocument">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.document.</span></span><span class="sig-name descname"><span class="pre">TDocument</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/document.html#TDocument"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocument" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Manages documents
-There are two ways to start the document:</p>
-<ol class="arabic simple">
-<li><p>Create a document using prepare_download, handle_download and create
-As a result the document is zipped in TAR format with a signed manifest. The key for decryption is stored on
-the mobile device and on EEZZ</p></li>
-<li><p>Open a document, reading the manifest. Noe you could check if you have the key on your mobile device, or you
-buy the key from EEZZ</p></li>
-</ol>
+A document is a zipped TAR file, w  ith a Metafile and a collection of data files.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Variables<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> (<em>Path</em>) – Document file name</p></li>
-<li><p><strong>name</strong> (<em>str</em>) – Document name</p></li>
-<li><p><strong>files_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="#eezz.filesrv.TFile" title="eezz.filesrv.TFile"><em>TFile</em></a><em>]</em>) – List of files</p></li>
-<li><p><strong>key</strong> (<em>bytes</em>) – Document key</p></li>
-<li><p><strong>vector</strong> (<em>bytes</em>) – Document vector</p></li>
-<li><p><strong>manifest</strong> (<em>TManifest</em>) – Document header</p></li>
+<li><p><strong>path</strong> (<em>Path</em>) – Documents bookshelf path</p></li>
+<li><p><strong>attributes</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of attributes like author and title</p></li>
+<li><p><strong>shelf_name</strong> (<em>str</em>) – A document has always a reference to a bookshelf</p></li>
+<li><p><strong>manifest</strong> (<em>TManifest</em>) – Document header definition</p></li>
+<li><p><strong>files_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="#eezz.filesrv.TFile" title="eezz.filesrv.TFile"><em>TFile</em></a><em>]</em>) – List of embedded files</p></li>
 </ul>
 </dd>
 </dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.add_document_to_device">
-<span class="sig-name descname"><span class="pre">add_document_to_device</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.add_document_to_device"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.add_document_to_device" title="Link to this definition"></a></dt>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.document.TDocument.attributes">
+<span class="sig-name descname"><span class="pre">attributes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#eezz.document.TDocument.attributes" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.column_names">
-<span class="sig-name descname"><span class="pre">column_names</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#eezz.document.TDocuments.column_names" title="Link to this definition"></a></dt>
-<dd><p>List of column names is calculated for this class</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.create_document">
-<span class="sig-name descname"><span class="pre">create_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nr_files</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Queue</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.filesrv.TEezzFile" title="eezz.filesrv.TEezzFile"><span class="pre">TEezzFile</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.create_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.create_document" title="Link to this definition"></a></dt>
-<dd><p>After all files downloaded, The document header is registered on eezz server and signed
-All files are zipped together with this header.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> – Name of the document on disk</p></li>
-<li><p><strong>nr_files</strong> – Number of files in the queue</p></li>
-<li><p><strong>queue</strong> – The process queue</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.decrypt_key_with_device">
-<span class="sig-name descname"><span class="pre">decrypt_key_with_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">encrypted_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.decrypt_key_with_device"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.decrypt_key_with_device" title="Link to this definition"></a></dt>
-<dd><p>Decrypt the document key</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>encrypted_key</strong> – The encrypted key</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The decrypted key, vector pair</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.eezz_buy_document">
-<span class="sig-name descname"><span class="pre">eezz_buy_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transaction_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.eezz_buy_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.eezz_buy_document" title="Link to this definition"></a></dt>
-<dd><p>Buy transaction to get the document key.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>transaction_key</strong> – With the method <code class="xref py py-meth docutils literal notranslate"><span class="pre">eezz.document.TDocument.eezz_get_document_key()</span></code> you get the         key, if you are owner or you get a transaction_key, which could be used in this method to buy the key. Once         you own the key, you could store it in local database.         The document key is encrypted with the mobile device key.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.eezz_get_document_key">
-<span class="sig-name descname"><span class="pre">eezz_get_document_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buy_request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.eezz_get_document_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.eezz_get_document_key" title="Link to this definition"></a></dt>
-<dd><p>Get the document key from EEZZ server</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>buy_request</strong> (<em>bool = False</em>) – If True, a transaction key is created, if the called is not yet owner</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.eezz_register_document">
-<span class="sig-name descname"><span class="pre">eezz_register_document</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.eezz_register_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.eezz_register_document" title="Link to this definition"></a></dt>
-<dd><p>Registers the document header to EEZZ and returns it signed with the EEZZ key. The signed header
-is stored as manifest in the final document.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.encrypt_key_with_device">
-<span class="sig-name descname"><span class="pre">encrypt_key_with_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.encrypt_key_with_device"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.encrypt_key_with_device" title="Link to this definition"></a></dt>
-<dd><p>Encrypt the document key</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>key</strong> – Document key</p></li>
-<li><p><strong>vector</strong> – Document vector</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>encrypted document key</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.get_device_key">
-<span class="sig-name descname"><span class="pre">get_device_key</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.get_device_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.get_device_key" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="eezz.document.TDocument.count">
+<span class="sig-name descname"><span class="pre">count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#eezz.document.TDocument.count" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.handle_download">
-<span class="sig-name descname"><span class="pre">handle_download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.handle_download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.handle_download" title="Link to this definition"></a></dt>
-<dd><p>Handle file download</p>
+<dt class="sig sig-object py" id="eezz.document.TDocument.create_document">
+<span class="sig-name descname"><span class="pre">create_document</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/document.html#TDocument.create_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocument.create_document" title="Link to this definition"></a></dt>
+<dd><p>ZIP the given files and the manifest to a document.
+The TFile class keeps track on the location of the file content and their properties.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.document.TDocument.download_file">
+<span class="sig-name descname"><span class="pre">download_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">b''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocument.download_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocument.download_file" title="Link to this definition"></a></dt>
+<dd><p>Download file callback.
+The method is called for each chunk and for a final acknowledge. If all files
+are transferred, the document is created.
+For each final acknowledge a 100% is returned.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>request</strong> – Download reqeust</p></li>
-<li><p><strong>raw_data</strong> – Data chunk to write</p></li>
+<li><p><strong>file</strong> (<em>dict</em>) – File descriptor with details on file and byte stream</p></li>
+<li><p><strong>stream</strong> – File stream, usually a chunk of</p></li>
+<li><p><strong>stream</strong> – bytearray</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Update response</p>
+<dd class="field-even"><p>The percentage of transferred document size as bytearray, terminated with the percent sign</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bytearray</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.prepare_download">
-<span class="sig-name descname"><span class="pre">prepare_download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.prepare_download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.prepare_download" title="Link to this definition"></a></dt>
-<dd><p>Prepares the download of several files to include to an EEZZ document.
-The preparation puts all file descriptors into a queue and waits to all documents until the last download.
-This triggers the creation of the EEZZ document</p>
+<dt class="sig sig-object py" id="eezz.document.TDocument.extract_file">
+<span class="sig-name descname"><span class="pre">extract_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">document_title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_pattern</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocument.extract_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocument.extract_file" title="Link to this definition"></a></dt>
+<dd><p>Restores the specified files, given by the regular expression in file_pattern</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.document.TDocument.file_sources">
+<span class="sig-name descname"><span class="pre">file_sources</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#eezz.document.TDocument.file_sources" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.document.TDocument.finished">
+<span class="sig-name descname"><span class="pre">finished</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#eezz.document.TDocument.finished" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.document.TDocument.initialize_document">
+<span class="sig-name descname"><span class="pre">initialize_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/document.html#TDocument.initialize_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocument.initialize_document" title="Link to this definition"></a></dt>
+<dd><p>Initializes the document, providing values for the Manifest header</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>request</strong> – The json format of a WEB socket request</p>
+<dd class="field-odd"><p><strong>values</strong> (<em>List</em><em>[</em><em>str</em><em>]</em>) – List of values according to the definition of columns</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.read_document_header">
-<span class="sig-name descname"><span class="pre">read_document_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.read_document_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.read_document_header" title="Link to this definition"></a></dt>
-<dd><p>If a customer finds an EEZZ document, this method opens the zipped content and verifies the header.
-With the verified header, the document could be unzipped.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>source</strong></p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
-</dd>
-</dl>
+<dt class="sig sig-object py" id="eezz.document.TDocument.read_file">
+<span class="sig-name descname"><span class="pre">read_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">document_title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocument.read_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocument.read_file" title="Link to this definition"></a></dt>
+<dd><p>Returns the bytestream of the specified file in the archive</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.unzip">
-<span class="sig-name descname"><span class="pre">unzip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">manifest_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">document_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.unzip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.unzip" title="Link to this definition"></a></dt>
-<dd><p>Unzip a file and return the Manifest in JSON format. Unzip needs the document key. If the key is not
-available, unzip the preview and the manifest, store the result into database for further processing</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>source</strong></p></li>
-<li><p><strong>manifest_only</strong> – Extract the header</p></li>
-<li><p><strong>document_key</strong> – If set, try to decrypt the document on the fly</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The header</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.document.TDocuments.zip">
-<span class="sig-name descname"><span class="pre">zip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">destination</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">manifest</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">files</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.filesrv.TFile" title="eezz.filesrv.TFile"><span class="pre">TFile</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/document.html#TDocuments.zip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.document.TDocuments.zip" title="Link to this definition"></a></dt>
-<dd><p>Zip the given files and the manifest to an EEZZ document.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>destination</strong> – Path to the EEZZ document. Has to be like &lt;directory&gt;/&lt;filename&gt;</p></li>
-<li><p><strong>manifest</strong> – Description and header</p></li>
-<li><p><strong>files</strong> – Files included for the document</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="eezz.document.TDocument.shelf_name">
+<span class="sig-name descname"><span class="pre">shelf_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#eezz.document.TDocument.shelf_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -1396,10 +1245,15 @@ order as they are send.</p>
 </section>
 <section id="module-eezz.http_agent">
 <span id="module-eezz-http-agent"></span><h2>module eezz.http_agent<a class="headerlink" href="#module-eezz.http_agent" title="Link to this heading"></a></h2>
-<ul class="simple">
-<li><p><strong>THttpAgent</strong>: Handle WEB-Socket requests</p></li>
+<p>his module implements the following classes</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="#eezz.http_agent.THttpAgent" title="eezz.http_agent.THttpAgent"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.http_agent.THttpAgent</span></code></a>:  The handler for incoming WEB-socket requests</p></li>
 </ul>
-<p>The interaction with the JavaScript via WEB-Socket includes generation of HTML parts for user interface updates</p>
+<p>The interaction with the JavaScript via WEB-Socket includes generation of HTML parts for user interface updates.
+It inherits from abstract eezz.websocket.TWebSocketAgent and implements the method “handle_request”
+The class provides methods to compile EEZZ extensions and to generate complex DOM structures.</p>
+</div></blockquote>
 <dl class="py class">
 <dt class="sig sig-object py" id="eezz.http_agent.THttpAgent">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.http_agent.</span></span><span class="sig-name descname"><span class="pre">THttpAgent</span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent" title="Link to this definition"></a></dt>
@@ -1407,13 +1261,12 @@ order as they are send.</p>
 <p>Agent handles WEB socket events</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.compile_data">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compile_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_parser</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Lark</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_tag_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recompile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.compile_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.compile_data" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compile_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_parser</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Lark</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_tag_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.compile_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.compile_data" title="Link to this definition"></a></dt>
 <dd><p>Compile data-eezz-json to data-eezz-compile,
 create tag attributes and generate tag-id to manage incoming requests</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>recompile</strong></p></li>
 <li><p><strong>a_parser</strong> – The Lark parser to compile EEZZ to json</p></li>
 <li><p><strong>a_tag_list</strong> – HTML-Tag to compile</p></li>
 <li><p><strong>a_id</strong> – The ID of the tag to be identified for update</p></li>
@@ -1464,19 +1317,39 @@ It returns the enriched document</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.generate_html_cells">
-<span class="sig-name descname"><span class="pre">generate_html_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_cell</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><span class="pre">TTableCell</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tag</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_cells"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_cells" title="Link to this definition"></a></dt>
-<dd><p>Generate HTML cells
-Input for the lamda is a string and output is formatted according to the TTableCell object</p>
+<dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.format_attributes_update">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">format_attributes_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">json_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formatter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.format_attributes_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.format_attributes_update" title="Link to this definition"></a></dt>
+<dd><p>Special routine to format function arguments in the update section</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a_tag</strong> – The parent tag to generate the table cells</p></li>
-<li><p><strong>a_cell</strong> – The template cell to format to HTML</p></li>
+<li><p><strong>formatter</strong> (<em>Callable</em><em>[</em><em>str</em><em>]</em>)</p></li>
+<li><p><strong>json_str</strong> (<em>str</em>) – An eezz generated json string</p></li>
+<li><p><strong>formatter</strong> – Format callback function</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The formatted HTML tag</p>
+<dd class="field-even"><p>json string with formatted function arguments</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.generate_html_cells">
+<span class="sig-name descname"><span class="pre">generate_html_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_cell</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><span class="pre">TTableCell</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tag</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_cells"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_cells" title="Link to this definition"></a></dt>
+<dd><p>Generate HTML cells</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a_tag</strong> (<em>bs4.Tag</em>) – The template tag to generate a table cell</p></li>
+<li><p><strong>a_cell</strong> (<a class="reference internal" href="#eezz.table.TTableCell" title="eezz.table.TTableCell"><em>TTableCell</em></a>) – The cell providing the data for the HTML tag element</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new tag, based on the template and the cell data</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bs4.Tag</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1485,19 +1358,29 @@ Input for the lamda is a string and output is formatted according to the TTableC
 <dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.generate_html_grid">
 <span class="sig-name descname"><span class="pre">generate_html_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_grid" title="Link to this definition"></a></dt>
 <dd><p>Besides the table, supported display is grid (via class clzz_grid or select</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>a_tag</strong> (<em>bs4.Tag</em>) – The HTML tag, which is assigned to a TTable object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The DOM of the generated grid as dictionary with key “tbody”</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.generate_html_grid_item">
-<span class="sig-name descname"><span class="pre">generate_html_grid_item</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag_template</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tag</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_grid_item"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_grid_item" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">generate_html_grid_item</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag_template</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><span class="pre">TTableRow</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tag</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.generate_html_grid_item"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.generate_html_grid_item" title="Link to this definition"></a></dt>
 <dd><p>Generates elements of the same kind, derived from a template and update content
 according the row values</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>tag_template</strong> – Template</p></li>
-<li><p><strong>a_row</strong> – Row with data to parse</p></li>
-<li><p><strong>a_header</strong> – Row meta information</p></li>
+<li><p><strong>tag_template</strong> (<em>bs4.Tag</em>) – Template for the entire tile</p></li>
+<li><p><strong>a_row</strong> (<a class="reference internal" href="#eezz.table.TTableRow" title="eezz.table.TTableRow"><em>TTableRow</em></a>) – Row with data for the specific tile</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1538,34 +1421,22 @@ Cells which are not included as template for table data are used to add a consta
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a_id</strong></p></li>
-<li><p><strong>a_table_tag</strong> – The parent table tag to produce the output</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.handle_download">
-<span class="sig-name descname"><span class="pre">handle_download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.handle_download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.handle_download" title="Link to this definition"></a></dt>
-<dd><p>Handle file downloads: The browser slices the file into chunks and the agent has to
-re-arrange the stream using the file name and the sequence number</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>request_data</strong> – The request data are encoded in dictionary format</p></li>
-<li><p><strong>raw_data</strong> – The rae data chunk to download</p></li>
+<li><p><strong>a_id</strong> (<em>str</em>) – Unique element ID</p></li>
+<li><p><strong>a_table_tag</strong> (<em>bs4.Tag</em>) – The parent table tag to produce the output</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Progress information to the update destination of the event</p>
+<dd class="field-even"><p>The generated table separated in sections as dictionary</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.handle_request">
-<span class="sig-name descname"><span class="pre">handle_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.handle_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.handle_request" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">handle_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.handle_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.handle_request" title="Link to this definition"></a></dt>
 <dd><p>Handle WEB socket requests</p>
 <ul class="simple">
 <li><p><strong>initialize</strong>: The browser sends the complete HTML for analysis.</p></li>
@@ -1579,12 +1450,6 @@ re-arrange the stream using the file name and the sequence number</p>
 <dd class="field-even"><p>Response in JSON stream, containing valid HTML parts for the browser</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.http_agent.THttpAgent.setup_download">
-<span class="sig-name descname"><span class="pre">setup_download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/eezz/http_agent.html#THttpAgent.setup_download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.http_agent.THttpAgent.setup_download" title="Link to this definition"></a></dt>
-<dd><p>This method is called before a download of files starts</p>
 </dd></dl>
 
 </dd></dl>
@@ -1722,11 +1587,6 @@ will be encrypted.</p></li>
 <li><p>stores assignments of the parser</p></li>
 <li><p>stores RSA application key</p></li>
 </ul>
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.application_path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">application_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#eezz.service.TService.application_path" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.service.TService.assign_object">
 <span class="sig-name descname"><span class="pre">assign_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attrs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tag</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/service.html#TService.assign_object"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.service.TService.assign_object" title="Link to this definition"></a></dt>
@@ -1748,16 +1608,6 @@ will be encrypted.</p></li>
 </dd>
 </dl>
 </dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.database_path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">database_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#eezz.service.TService.database_path" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.document_path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">document_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#eezz.service.TService.document_path" title="Link to this definition"></a></dt>
-<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.service.TService.get_method">
@@ -1793,66 +1643,6 @@ will be encrypted.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.host">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">host</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#eezz.service.TService.host" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.locales_path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">locales_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#eezz.service.TService.locales_path" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.logging_path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">logging_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#eezz.service.TService.logging_path" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.objects">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">objects</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></em><a class="headerlink" href="#eezz.service.TService.objects" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.private_key">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">private_key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RsaKey</span></em><a class="headerlink" href="#eezz.service.TService.private_key" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.public_key">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">public_key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RsaKey</span></em><a class="headerlink" href="#eezz.service.TService.public_key" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.public_path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">public_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#eezz.service.TService.public_path" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.resource_path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resource_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#eezz.service.TService.resource_path" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.root_path">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">root_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Path</span></em><a class="headerlink" href="#eezz.service.TService.root_path" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.service.TService.set_environment">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">set_environment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'localhost'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'8000'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/service.html#TService.set_environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.service.TService.set_environment" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.translate">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">translate</span></span><a class="headerlink" href="#eezz.service.TService.translate" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="eezz.service.TService.websocket_addr">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">websocket_addr</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#eezz.service.TService.websocket_addr" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
@@ -1870,11 +1660,6 @@ The transformer output is in json format</p>
 </ul>
 </dd>
 </dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.service.TServiceCompiler.update_function">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/service.html#TServiceCompiler.update_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.service.TServiceCompiler.update_function" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
@@ -2049,33 +1834,35 @@ forwards it to the eezz server page.</p>
 <a class="reference external" href="https://tools.ietf.org/html/rfc6455">rfc 6455</a></p>
 <dl class="py class">
 <dt class="sig sig-object py" id="eezz.websocket.TAsyncHandler">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TAsyncHandler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">socket_server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><span class="pre">TWebSocketClient</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TAsyncHandler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TAsyncHandler" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TAsyncHandler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket_server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><span class="pre">TWebSocketClient</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fkt_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_loop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TAsyncHandler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TAsyncHandler" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Thread</span></code></p>
 <p>Execute method in background task.
 This class is designed to be put into an async thread to execute a user method, without blocking the websocket.
 After the method returns, the AsyncHandler creates the websocket response.
-It’s also possible to specify a loop counter for successive calls to the same method. The loop count is
-given with the “_metha.loop” attribute. Some minimal time interval has to be calculated by the user method.
+It’s also possible to specify dp_loop to allow successive calls to the same method.
 This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>method</strong> (<em>Callable</em>) – The method to be executed</p></li>
-<li><p><strong>args</strong> (<em>Dict</em><em>[</em><em>name</em><em>, </em><em>value</em><em>]</em>) – The arguments for this method as key/value pairs plus meta-arguments with the reserved key    _meta, here with a loop request: <code class="docutils literal notranslate"><span class="pre">{'_meta':</span> <span class="pre">{'loop':</span> <span class="pre">100,...}}</span></code>.     The loop continues until the user method returns None</p></li>
-<li><p><strong>socket_server</strong> (<a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><em>TWebSocketClient</em></a>) – The server to send the result</p></li>
-<li><p><strong>request</strong> (<em>dict</em><em>[</em><em>eezz-lark-key:value</em><em>]</em>) – The request, which is waiting for the method to return</p></li>
-<li><p><strong>description</strong> – The name of the thread</p></li>
+<li><p><strong>socket_server</strong> (<a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><em>TWebSocketClient</em></a>) – The server to send the result. None for test and validation only</p></li>
+<li><p><strong>fkt_id</strong> (<em>str</em>) – Reference tp the function object</p></li>
+<li><p><strong>request</strong> (<em>dict</em><em>[</em><em>key:value</em><em>]</em>) – The browser JavaScript request, containing the method to call. The request takes the result of the method call and returns it to the rendering machine to return it to JavaScript.</p></li>
+<li><p><strong>do_loop</strong> (<em>bool</em>) – If True the thread does not return, but allows the method to trigger any number of update events for the browser.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TAsyncHandler.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TAsyncHandler.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TAsyncHandler.run" title="Link to this definition"></a></dt>
-<dd><p>Method representing the thread’s activity.</p>
-<p>You may override this method in a subclass. The standard run() method
-invokes the callable object passed to the object’s constructor as the
-target argument, if any, with sequential and keyword arguments taken
-from the args and kwargs arguments, respectively.</p>
+<dd><p>Executes the request in either asynchronous or synchronous mode based on
+the request parameters. Continuously handles asynchronous requests while
+the ‘running’ attribute is True. In synchronous mode, processes the
+request once and returns the result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -2084,20 +1871,37 @@ from the args and kwargs arguments, respectively.</p>
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocket">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TWebSocket</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_web_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_agent_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><span class="pre">TWebSocketAgent</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocket"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocket" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Thread</span></code></p>
-<p>Manage connections to the WEB socket interface.
-TWebSocket implements the socket of a http.server.HTTPServer</p>
+<p>TWebSocket is a thread-based server for handling WebSocket connections.</p>
+<p>This class provides the implementation for a WebSocket server that
+listens for incoming WebSocket requests on a specified address and port.
+It uses a separate client handler class to manage the communication with
+each connected client and supports gracefully shutting down all sockets
+when required. The server runs as a daemon thread, allowing it to operate
+independently of the main application flow.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a_web_address</strong> (<em>Tupel</em><em>[</em><em>host</em><em>, </em><em>address</em><em>]</em>) – The connection information</p></li>
-<li><p><strong>a_agent_class</strong> (<em>type</em><em>[</em><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><em>TWebSocketAgent</em></a><em>]</em>) – The implementation of the EEZZ protocol</p></li>
+<li><p><strong>m_web_socket</strong> – The main server socket for accepting client connections.</p></li>
+<li><p><strong>m_web_addr</strong> – The tuple containing the IP address and port where the server listens.</p></li>
+<li><p><strong>m_clients</strong> – A dictionary mapping client sockets to their handler instances.</p></li>
+<li><p><strong>m_agent_class</strong> – The class type used for creating client agent instances.</p></li>
+<li><p><strong>m_running</strong> – A boolean flag indicating if the server is currently active and accepting connections.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocket.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocket.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocket.run" title="Link to this definition"></a></dt>
-<dd><p>Wait for incoming requests</p>
+<dd><p>Establishes a WebSocket server that listens for incoming connections and
+handles client requests. The server operates in a loop where it waits for
+socket events, manages client connections, and processes incoming WebSocket
+messages. It handles errors by shutting down faulty connections and cleaning
+up resources appropriately.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Exception if the server socket encounters an error</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -2115,21 +1919,9 @@ TWebSocket implements the socket of a http.server.HTTPServer</p>
 <p>User has to implement this class to receive data.
 TWebSocketClient is called with the class type, leaving the TWebSocketClient to generate an instance</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.websocket.TWebSocketAgent.handle_download">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">handle_download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketAgent.handle_download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketAgent.handle_download" title="Link to this definition"></a></dt>
-<dd><p>handle download expects a json structure, describing the file and the data</p>
-</dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketAgent.handle_request">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">handle_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketAgent.handle_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketAgent.handle_request" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">handle_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketAgent.handle_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketAgent.handle_request" title="Link to this definition"></a></dt>
 <dd><p>handle request expects a json structure</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.websocket.TWebSocketAgent.setup_download">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">setup_download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketAgent.setup_download"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketAgent.setup_download" title="Link to this definition"></a></dt>
-<dd><p>This method is called before a download of files starts</p>
 </dd></dl>
 
 <dl class="py method">
@@ -2144,25 +1936,48 @@ TWebSocketClient is called with the class type, leaving the TWebSocketClient to 
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TWebSocketClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_client_addr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_agent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><span class="pre">TWebSocketAgent</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Implements a WEB socket service thread. This class is created for each WebSocket connection</p>
+<p>The TWebSocketClient class handles the WebSocket client connection, transitioning a
+standard HTTP connection to a WebSocket, maintaining socket communication, and managing
+interaction with a specified WebSocket agent.</p>
+<p>This class is responsible for upgrading HTTP connections to WebSocket connections,
+handling requests sent over WebSocket, and managing asynchronous and synchronous
+processing of those requests. It interacts with a WebSocket agent class to delegate
+specific tasks, handle incoming data frames, generate handshake responses, and maintain
+the overall stability of the WebSocket communication channel.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a_client_addr</strong> (<em>Tuple</em><em>[</em><em>host</em><em>, </em><em>address</em><em>]</em>) – The communication socket to the web-browser</p></li>
-<li><p><strong>a_agent</strong> (<em>type</em><em>[</em><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><em>TWebSocketAgent</em></a><em>]</em>) – The agent class handle to handle incoming request</p></li>
+<li><p><strong>m_headers</strong> (<em>dict</em>) – Stores HTTP headers relevant for WebSocket handshake.</p></li>
+<li><p><strong>m_socket</strong> (<em>Any</em>) – The socket object related to the client connection.</p></li>
+<li><p><strong>m_cnt</strong> (<em>int</em>) – A counter used internally (specific usage/context not documented).</p></li>
+<li><p><strong>m_buffer</strong> (<em>bytearray</em>) – A buffer space used for storing data received over the WebSocket.</p></li>
+<li><p><strong>m_protocol</strong> (<em>str</em>) – The protocol name used during WebSocket handshake.</p></li>
+<li><p><strong>m_agent_class</strong> (<em>type</em><em>[</em><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><em>TWebSocketAgent</em></a><em>]</em>) – The class type of the WebSocket agent associated with this client.</p></li>
+<li><p><strong>m_agent_client</strong> (<a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><em>TWebSocketAgent</em></a>) – An instance of the WebSocket agent class, facilitating task delegation.</p></li>
+<li><p><strong>m_lock</strong> (<em>Lock</em>) – A threading lock used to ensure thread safety during operations.</p></li>
+<li><p><strong>m_threads</strong> (<em>Dict</em><em>[</em><em>Callable</em><em>, </em><em>Thread</em><em>]</em>) – A dictionary mapping asynchronous callables to their respective threads.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.gen_handshake">
 <span class="sig-name descname"><span class="pre">gen_handshake</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.gen_handshake"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.gen_handshake" title="Link to this definition"></a></dt>
-<dd><p>Upgrade HTTP connection to WEB-socket</p>
+<dd><p>Generates a WebSocket handshake response based on the input request data. The
+function parses the request headers, determines the appropriate WebSocket
+protocol version and constructs the response necessary for the protocol
+switch. This is essential for establishing a connection that adheres to
+WebSocket protocol specifications.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>a_data</strong> – Upgrade request data</p>
+<dd class="field-odd"><p><strong>a_data</strong> (<em>str</em>) – The raw HTTP request string containing headers that are used
+to construct the WebSocket handshake response.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
+<dd class="field-even"><p>A string representing the HTTP response for switching protocols,
+formatted for a WebSocket handshake.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2170,23 +1985,38 @@ TWebSocketClient is called with the class type, leaving the TWebSocketClient to 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.gen_key">
 <span class="sig-name descname"><span class="pre">gen_key</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.gen_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.gen_key" title="Link to this definition"></a></dt>
-<dd><p>Generates a key to establish a secure connection</p>
+<dd><p>Generates a WebSocket accept key by concatenating the client’s key with a
+GUID and hashing the result using SHA-1, followed by base64 encoding. This
+process is described in RFC 6455, Section 4.2.2, which is part of the
+WebSocket protocol specification. The key serves as a mechanism to ensure
+that the connection request is valid and not coming from a source that
+doesn’t understand WebSockets, thereby providing a level of handshake
+security.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Base64 representation of the calculated hash</p>
+<dd class="field-odd"><p>The WebSocket accept key, encoded in base64 format</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.handle_aync_request">
-<span class="sig-name descname"><span class="pre">handle_aync_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.handle_aync_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.handle_aync_request" title="Link to this definition"></a></dt>
-<dd><p>This method is called after each method call request by user interface. The idea of an async call is,
-that a user method is unpredictable long-lasting and could block the entire communication channel.
-The environment takes care, that the same method is not executed as long as prior execution lasts.</p>
+<dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.handle_async_request">
+<span class="sig-name descname"><span class="pre">handle_async_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.handle_async_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.handle_async_request" title="Link to this definition"></a></dt>
+<dd><p>Handles an asynchronous request by utilizing a client to process the
+request and subsequently sending the response. This function is
+intended to ensure thread safety when accessing shared resources.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>request</strong> (<em>dict</em>) – The original request to execute after EEZZ function call</p>
+<dd class="field-odd"><p><strong>request</strong> – A dictionary containing the details of the request to be
+processed. It typically includes all necessary information
+required by the client for processing.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A string response generated by the client after handling the
+request. The response is also sent in an encoded format.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2194,25 +2024,39 @@ The environment takes care, that the same method is not executed as long as prio
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.handle_request">
 <span class="sig-name descname"><span class="pre">handle_request</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.handle_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.handle_request" title="Link to this definition"></a></dt>
-<dd><p>Receives an request and send a response
-The given method is executed async, so there will be no blocking calls. After the call the result
-is collected.</p>
+<dd><p>Handles incoming WebSocket requests by interpreting their JSON content and
+executing the appropriate method based on the included command. The method
+supports commands for ‘download’, ‘file’, ‘initialize’, and ‘call’. The command
+determines which backend process or asynchronous task should be triggered.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.read_frame">
 <span class="sig-name descname"><span class="pre">read_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_opcode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_mask_vector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_payload_len</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.read_frame"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.read_frame" title="Link to this definition"></a></dt>
-<dd><p>Read one frame</p>
+<dd><p>Reads a frame from a socket and processes it based on the given opcode, mask vector,
+and payload length. If the payload length is zero, it returns immediately with an
+empty bytearray. Otherwise, it reads the payload from the socket into an internal buffer.</p>
+<p>If a mask vector is provided, it applies the mask to the payload using byte-wise
+XOR operations. The method supports both masked and unmasked frames typical of
+web socket communication.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x_opcode</strong> – The opcode describes the data type</p></li>
-<li><p><strong>a_mask_vector</strong> – The mask is used to decrypt and encrypt the data stream</p></li>
-<li><p><strong>a_payload_len</strong> – The length of the data block</p></li>
+<li><p><strong>x_opcode</strong> (<em>int</em><em>, </em><em>typically a WebSocket OpCode</em>) – OpCode of the frame to be read, determining the type of frame.</p></li>
+<li><p><strong>a_mask_vector</strong> (<em>Optional</em><em>[</em><em>bytes</em><em>]</em><em>, </em><em>4-byte sequence if present</em>) – Mask vector for unmasking the frame’s payload, if present.</p></li>
+<li><p><strong>a_payload_len</strong> (<em>int</em>) – Length of the payload that needs to be read from the socket.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The buffer with the data</p>
+<dd class="field-even"><p>A bytearray containing the unmasked payload of the read frame.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bytearray</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2220,21 +2064,43 @@ is collected.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.read_frame_header">
 <span class="sig-name descname"><span class="pre">read_frame_header</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.read_frame_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.read_frame_header" title="Link to this definition"></a></dt>
-<dd><p>Interpret the incoming data stream, starting with analysis of the first bytes</p>
+<dd><p>Reads the header of a WebSocket frame from the socket, processing information
+related to control and payload data. This function extracts the fin bit, opcode,
+mask vector, and payload length from the frame’s header, which are crucial for
+determining the frame’s structure and for handling WebSocket connections
+in a compliant manner.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>A tuple of all attributes, which enable the program to read the payload:         final(byte), opcode(data-type), mask(encryption), len(payload size)</p>
+<dd class="field-odd"><p>A tuple containing the following elements:
+- x_final (bool): Indicates if the frame is the final fragment.
+- x_opcode (int): Specifies the opcode defining the frame’s content type.
+- x_mask_vector (bytes or None): The mask key if the payload is masked.
+- x_payload_len (int): Length of the payload data.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#eezz.websocket.TWebSocketException" title="eezz.websocket.TWebSocketException"><strong>TWebSocketException</strong></a> – If no data is received from the socket.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.read_websocket">
-<span class="sig-name descname"><span class="pre">read_websocket</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.read_websocket"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.read_websocket" title="Link to this definition"></a></dt>
-<dd><p>Read a chunk of data from stream</p>
+<span class="sig-name descname"><span class="pre">read_websocket</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.read_websocket"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.read_websocket" title="Link to this definition"></a></dt>
+<dd><p>Reads data from a websocket, processing various websocket frame opcodes such as
+text, binary, ping, and pong, until a final frame is encountered. Handles exceptions
+during the reading process, logging them and shutting down the client connection if necessary.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The chunk of data coming from browser</p>
+<dd class="field-odd"><p>The raw bytes data read from the websocket until a final frame is encountered.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="#eezz.websocket.TWebSocketException" title="eezz.websocket.TWebSocketException"><strong>TWebSocketException</strong></a> – If a close frame is received or an unknown opcode is encountered.</p></li>
+<li><p><strong>Exception</strong> – For any other unexpected exceptions during the reading process.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -2247,21 +2113,35 @@ is collected.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.upgrade">
 <span class="sig-name descname"><span class="pre">upgrade</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.upgrade"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.upgrade" title="Link to this definition"></a></dt>
-<dd><p>Upgrade HTTP connection to WEB socket</p>
+<dd><p>Establishes a web socket connection by performing a handshake with the server.
+This method handles receiving initial binary data, decoding it to UTF-8, generating
+a handshake response, and sending this response back to establish a connection.
+It also initializes a buffer used for further communications.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#eezz.websocket.TWebSocketException" title="eezz.websocket.TWebSocketException"><strong>TWebSocketException</strong></a> – if no data is received during the handshake process</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.write_frame">
 <span class="sig-name descname"><span class="pre">write_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_opcode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">hex</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_final</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">hex</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_mask_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.write_frame"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.write_frame" title="Link to this definition"></a></dt>
-<dd><p>Write single frame</p>
+<dd><p>Constructs and sends a WebSocket frame using the specified parameters. The function handles masking
+the payload if a mask vector is provided, maintains the frame structure as per the WebSocket protocol,
+and sends the frame through the established socket connection.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>a_data</strong> (<em>bytes</em>) – Data to send to browser</p></li>
-<li><p><strong>a_opcode</strong> (<em>byte</em>) – Opcode defines the kind of data</p></li>
-<li><p><strong>a_final</strong> (<em>byte</em>) – Indicates if all data are written to stream</p></li>
-<li><p><strong>a_mask_vector</strong> (<em>List</em><em>[</em><em>byte</em><em>,</em><em>byte</em><em>,</em><em>byte</em><em>,</em><em>byte</em><em>]</em>) – Mask to use for secure communication</p></li>
+<li><p><strong>a_data</strong> (<em>bytes</em>) – The payload data to be sent in the WebSocket frame.</p></li>
+<li><p><strong>a_opcode</strong> (<em>hex</em><em>, </em><em>optional</em>) – The opcode for the frame, indicating the type of data being sent (e.g., text, binary).</p></li>
+<li><p><strong>a_final</strong> (<em>hex</em><em>, </em><em>optional</em>) – A flag indicating if this is the final fragment in a message. Defaults to 1 &lt;&lt; 7.</p></li>
+<li><p><strong>a_mask_vector</strong> (<em>list</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – A list of four byte mask keys used for masking the payload data.
+If None, no masking is applied. Must be exactly 4 bytes if provided.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
 </dd>
 </dl>
 </dd></dl>

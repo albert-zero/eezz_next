@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<head>
+    <script data-eezz="template:websocket"></script>
+    <link rel="stylesheet" href="/css/eezz.css">
+    <style>
+        table {
+            position: relative;
+            display: inline-block;
+            background-color: white;
+            left: 30px;
+        }
+
+        .clz_output {
+            background-color: yellow;
+            border: 1px solid black;
+        }
+
+        table[data-eezz-subtree-id] {
+            border-left: 2px solid black;
+            // background-color: gray;
+        }
+
+        tr td:first-child {
+             // border: 1px solid black;
+             // background-color: gray;
+        }
+
+    </style>
+
+</head>
+<html lang="en">
+<body>
+    <h2 id="eezz-status"></h2>
+    <meta charset="UTF-8">
+    <title>Camera</title>
+    <h1>Push Service</h1>
+
+    <div class='clzz_grid'
+        id="WebCamClass" 
+        data-eezz='
+            assign: examples.webcam.TCamera(), 
+            update: webcamimg.src = read_frame()'>
+    </div>
+
+    <img id='webcamimg'/>
+
+
+</body>
+</html>

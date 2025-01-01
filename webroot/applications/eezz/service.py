@@ -48,70 +48,85 @@ class TService:
 
     @property
     def private_key(self) -> RSA.RsaKey:
+        """ :meta private: """
         if not TService._private_key:
             TService._private_key = RSA.construct((TService._mod, TService._exp))
         return TService._private_key
 
     @property
     def public_key(self) -> RSA.RsaKey:
+        """ :meta private: """
         if not TService._public_key:
             TService._public_key  = self.private_key.public_key()
         return TService._public_key
 
     @property
     def root_path(self) -> Path:
+        """ :meta private: """
         if not TService._root_path:
             TService._root_path = Path.cwd()
         return TService._root_path
 
     @property
     def resource_path(self) -> Path:
+        """ :meta private: """
         return self.root_path / 'resources'
 
     @property
     def public_path(self) -> Path:
+        """ :meta private: """
         return self.root_path / 'public'
 
     @property
     def application_path(self) -> Path:
+        """ :meta private: """
         return self.root_path / 'applications'
 
     @property
     def document_path(self) -> Path:
+        """ :meta private: """
         return self.root_path / 'database'
 
     @property
     def database_path(self) -> Path:
+        """ :meta private: """
         return self.document_path / 'eezz.db'
 
     @property
     def locales_path(self) -> Path:
+        """ :meta private: """
         return self.resource_path / 'locales'
 
     @property
     def logging_path(self) -> Path:
+        """ :meta private: """
         return self.root_path / 'logs'
 
     @property
     def host(self) -> str:
+        """ :meta private: """
         return TService._host
 
     @property
     def websocket_addr(self) -> str:
+        """ :meta private: """
         return TService._websocket_addr
 
     @property
     def objects(self) -> dict:
+        """ :meta private: """
         if not TService._global_objects:
             TService._global_objects = dict()
         return TService._global_objects
 
     @property
     def translate(self):
+        """ :meta private: """
         return TService._translate
 
     @classmethod
     def set_environment(cls, root_path: str, host: str = 'localhost', address: str = '8000'):
+        """ :meta private: """
         cls._root_path      = Path(root_path)
         cls._host           = host
         cls._websocket_addr = address
@@ -208,14 +223,17 @@ class TServiceCompiler(Transformer):
 
     @staticmethod
     def selector_string(item):
+        """ :meta private: """
         return f'[{'.'.join(item)}]'
 
     @staticmethod
     def array_element(item):
+        """ :meta private: """
         return item
 
     @staticmethod
     def setenv(item):
+        """ :meta private: """
         return {item[0]: item[1]}
 
     @staticmethod
@@ -230,6 +248,7 @@ class TServiceCompiler(Transformer):
 
     @staticmethod
     def onload_section(item):
+        """ :meta private: """
         return {'onload': item[0]}
 
     @staticmethod
@@ -249,11 +268,13 @@ class TServiceCompiler(Transformer):
 
     @staticmethod
     def update_task(item):
+        """ :meta private: """
         x_function, x_args = item[0].children
         return {'call': {'function': x_function, 'args': x_args}}
 
     @staticmethod
     def update_function(item):
+        """ :meta private: """
         x_function, x_args = item[1].children
         return {item[0]: {'function': x_function, 'args': x_args}}
 

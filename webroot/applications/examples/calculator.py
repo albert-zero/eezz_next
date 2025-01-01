@@ -10,12 +10,12 @@ class TCalc(TTable):
         super().__init__(column_names=['display', 'numpad', 'op'], visible_items=1)
         self.append(['0', [1,2,3,4,5,6,7,8,9,0], ['+','-','*','=']])
 
-    def key_pad_input(self, key) -> int:
+    def key_pad_input(self, key) -> bytes:
         self.number_input *= 10
-        self.number_input += key
-        return self.number_input
+        self.number_input += int(key)
+        return f'{self.number_input}'.encode('utf8')
 
-    def key_op_input(self, key) -> float:
+    def key_op_input(self, key) -> bytes:
         result: float = 1.0 * self.number_input
 
         self.stack.append(self.number_input)
@@ -34,7 +34,7 @@ class TCalc(TTable):
 
             if key != '=':
                 self.stack.append(result)
-        return result
+        return f'{result}'.encode('utf8')
 
 
 if __name__ == '__main__':

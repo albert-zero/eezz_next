@@ -69,519 +69,289 @@
            <div itemprop="articleBody">
              
   <h1>Source code for eezz.document</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">This module implements the following classes</span>
 
-<span class="sd">    * :py:class:`eezz.document.TManifest`:   Document header representation. The header is a dictionary with a given \</span>
-<span class="sd">    structure and a defined set of keys and sub-keys. The manifest defines the database table and access. \</span>
-<span class="sd">    The manifest is the structure, which is signed and which is used to identify and verify the document.</span>
-<span class="sd">    * :py:class:`eezz.document.TDocument`:  A document consists of more than one file and the manifest. Part of the \</span>
-<span class="sd">    document is encrypted. The document key could be used in combination with a mobile device to decrypt the file.</span>
+<span class="sd">    * :py:class:`eezz.document.TManifest`: The Manifest contains the attributes and the content of a document.\</span>
+<span class="sd">    This includes for example author, creation date and embedded external files.</span>
+<span class="sd">    * :py:class:`eezz.document.TDocument`:  A document consists of one or more embedded files and the Manifest.\</span>
+<span class="sd">    The class implements methods for file download and creating a TAR archive.</span>
 
-<span class="sd">The document module allows download of files in chunks and encryption/decryption.</span>
-<span class="sd">The method :py:meth:`eezz.document.TDocument.zip` creates a partial encrypted archive with a signed header. the</span>
-<span class="sd">manifest. The method unzip will check this header before unpacking.</span>
-<span class="sd">There is a rudimentary idea implemented to trade self-consistent multi media files, using eezz server as transaction</span>
-<span class="sd">platform.</span>
+<span class="sd">    A document has always a reference to a shelf, which contains documents with the same Manifest layout</span>
+
 <span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">tarfile</span>
 <span class="kn">import</span> <span class="nn">json</span>
-<span class="kn">import</span> <span class="nn">base64</span>
-<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span>   <span class="nn">loguru</span>         <span class="kn">import</span> <span class="n">logger</span>
 
-<span class="kn">from</span> <span class="nn">io</span>               <span class="kn">import</span> <span class="n">BufferedReader</span><span class="p">,</span> <span class="n">BytesIO</span>
-<span class="kn">from</span> <span class="nn">queue</span>            <span class="kn">import</span> <span class="n">Queue</span>
-<span class="kn">from</span> <span class="nn">filesrv</span>          <span class="kn">import</span> <span class="n">TEezzFile</span><span class="p">,</span> <span class="n">TFile</span><span class="p">,</span> <span class="n">TFileMode</span>
+<span class="kn">from</span> <span class="nn">io</span>               <span class="kn">import</span> <span class="n">BytesIO</span>
+<span class="kn">from</span> <span class="nn">filesrv</span>          <span class="kn">import</span> <span class="n">TFile</span><span class="p">,</span> <span class="n">TFileMode</span>
 <span class="kn">from</span> <span class="nn">service</span>          <span class="kn">import</span> <span class="n">TService</span>
-<span class="kn">from</span> <span class="nn">database</span>         <span class="kn">import</span> <span class="n">TDatabaseTable</span>
 <span class="kn">from</span> <span class="nn">pathlib</span>          <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">seccom</span>           <span class="kn">import</span> <span class="n">TSecureSocket</span>
-<span class="kn">from</span> <span class="nn">session</span>          <span class="kn">import</span> <span class="n">TSession</span>
-
-<span class="kn">from</span> <span class="nn">threading</span>        <span class="kn">import</span> <span class="n">Thread</span>
 <span class="kn">from</span> <span class="nn">dataclasses</span>      <span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span> <span class="nn">typing</span>           <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
-<span class="kn">from</span> <span class="nn">Crypto</span>           <span class="kn">import</span> <span class="n">Random</span>
-
-<span class="kn">from</span> <span class="nn">Crypto.Cipher</span>    <span class="kn">import</span> <span class="n">AES</span>
-<span class="kn">from</span> <span class="nn">Crypto.Signature</span> <span class="kn">import</span> <span class="n">pkcs1_15</span>
-<span class="kn">from</span> <span class="nn">Crypto.Hash</span>      <span class="kn">import</span> <span class="n">SHA1</span><span class="p">,</span> <span class="n">SHA256</span>
+<span class="kn">from</span> <span class="nn">math</span>             <span class="kn">import</span> <span class="n">floor</span>
+<span class="kn">from</span> <span class="nn">typing</span>           <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">override</span>
 
 
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">TManifest</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot; The manifest represents the information for the EEZZ document. This structure is stored</span>
-<span class="sd">    together with all other EEZZ files.</span>
-
-<span class="sd">    :param column_names:</span>
-<span class="sd">    :param document_key:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; The manifest represents the information for the document. It defines a solid way to ensures a consistent</span>
+<span class="sd">    structure for parsing the internal attributes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">document_key</span><span class="p">:</span>   <span class="nb">bytes</span>     <span class="o">=</span> <span class="kc">None</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
-    <span class="n">column_names</span><span class="p">:</span>   <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
+    <span class="n">keys_section_header</span><span class="p">:</span> <span class="nb">list</span>
+    <span class="n">title</span><span class="p">:</span>               <span class="nb">str</span>  <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">keys_section_doc</span><span class="p">:</span>    <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">keys_section_files</span><span class="p">:</span>  <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">structure_document</span><span class="p">:</span>  <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">map_files</span><span class="p">:</span>           <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Prepare consistent access of manifest to database</span>
-        <span class="n">x_map_names</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;CKey&#39;</span><span class="p">,</span>      <span class="s1">&#39;document_key&#39;</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;CAddr&#39;</span><span class="p">,</span>     <span class="s1">&#39;address&#39;</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;CTitle&#39;</span><span class="p">,</span>    <span class="s1">&#39;title&#39;</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;CDescr&#39;</span><span class="p">,</span>    <span class="s1">&#39;descr&#39;</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;CLink&#39;</span><span class="p">,</span>     <span class="s1">&#39;link&#39;</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;CStatus&#39;</span><span class="p">,</span>   <span class="s1">&#39;status&#39;</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;CAuthor&#39;</span><span class="p">,</span>   <span class="s1">&#39;author&#39;</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;CPrice&#39;</span><span class="p">,</span>    <span class="s1">&#39;price&#39;</span><span class="p">),</span>
-                       <span class="p">(</span><span class="s1">&#39;CCurrency&#39;</span><span class="p">,</span> <span class="s1">&#39;currency&#39;</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_doc</span>    <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">,</span> <span class="s1">&#39;files&#39;</span><span class="p">,</span> <span class="s1">&#39;signature&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_files</span>  <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span>  <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;document&#39;</span><span class="p">:</span> <span class="p">{},</span> <span class="s1">&#39;files&#39;</span><span class="p">:</span> <span class="p">[]}</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">column_names</span>        <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_map_names</span><span class="p">]</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">document</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">keys_sections</span>       <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">,</span> <span class="s1">&#39;files&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_header</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_map_names</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_files</span>  <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;hash&#39;</span><span class="p">,</span> <span class="s1">&#39;hash_list&#39;</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">,</span> <span class="s1">&#39;chunk_size&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">]</span>
+    <span class="nd">@document</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">x_document_descr</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_header</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_document_descr</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">descr_header</span>   <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="s1">&#39;&#39;</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="s1">&#39;files&#39;</span> <span class="k">else</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_header</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">descr_files</span>    <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="s1">&#39;&#39;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_files</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">descr_document</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;document&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">descr_header</span><span class="p">,</span> <span class="s1">&#39;signature&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">}</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">files</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="nf">get_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">descr_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="s1">&#39;document_key&#39;</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">append_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">get_values</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">descr_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_header</span><span class="p">)]</span>
+        <span class="n">x_file_descr</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">file</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_files</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_file_descr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span>
 
-    <span class="k">def</span> <span class="nf">set_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">section</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">proposed</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">bytes</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Insert values to the manifest. There is a restricted set of keys in a fixed structure</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_header</span>
 
-<span class="sd">        :param section:     Define a section to add info</span>
-<span class="sd">        :param proposed:    Proposed data: The program will pick only allowed keys</span>
-<span class="sd">        :type  proposed:    dict</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">section</span> <span class="o">==</span> <span class="s1">&#39;document&#39;</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">descr_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">x</span><span class="p">:</span> <span class="n">y</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">proposed</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_header</span><span class="p">})</span>
-            <span class="k">elif</span> <span class="n">section</span> <span class="o">==</span> <span class="s1">&#39;signature&#39;</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">descr_document</span><span class="p">[</span><span class="s1">&#39;signature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">proposed</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">section</span> <span class="o">==</span> <span class="s1">&#39;files&#39;</span><span class="p">:</span>
-                <span class="n">x_file_descr</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">y</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">proposed</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_files</span> <span class="ow">and</span> <span class="n">x</span> <span class="o">!=</span> <span class="s1">&#39;name&#39;</span><span class="p">}</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">descr_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">proposed</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]:</span> <span class="n">x_file_descr</span><span class="p">})</span>
-        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
-            <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">header</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-        <span class="n">x_manifest</span>  <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
-
-        <span class="n">x_manifest</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="s1">&#39;document_key&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_manifest</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="s1">&#39;guid&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span><span class="s1">&#39;document&#39;</span><span class="p">,</span>  <span class="n">x_manifest</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">])</span>
-        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_manifest</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span><span class="s1">&#39;files&#39;</span><span class="p">,</span>  <span class="n">x_manifest</span><span class="p">[</span><span class="n">x</span><span class="p">])</span>
-
+    <span class="nd">@override</span>
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">descr_document</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="s1">&#39;title&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">loads</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">manifest_str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">manifest_str</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="s1">&#39;title&#39;</span><span class="p">]</span>
 
 
-<div class="viewcode-block" id="TDocuments">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments">[docs]</a>
+<div class="viewcode-block" id="TDocument">
+<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">class</span> <span class="nc">TDocuments</span><span class="p">(</span><span class="n">TDatabaseTable</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">TDocument</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; Manages documents</span>
-<span class="sd">    There are two ways to start the document:</span>
-<span class="sd">    </span>
-<span class="sd">    1. Create a document using prepare_download, handle_download and create</span>
-<span class="sd">       As a result the document is zipped in TAR format with a signed manifest. The key for decryption is stored on</span>
-<span class="sd">       the mobile device and on EEZZ</span>
-<span class="sd">    </span>
-<span class="sd">    2. Open a document, reading the manifest. Noe you could check if you have the key on your mobile device, or you</span>
-<span class="sd">       buy the key from EEZZ</span>
+<span class="sd">    A document is a zipped TAR file, w  ith a Metafile and a collection of data files.</span>
 
-<span class="sd">    :ivar Path          path:            Document file name</span>
-<span class="sd">    :ivar str           name:            Document name</span>
-<span class="sd">    :ivar List[TFile]   files_list:      List of files</span>
-<span class="sd">    :ivar bytes         key:             Document key</span>
-<span class="sd">    :ivar bytes         vector:          Document vector</span>
-<span class="sd">    :ivar TManifest     manifest:        Document header</span>
+<span class="sd">    :ivar Path          path:            Documents bookshelf path</span>
+<span class="sd">    :ivar List[str]     attributes:      List of attributes like author and title</span>
+<span class="sd">    :ivar str           shelf_name:      A document has always a reference to a bookshelf</span>
+<span class="sd">    :ivar TManifest     manifest:        Document header definition</span>
+<span class="sd">    :ivar List[TFile]   files_list:      List of embedded files</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">column_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>         <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: List of column names is calculated for this class</span>
-    <span class="n">files_list</span><span class="p">:</span>   <span class="n">List</span><span class="p">[</span><span class="n">TEezzFile</span><span class="p">]</span>   <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
-    <span class="n">key</span><span class="p">:</span>          <span class="nb">bytes</span>             <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
-    <span class="n">vector</span><span class="p">:</span>       <span class="nb">bytes</span>             <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
+    <span class="n">shelf_name</span><span class="p">:</span>   <span class="nb">str</span>
+    <span class="n">attributes</span><span class="p">:</span>   <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">manifest</span><span class="p">:</span>     <span class="n">TManifest</span>         <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
     <span class="n">path</span><span class="p">:</span>         <span class="n">Path</span>              <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
-    <span class="n">name</span><span class="p">:</span>         <span class="nb">str</span>               <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
+    <span class="n">count</span><span class="p">:</span>        <span class="nb">int</span>               <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">finished</span><span class="p">:</span>     <span class="nb">bool</span>              <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">file_sources</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>         <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span>           <span class="o">=</span> <span class="n">TManifest</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TEezzFile</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">title</span>              <span class="o">=</span> <span class="s1">&#39;TDocuments&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">column_names</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">column_names</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span> <span class="n">TSession</span>  <span class="o">=</span> <span class="n">TGlobal</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span><span class="n">TSession</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; combine attributes:</span>
+<span class="sd">        The mandatory attribute &quot;title&quot; is inserted at the start,</span>
+<span class="sd">        the file sources at the end</span>
 
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span>
-
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">):</span>
-            <span class="n">x</span><span class="o">.</span><span class="n">type</span>  <span class="o">=</span> <span class="s1">&#39;text&#39;</span>
-            <span class="n">x</span><span class="o">.</span><span class="n">alias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">keys_section_header</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-
-        <span class="c1"># Primary key</span>
-        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">[</span><span class="n">x</span><span class="p">]</span><span class="o">.</span><span class="n">options</span>     <span class="o">=</span> <span class="s1">&#39;not null&#39;</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">[</span><span class="n">x</span><span class="p">]</span><span class="o">.</span><span class="n">primary_key</span> <span class="o">=</span> <span class="kc">True</span>
-
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">prepare_statements</span><span class="p">()</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_database</span><span class="p">()</span>
-
-<div class="viewcode-block" id="TDocuments.prepare_download">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.prepare_download">[docs]</a>
-    <span class="k">def</span> <span class="nf">prepare_download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Prepares the download of several files to include to an EEZZ document.</span>
-<span class="sd">        The preparation puts all file descriptors into a queue and waits to all documents until the last download.</span>
-<span class="sd">        This triggers the creation of the EEZZ document</span>
-
-<span class="sd">        :param request:     The json format of a WEB socket request</span>
+<span class="sd">        The file sources might have one or more references, which are represented as list of files in the Manif&lt;est</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x_name</span>           <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
-        <span class="n">x_files_descr</span>    <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;files&#39;</span><span class="p">)</span>
-        <span class="n">x_queue</span>          <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
-        <span class="c1"># create empty files list_files TFile(... queue-put-on-ready)</span>
-        <span class="c1"># store document data</span>
-        <span class="c1"># create threads for each file: queue-block-on-get</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">key</span>         <span class="o">=</span> <span class="n">Random</span><span class="o">.</span><span class="n">new</span><span class="p">()</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">AES</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">vector</span>      <span class="o">=</span> <span class="n">Random</span><span class="o">.</span><span class="n">new</span><span class="p">()</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">AES</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span>
-        <span class="n">x_path</span>           <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span>
-        <span class="n">x_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">:</span>         <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TFile</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">:</span>        <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span>  <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="s1">&#39;title&#39;</span><span class="p">]</span>
 
-        <span class="c1"># Create a new document structure and pick values for the manifest</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span> <span class="o">=</span> <span class="n">TManifest</span><span class="p">(</span><span class="n">document_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">vector</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span><span class="n">section</span><span class="o">=</span><span class="s1">&#39;document&#39;</span><span class="p">,</span> <span class="n">proposed</span><span class="o">=</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_sources</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_sources</span>
 
-        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_files_descr</span><span class="p">:</span>
-            <span class="n">x_destination</span> <span class="o">=</span> <span class="n">x_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">.crypt&#39;</span> <span class="k">if</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;crypt&#39;</span> <span class="k">else</span> <span class="n">x_path</span> <span class="o">/</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
-            <span class="n">x_file</span> <span class="o">=</span> <span class="n">TEezzFile</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">vector</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vector</span><span class="p">,</span> <span class="n">response</span><span class="o">=</span><span class="n">x_queue</span><span class="p">,</span> <span class="n">file_type</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">],</span> <span class="n">chunk_size</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;chunk_size&#39;</span><span class="p">],</span> <span class="n">destination</span><span class="o">=</span><span class="n">x_destination</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">x_file</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">files_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_file</span><span class="p">)</span>
-        <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_document</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">x_name</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_files_descr</span><span class="p">),</span> <span class="n">x_queue</span><span class="p">))</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span> <span class="o">=</span> <span class="n">TManifest</span><span class="p">(</span><span class="n">keys_section_header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">)</span>
 
+<div class="viewcode-block" id="TDocument.initialize_document">
+<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.initialize_document">[docs]</a>
+    <span class="k">def</span> <span class="nf">initialize_document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Initializes the document, providing values for the Manifest header</span>
 
-<div class="viewcode-block" id="TDocuments.handle_download">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.handle_download">[docs]</a>
-    <span class="k">def</span> <span class="nf">handle_download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Handle file download</span>
-
-<span class="sd">        :param request:     Download reqeust</span>
-<span class="sd">        :param raw_data:    Data chunk to write</span>
-<span class="sd">        :return:            Update response</span>
+<span class="sd">        :param values:  List of values according to the definition of columns</span>
+<span class="sd">        :type  values:  List[str]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x_sequence_nr</span>   <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sequence_nr&#39;</span><span class="p">)</span>
-        <span class="n">x_file</span>          <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="n">request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)]</span>
-        <span class="n">x_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">x_sequence_nr</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">TFileMode</span><span class="o">.</span><span class="n">ENCRYPT</span><span class="p">)</span>
-        <span class="n">request</span><span class="p">[</span><span class="s1">&#39;update&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">x_file</span><span class="o">.</span><span class="n">transferred</span> <span class="o">/</span> <span class="n">x_file</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">request</span><span class="p">[</span><span class="s1">&#39;update&#39;</span><span class="p">]</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">finished</span>           <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span>              <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">document</span>  <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">y</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">,</span> <span class="n">values</span><span class="p">)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">title</span>     <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
 
-<div class="viewcode-block" id="TDocuments.create_document">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.create_document">[docs]</a>
-    <span class="k">def</span> <span class="nf">create_document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">nr_files</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">[</span><span class="n">TEezzFile</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; After all files downloaded, The document header is registered on eezz server and signed</span>
-<span class="sd">        All files are zipped together with this header.</span>
+<div class="viewcode-block" id="TDocument.download_file">
+<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.download_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">download_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">stream</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Download file callback.</span>
+<span class="sd">        The method is called for each chunk and for a final acknowledge. If all files</span>
+<span class="sd">        are transferred, the document is created.</span>
+<span class="sd">        For each final acknowledge a 100% is returned.</span>
 
-<span class="sd">        :param name:        Name of the document on disk</span>
-<span class="sd">        :param nr_files:    Number of files in the queue</span>
-<span class="sd">        :param queue:       The process queue</span>
+<span class="sd">        :param file:    File descriptor with details on file and byte stream</span>
+<span class="sd">        :type  file:    dict</span>
+<span class="sd">        :param stream:  File stream, usually a chunk of</span>
+<span class="sd">        :param stream:  bytearray</span>
+<span class="sd">        :return:        The percentage of transferred document size as bytearray, terminated with the percent sign</span>
+<span class="sd">        :rtype:         bytearray</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x_files</span>  <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nr_files</span><span class="p">):</span>
-            <span class="n">x_file</span>        <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="n">x_hash</span>        <span class="o">=</span> <span class="n">SHA256</span><span class="o">.</span><span class="n">new</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;opcode&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;finished&#39;</span><span class="p">:</span>
+            <span class="c1"># Check if we got all elements of a single source:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]])</span> <span class="o">==</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
 
-            <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x_segment</span><span class="p">:</span> <span class="n">x_hash</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">x_segment</span><span class="p">),</span> <span class="n">x_file</span><span class="o">.</span><span class="n">hash_chain</span><span class="p">))</span>
-            <span class="n">x_hash_digest</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">x_hash</span><span class="o">.</span><span class="n">digest</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span>
-                <span class="n">section</span>  <span class="o">=</span> <span class="s1">&#39;files&#39;</span><span class="p">,</span>
-                <span class="n">proposed</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s1">&#39;name&#39;</span><span class="p">:</span>       <span class="n">x_file</span><span class="o">.</span><span class="n">destination</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-                    <span class="s1">&#39;hash_chain&#39;</span><span class="p">:</span> <span class="n">x_file</span><span class="o">.</span><span class="n">hash_chain</span><span class="p">,</span>
-                    <span class="s1">&#39;hash&#39;</span><span class="p">:</span>       <span class="n">x_hash_digest</span><span class="p">,</span>
-                    <span class="s1">&#39;chunk_size&#39;</span><span class="p">:</span> <span class="n">x_file</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">,</span>
-                    <span class="s1">&#39;size&#39;</span><span class="p">:</span>       <span class="n">x_file</span><span class="o">.</span><span class="n">size</span><span class="p">,</span>
-                    <span class="s1">&#39;type&#39;</span><span class="p">:</span>       <span class="n">x_file</span><span class="o">.</span><span class="n">file_type</span><span class="p">})</span>
+            <span class="c1"># Check if we got all elements of all sources</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_sources</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">create_document</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">finished</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="sa">b</span><span class="s1">&#39;100%&#39;</span>
 
-            <span class="n">x_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
-        <span class="c1"># Store document header on EEZZ and sign the header</span>
-        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eezz_register_document</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">response</span><span class="p">[</span><span class="s1">&#39;result&#39;</span><span class="p">][</span><span class="s1">&#39;code&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">200</span><span class="p">:</span>
-            <span class="k">return</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]):</span>
+            <span class="n">x_title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">title</span>
+            <span class="n">x_path</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="n">x_title</span>
+            <span class="n">x_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">x_path</span> <span class="o">/=</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
 
-        <span class="c1"># Create local EEZZ file using the signed header</span>
-        <span class="n">x_signed_header</span> <span class="o">=</span> <span class="n">response</span>
-        <span class="n">x_signed_header</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;result&#39;</span><span class="p">)</span>
+            <span class="n">xt_file</span> <span class="o">=</span> <span class="n">TFile</span><span class="p">(</span><span class="n">file_type</span><span class="o">=</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">],</span> <span class="n">size</span> <span class="o">=</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span> <span class="n">chunk_size</span> <span class="o">=</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;chunk_size&#39;</span><span class="p">],</span> <span class="n">destination</span> <span class="o">=</span> <span class="n">x_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">xt_file</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xt_file</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">append_file</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">zip</span><span class="p">(</span><span class="n">destination</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">manifest</span><span class="o">=</span><span class="n">x_signed_header</span><span class="p">,</span> <span class="n">files</span><span class="o">=</span><span class="n">x_files</span><span class="p">)</span>
-
-        <span class="c1"># Store the document header data to database</span>
-        <span class="n">x_row_data</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">descr_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="n">x</span><span class="o">.</span><span class="n">alias</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table_row</span><span class="o">=</span><span class="n">x_row_data</span><span class="p">)</span></div>
+        <span class="n">xt_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]]</span>
+        <span class="n">xt_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">],</span> <span class="n">mode</span> <span class="o">=</span> <span class="n">TFileMode</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span>
+        <span class="n">x_percent</span> <span class="o">=</span> <span class="p">((</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">]))</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;chunk_size&#39;</span><span class="p">]))</span> <span class="o">/</span> <span class="n">xt_file</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">x_percent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">floor</span><span class="p">(</span><span class="n">x_percent</span><span class="p">))</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_percent</span><span class="si">}</span><span class="s1">%&#39;</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="TDocuments.read_document_header">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.read_document_header">[docs]</a>
-    <span class="k">def</span> <span class="nf">read_document_header</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; If a customer finds an EEZZ document, this method opens the zipped content and verifies the header.</span>
-<span class="sd">        With the verified header, the document could be unzipped.</span>
-
-<span class="sd">        :param source:</span>
-<span class="sd">        :return:</span>
+<div class="viewcode-block" id="TDocument.create_document">
+<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.create_document">[docs]</a>
+    <span class="k">def</span> <span class="nf">create_document</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; ZIP the given files and the manifest to a document.</span>
+<span class="sd">        The TFile class keeps track on the location of the file content and their properties.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x_manifest</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unzip</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span> <span class="n">manifest_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">x_header</span>    <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">x_manifest</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">])</span>
-        <span class="n">x_signature</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">x_manifest</span><span class="p">[</span><span class="s1">&#39;signature&#39;</span><span class="p">])</span>
-        <span class="n">x_hash</span>      <span class="o">=</span> <span class="n">SHA1</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">x_header</span><span class="p">)</span>
+        <span class="n">x_zip_title</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">document</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span>
+        <span class="n">x_zip_stream</span>   <span class="o">=</span> <span class="n">BytesIO</span><span class="p">()</span>
+        <span class="n">x_zip_stream</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+        <span class="n">x_zip_root</span>     <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">x_zip_title</span><span class="p">)</span>
+        <span class="c1"># Path is: destination / book / document</span>
+        <span class="n">x_destination</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shelf_name</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">x_zip_title</span><span class="si">}</span><span class="s1">.tar&#39;</span>
+        <span class="n">x_destination</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-        <span class="n">x_public_key</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">public_key</span>
-        <span class="n">x_verifier</span>   <span class="o">=</span> <span class="n">pkcs1_15</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">x_public_key</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">x_verifier</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">x_hash</span><span class="p">,</span> <span class="n">x_signature</span><span class="p">):</span>
-            <span class="k">return</span> <span class="kc">False</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span> <span class="o">=</span> <span class="n">TManifest</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="n">x_header</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span>
-        <span class="k">return</span> <span class="kc">True</span></div>
-
-
-<div class="viewcode-block" id="TDocuments.zip">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.zip">[docs]</a>
-    <span class="k">def</span> <span class="nf">zip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">destination</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">manifest</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TFile</span><span class="p">]):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Zip the given files and the manifest to an EEZZ document.</span>
-
-<span class="sd">        :param destination: Path to the EEZZ document. Has to be like &lt;directory&gt;/&lt;filename&gt;</span>
-<span class="sd">        :param manifest:    Description and header</span>
-<span class="sd">        :param files:       Files included for the document</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x_zip_stream</span> <span class="o">=</span> <span class="n">BytesIO</span><span class="p">()</span>
-        <span class="n">x_zip_stream</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">manifest</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
-        <span class="n">x_zip_root</span>   <span class="o">=</span> <span class="n">destination</span><span class="o">.</span><span class="n">parent</span>
-
-        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarFile</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_zip_file</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarFile</span><span class="p">(</span><span class="n">x_destination</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_zip_file</span><span class="p">:</span>
             <span class="c1"># store the info at the start of the tar file</span>
             <span class="n">x_entry_path</span>       <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">x_zip_root</span><span class="p">)</span> <span class="o">/</span> <span class="s1">&#39;Manifest&#39;</span>
-
             <span class="n">x_tar_info</span>         <span class="o">=</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarInfo</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">x_entry_path</span><span class="p">))</span>
             <span class="n">x_tar_info</span><span class="o">.</span><span class="n">size</span>    <span class="o">=</span> <span class="n">x_zip_stream</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
-            <span class="n">x_tar_info</span><span class="o">.</span><span class="n">mtime</span>   <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">x_tar_info</span><span class="o">.</span><span class="n">mtime</span>   <span class="o">=</span> <span class="n">floor</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
 
             <span class="n">x_zip_stream</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
             <span class="n">x_zip_file</span><span class="o">.</span><span class="n">addfile</span><span class="p">(</span><span class="n">tarinfo</span><span class="o">=</span><span class="n">x_tar_info</span><span class="p">,</span> <span class="n">fileobj</span><span class="o">=</span><span class="n">x_zip_stream</span><span class="p">)</span>
 
-            <span class="c1"># store preview</span>
-            <span class="k">for</span> <span class="n">x_file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="c1"># Sort the files by source for output zip:</span>
+            <span class="k">for</span> <span class="n">x_name</span><span class="p">,</span> <span class="n">x_file</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="n">x_entry_path</span>     <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">x_zip_root</span><span class="p">)</span> <span class="o">/</span> <span class="n">x_file</span><span class="o">.</span><span class="n">destination</span><span class="o">.</span><span class="n">name</span>
                 <span class="n">x_source_path</span>    <span class="o">=</span> <span class="n">x_file</span><span class="o">.</span><span class="n">destination</span>
                 <span class="n">x_stat_info</span>      <span class="o">=</span> <span class="n">x_source_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
-
                 <span class="n">x_tar_info</span>       <span class="o">=</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarInfo</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">x_entry_path</span><span class="p">))</span>
                 <span class="n">x_tar_info</span><span class="o">.</span><span class="n">size</span>  <span class="o">=</span> <span class="n">x_stat_info</span><span class="o">.</span><span class="n">st_size</span>
-                <span class="n">x_tar_info</span><span class="o">.</span><span class="n">mtime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">x_tar_info</span><span class="o">.</span><span class="n">mtime</span> <span class="o">=</span> <span class="n">floor</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
 
                 <span class="k">with</span> <span class="n">x_source_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_input</span><span class="p">:</span>
                     <span class="n">x_zip_file</span><span class="o">.</span><span class="n">addfile</span><span class="p">(</span><span class="n">tarinfo</span><span class="o">=</span><span class="n">x_tar_info</span><span class="p">,</span> <span class="n">fileobj</span><span class="o">=</span><span class="n">x_input</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="TDocuments.unzip">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.unzip">[docs]</a>
-    <span class="k">def</span> <span class="nf">unzip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">manifest_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">document_key</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Unzip a file and return the Manifest in JSON format. Unzip needs the document key. If the key is not</span>
-<span class="sd">        available, unzip the preview and the manifest, store the result into database for further processing</span>
-
-<span class="sd">        :param source:</span>
-<span class="sd">        :param manifest_only: Extract the header</span>
-<span class="sd">        :param document_key: If set, try to decrypt the document on the fly</span>
-<span class="sd">        :return: The header</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x_manifest</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarFile</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_zip_file</span><span class="p">:</span>
+<div class="viewcode-block" id="TDocument.read_file">
+<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.read_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">read_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document_title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Returns the bytestream of the specified file in the archive &quot;&quot;&quot;</span>
+        <span class="n">x_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shelf_name</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">document_title</span><span class="si">}</span><span class="s1">.tar&#39;</span>
+        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarFile</span><span class="p">(</span><span class="n">x_source</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_zip_file</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">x_tar_info</span> <span class="ow">in</span> <span class="n">x_zip_file</span><span class="o">.</span><span class="n">getmembers</span><span class="p">():</span>
-                <span class="n">x_dest</span>   <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">x_tar_info</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-                <span class="n">x_dest</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-                <span class="n">x_buffer</span><span class="p">:</span> <span class="n">BufferedReader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">x_zip_file</span><span class="o">.</span><span class="n">extractfile</span><span class="p">(</span><span class="n">x_tar_info</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">x_dest</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;Manifest&#39;</span><span class="p">:</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">x_manifest</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x_buffer</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span>
-                        <span class="k">if</span> <span class="n">manifest_only</span><span class="p">:</span>
-                            <span class="k">return</span> <span class="n">x_manifest</span>
-                    <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">decoder</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
-                        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s2">&quot;Manifest not in JSON format&quot;</span><span class="p">,</span> <span class="n">stack_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-                    <span class="k">continue</span>
-
-                <span class="c1"># Extract files only with correct key.</span>
-                <span class="c1"># For an owner, the document key is stored in database. First extract the manifest and continue</span>
-                <span class="c1"># with access on database....</span>
-                <span class="c1"># To get ownership, proceed buy process for document key</span>
-                <span class="n">x_file_descr</span>  <span class="o">=</span> <span class="n">x_manifest</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">][</span><span class="n">x_tar_info</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">document_key</span> <span class="ow">and</span> <span class="n">x_file_descr</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;main&#39;</span><span class="p">:</span>
-                    <span class="k">continue</span>
-
-                <span class="n">x_destination</span> <span class="o">=</span> <span class="n">x_dest</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">x_file_descr</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;main&#39;</span> <span class="k">else</span> <span class="n">x_dest</span>
-                <span class="n">x_eezz_file</span>   <span class="o">=</span> <span class="n">TEezzFile</span><span class="p">(</span><span class="n">file_type</span>   <span class="o">=</span> <span class="n">x_file_descr</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">],</span>
-                                          <span class="n">destination</span> <span class="o">=</span> <span class="n">x_destination</span><span class="p">,</span>
-                                          <span class="n">size</span>        <span class="o">=</span> <span class="n">x_file_descr</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span>
-                                          <span class="n">chunk_size</span>  <span class="o">=</span> <span class="n">x_file_descr</span><span class="p">[</span><span class="s1">&#39;chunk_size&#39;</span><span class="p">],</span>
-                                          <span class="n">key</span>         <span class="o">=</span> <span class="n">document_key</span><span class="p">[</span><span class="mi">16</span><span class="p">:],</span>
-                                          <span class="n">vector</span>      <span class="o">=</span> <span class="n">document_key</span><span class="p">[:</span><span class="mi">16</span><span class="p">],</span>
-                                          <span class="n">response</span>    <span class="o">=</span> <span class="n">Queue</span><span class="p">())</span>
-                <span class="n">x_eezz_file</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">x_buffer</span><span class="p">,</span> <span class="n">x_file_descr</span><span class="p">[</span><span class="s1">&#39;hash_list&#39;</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">x_manifest</span></div>
+                <span class="n">x_dest</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">x_tar_info</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">x_dest</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">file_name</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">x_buffer</span> <span class="o">:=</span> <span class="n">x_zip_file</span><span class="o">.</span><span class="n">extractfile</span><span class="p">(</span><span class="n">x_tar_info</span><span class="p">):</span>
+                        <span class="k">return</span> <span class="n">x_buffer</span><span class="o">.</span><span class="n">read</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="TDocuments.eezz_register_document">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.eezz_register_document">[docs]</a>
-    <span class="k">def</span> <span class="nf">eezz_register_document</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Registers the document header to EEZZ and returns it signed with the EEZZ key. The signed header</span>
-<span class="sd">        is stored as manifest in the final document.</span>
+<div class="viewcode-block" id="TDocument.extract_file">
+<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.extract_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">extract_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document_title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">dest_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Restores the specified files, given by the regular expression in file_pattern &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file_pattern</span><span class="p">:</span>
+            <span class="n">file_pattern</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;\S*&#39;</span>
 
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Store and sign the document header using the document-key</span>
-        <span class="n">x_eezz_connection</span>   <span class="o">=</span> <span class="n">TSecureSocket</span><span class="p">()</span>
-        <span class="n">x_response</span>          <span class="o">=</span> <span class="n">x_eezz_connection</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s1">&#39;reqheader&#39;</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">get_key</span><span class="p">()],</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="p">))</span>
-        <span class="n">x_json_response</span>     <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x_response</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">x_json_response</span></div>
-
-
-<div class="viewcode-block" id="TDocuments.eezz_buy_document">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.eezz_buy_document">[docs]</a>
-    <span class="k">def</span> <span class="nf">eezz_buy_document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transaction_key</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Buy transaction to get the document key.</span>
-
-<span class="sd">        :param transaction_key: With the method :py:meth:`eezz.document.TDocument.eezz_get_document_key` you get the \</span>
-<span class="sd">        key, if you are owner or you get a transaction_key, which could be used in this method to buy the key. Once \</span>
-<span class="sd">        you own the key, you could store it in local database. \</span>
-<span class="sd">        The document key is encrypted with the mobile device key.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># x_key    = self.get_device_key()</span>
-        <span class="c1"># RsaKey</span>
-        <span class="c1"># x_signer = pkcs1_15.new(x_key)</span>
-        <span class="c1"># x_hash   = SHA256.new(transaction_key)</span>
-        <span class="c1"># x_sign   = x_signer.sign(x_hash)</span>
-        <span class="n">x_eezz_connection</span>   <span class="o">=</span> <span class="n">TSecureSocket</span><span class="p">()</span>
-        <span class="n">x_response</span>          <span class="o">=</span> <span class="n">x_eezz_connection</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s1">&#39;reqkeycommit&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">transaction_key</span><span class="p">])</span>
-        <span class="n">x_json_response</span>     <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x_response</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
-        <span class="n">x_encrypted_key</span>     <span class="o">=</span> <span class="n">x_json_response</span><span class="p">[</span><span class="s1">&#39;key&#39;</span><span class="p">]</span>
-        <span class="n">key_vector</span>          <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decrypt_key_with_device</span><span class="p">(</span><span class="n">x_encrypted_key</span><span class="p">)</span>
-        <span class="n">key_vector_64</span>       <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">key_vector</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span><span class="s1">&#39;document&#39;</span><span class="p">,</span>  <span class="p">{</span><span class="s1">&#39;document_key&#39;</span><span class="p">:</span> <span class="n">key_vector_64</span><span class="p">})</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">get_values</span><span class="p">())</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></div>
-
-
-<div class="viewcode-block" id="TDocuments.eezz_get_document_key">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.eezz_get_document_key">[docs]</a>
-    <span class="k">def</span> <span class="nf">eezz_get_document_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">buy_request</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Get the document key from EEZZ server</span>
-
-<span class="sd">        :param buy_request: If True, a transaction key is created, if the called is not yet owner</span>
-<span class="sd">        :type  buy_request: bool = False</span>
-<span class="sd">        :return:</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x_device_sim</span>        <span class="o">=</span> <span class="s1">&#39;&#39;</span>
-        <span class="n">x_eezz_connection</span>   <span class="o">=</span> <span class="n">TSecureSocket</span><span class="p">()</span>
-        <span class="n">x_response</span>          <span class="o">=</span> <span class="n">x_eezz_connection</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s1">&#39;reqkey&#39;</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">get_key</span><span class="p">()],</span> <span class="nb">int</span><span class="p">(</span><span class="n">buy_request</span><span class="p">))</span>
-        <span class="n">x_json_response</span>     <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x_response</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
-
-        <span class="n">x_crpyt_key</span>         <span class="o">=</span> <span class="n">x_json_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">)</span>
-        <span class="n">x_transaction_key</span>   <span class="o">=</span> <span class="n">x_json_response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transaction&#39;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">x_crpyt_key</span><span class="p">:</span>
-            <span class="n">x_document_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decrypt_key_with_device</span><span class="p">(</span><span class="n">x_crpyt_key</span><span class="p">)</span>
-            <span class="n">x_json_response</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;code&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">x_document_key</span><span class="p">}</span>
-        <span class="k">elif</span> <span class="n">x_transaction_key</span><span class="p">:</span>
-            <span class="n">x_json_response</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;code&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">x_transaction_key</span><span class="p">}</span>
-        <span class="k">return</span> <span class="n">x_json_response</span></div>
-
-
-<div class="viewcode-block" id="TDocuments.add_document_to_device">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.add_document_to_device">[docs]</a>
-    <span class="k">def</span> <span class="nf">add_document_to_device</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-        <span class="n">x_response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">send_bt_request</span><span class="p">(</span><span class="n">command</span><span class="o">=</span><span class="s1">&#39;ADDDOC&#39;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">get_key</span><span class="p">()])</span>
-        <span class="k">return</span> <span class="n">x_response</span></div>
-
-
-<div class="viewcode-block" id="TDocuments.get_device_key">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.get_device_key">[docs]</a>
-    <span class="k">def</span> <span class="nf">get_device_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">x_response</span>          <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">send_bt_request</span><span class="p">(</span><span class="n">command</span><span class="o">=</span><span class="s1">&#39;GETKEY&#39;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[])</span>
-        <span class="k">if</span> <span class="n">x_response</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">][</span><span class="s1">&#39;code&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
-            <span class="n">x_dev_keyvector64</span>   <span class="o">=</span> <span class="n">x_response</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
-            <span class="k">return</span>  <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">x_dev_keyvector64</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span></div>
-
-
-<div class="viewcode-block" id="TDocuments.decrypt_key_with_device">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.decrypt_key_with_device">[docs]</a>
-    <span class="k">def</span> <span class="nf">decrypt_key_with_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">encrypted_key</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Decrypt the document key</span>
-
-<span class="sd">        :param encrypted_key: The encrypted key</span>
-<span class="sd">        :return:              The decrypted key, vector pair</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Get the device key for decryption</span>
-
-        <span class="n">x_dev_keyvector</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_device_key</span><span class="p">()</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">x_dev_keyvector</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-
-        <span class="n">x_encrypted_key_64</span>  <span class="o">=</span> <span class="n">encrypted_key</span>
-        <span class="n">x_encrypted_key</span>     <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">x_encrypted_key_64</span><span class="p">)</span>
-
-        <span class="n">x_cipher</span>            <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">x_dev_keyvector</span><span class="p">[</span><span class="mi">16</span><span class="p">:],</span> <span class="n">AES</span><span class="o">.</span><span class="n">MODE_CBC</span><span class="p">,</span> <span class="n">x_dev_keyvector</span><span class="p">[:</span><span class="mi">16</span><span class="p">])</span>
-        <span class="n">x_doc_keyvector</span>     <span class="o">=</span> <span class="n">x_cipher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">x_encrypted_key</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x_doc_keyvector</span></div>
-
-
-<div class="viewcode-block" id="TDocuments.encrypt_key_with_device">
-<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocuments.encrypt_key_with_device">[docs]</a>
-    <span class="k">def</span> <span class="nf">encrypt_key_with_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Encrypt the document key</span>
-
-<span class="sd">        :param key:     Document key</span>
-<span class="sd">        :param vector:  Document vector</span>
-<span class="sd">        :return:        encrypted document key</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Get the device key for encryption</span>
-        <span class="n">x_dev_keyvector</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_device_key</span><span class="p">()</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">x_dev_keyvector</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-
-        <span class="n">x_doc_keyvector</span>     <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">key</span> <span class="o">+</span> <span class="n">vector</span><span class="p">)</span>
-        <span class="n">x_cipher</span>            <span class="o">=</span> <span class="n">AES</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">x_dev_keyvector</span><span class="p">[</span><span class="mi">16</span><span class="p">:],</span> <span class="n">AES</span><span class="o">.</span><span class="n">MODE_CBC</span><span class="p">,</span> <span class="n">x_dev_keyvector</span><span class="p">[:</span><span class="mi">16</span><span class="p">])</span>
-        <span class="n">x_encrypted_key</span>     <span class="o">=</span> <span class="n">x_cipher</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">x_doc_keyvector</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">x_encrypted_key</span></div>
+        <span class="n">x_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shelf_name</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">document_title</span><span class="si">}</span><span class="s1">.tar&#39;</span>
+        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarFile</span><span class="p">(</span><span class="n">x_source</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_zip_file</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">x_tar_info</span> <span class="ow">in</span> <span class="n">x_zip_file</span><span class="o">.</span><span class="n">getmembers</span><span class="p">():</span>
+                <span class="n">x_dest</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">x_tar_info</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">file_pattern</span><span class="p">,</span> <span class="n">x_dest</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+                    <span class="n">x_local_file</span> <span class="o">=</span> <span class="n">dest_root</span> <span class="o">/</span> <span class="n">x_dest</span>
+                    <span class="k">if</span> <span class="n">x_buffer</span> <span class="o">:=</span> <span class="n">x_zip_file</span><span class="o">.</span><span class="n">extractfile</span><span class="p">(</span><span class="n">x_tar_info</span><span class="p">):</span>
+                        <span class="k">with</span> <span class="n">x_local_file</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                            <span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">x_buffer</span><span class="o">.</span><span class="n">read</span><span class="p">())</span></div>
 </div>
 
 
 
 <span class="c1"># -- section for module tests</span>
-<span class="k">def</span> <span class="nf">test_manifest</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">test_document</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s1">&#39;Test class TManifest&#39;</span><span class="p">)</span>
-    <span class="n">x_manifest</span> <span class="o">=</span> <span class="n">TManifest</span><span class="p">()</span>
-    <span class="n">x_manifest</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span><span class="n">section</span><span class="o">=</span><span class="s1">&#39;document&#39;</span><span class="p">,</span> <span class="n">proposed</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="s1">&#39;Albert&#39;</span><span class="p">,</span> <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="mf">14.5</span><span class="p">,</span> <span class="s1">&#39;currency&#39;</span><span class="p">:</span> <span class="s1">&#39;EUR&#39;</span><span class="p">})</span>
-    <span class="n">x_manifest</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span><span class="n">section</span><span class="o">=</span><span class="s1">&#39;files&#39;</span><span class="p">,</span>   <span class="n">proposed</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span> <span class="s1">&#39;chunk_size&#39;</span><span class="p">:</span> <span class="mi">1024</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;test.doc&#39;</span><span class="p">})</span>
-    <span class="n">x_manifest</span><span class="o">.</span><span class="n">set_values</span><span class="p">(</span><span class="n">section</span><span class="o">=</span><span class="s1">&#39;files&#39;</span><span class="p">,</span>   <span class="n">proposed</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="mi">2000</span><span class="p">,</span> <span class="s1">&#39;chunk_size&#39;</span><span class="p">:</span> <span class="mi">1024</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;preview.doc&#39;</span><span class="p">})</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">x_manifest</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Test class Document&#39;</span><span class="p">)</span>
+    <span class="n">my_doc</span> <span class="o">=</span> <span class="n">TDocument</span><span class="p">(</span><span class="n">shelf_name</span><span class="o">=</span><span class="s1">&#39;First&#39;</span><span class="p">,</span> <span class="n">attributes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;desc&#39;</span><span class="p">,</span> <span class="s1">&#39;author&#39;</span><span class="p">,</span> <span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="s1">&#39;valid&#39;</span><span class="p">],</span> <span class="n">file_sources</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;main&#39;</span><span class="p">])</span>
+
+    <span class="n">x_file_source</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;testdata/bird.jpg&#39;</span>
+    <span class="n">x_size</span>        <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">x_file_source</span><span class="p">)</span>
+
+    <span class="n">x_file_dest</span>   <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="s1">&#39;title&#39;</span>
+    <span class="n">x_file_dest</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">x_file_dest</span>   <span class="o">=</span> <span class="n">x_file_dest</span><span class="o">/</span><span class="s1">&#39;bird.jpg&#39;</span>
+    <span class="n">x_tfile</span>       <span class="o">=</span> <span class="n">TFile</span><span class="p">(</span><span class="n">file_type</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="n">destination</span><span class="o">=</span><span class="n">x_file_dest</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">x_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="n">x_size</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">x_file_source</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="n">x_tfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">raw_data</span><span class="o">=</span><span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="n">sequence_nr</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">my_doc</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="s1">&#39;bird.jpg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_tfile</span>
+    <span class="n">my_doc</span><span class="o">.</span><span class="n">initialize_document</span><span class="p">([</span><span class="s1">&#39;Level&#39;</span><span class="p">,</span> <span class="s1">&#39;descr&#39;</span><span class="p">,</span> <span class="s1">&#39;author&#39;</span><span class="p">,</span> <span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="s1">&#39;valid&#39;</span><span class="p">,</span> <span class="s1">&#39;bird.jpg&#39;</span><span class="p">])</span>
+    <span class="n">my_doc</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">append_file</span><span class="p">({</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;bird.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="n">x_size</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;jpg&#39;</span><span class="p">})</span>
+    <span class="n">my_doc</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">append_file</span><span class="p">({</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;bird.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="n">x_size</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;jpg&#39;</span><span class="p">})</span>
+    <span class="n">my_doc</span><span class="o">.</span><span class="n">create_document</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Created document </span><span class="si">{</span><span class="n">my_doc</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">my_doc</span><span class="o">.</span><span class="n">shelf_name</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">my_doc</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">document</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">.tar&#39;</span><span class="p">)</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
-    <span class="n">x_service</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;C:\Users\alzer\Projects\github\eezz_full\webroot&#39;</span><span class="p">))</span>
-    <span class="n">x_log_path</span> <span class="o">=</span> <span class="n">x_service</span><span class="o">.</span><span class="n">logging_path</span> <span class="o">/</span> <span class="s1">&#39;app.log&#39;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">x_log_path</span><span class="p">,</span> <span class="n">filemode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;{&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">{name}</span><span class="s1"> - </span><span class="si">{levelname}</span><span class="s1"> - </span><span class="si">{message}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
-
-    <span class="n">my_doc</span> <span class="o">=</span> <span class="n">TDocuments</span><span class="p">()</span>
-
+    <span class="n">TService</span><span class="o">.</span><span class="n">set_environment</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="s1">&#39;/Users/alzer/Projects/github/eezz_full/webroot&#39;</span><span class="p">)</span>
+    <span class="n">test_document</span><span class="p">()</span>
 </pre></div>
 
            </div>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<head>
+    <script data-eezz="template:websocket"></script>
+    <link rel="stylesheet" href="/css/eezz.css">
+    <style>
+        .clzz_grid {
+          display: grid;
+          grid-template-columns: auto auto auto;
+          background-color: #2196F3;
+          padding: 3px;
+          width: 600px;
+        }
+
+        .grid-item {
+          background-color: rgba(255, 255, 255, 0.8);
+          border: 1px solid rgba(0, 0, 0, 0.8);
+          padding: 3px;
+          font-size: 14px;
+          text-align: center;
+          width: 150px;
+          height: 140px;
+        }
+        
+        table {
+            position: relative
+            display: inline-block;
+            background-color: white;
+            left: 30px;
+        }
+
+        .clz_output {
+            background-color: yellow;
+            border: 1px solid black;
+        }
+
+        table[data-eezz-subtree-id] {
+            border-left: 2px solid black;
+            // background-color: gray;
+        }
+
+        tr td:first-child {
+             // border: 1px solid black;
+             // background-color: gray;
+        }
+
+    </style>
+
+</head>
+<html lang="en">
+<body>
+    <h2 id="eezz-status"></h2>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <h1>Simple Form Input</h1>
+
+    <div class="clzz_grid" id="FormInput" 
+        data-eezz='assign: examples.directory.TFormInput(title="Simple Form")'>
+
+        <div class="grid-item" style="position:relative;" 
+            data-eezz="template: row" data-eezz-match="body">
+        
+            <input  type =      "text" 
+                    data-eezz = "template: cell (Name)" 
+                    style =     "position:       absolute; 
+                                 top:            10px;
+                                 left:           10px;"
+                    required minlength="4" maxlength="8" size="10"/>
+
+            <input  type =      "text" 
+                    data-eezz = "template: cell (FirstName)" 
+                    style =     "position:       absolute; 
+                                 top:            40px; 
+                                 left:           10px;"
+                    required minlength="4" maxlength="8" size="10"/>
+
+            <input  type =      "text" 
+                    data-eezz = "template: cell (City)" 
+                    style =     "position:       absolute; 
+                                 top:            70px; 
+                                 left:           10px;"
+                    required minlength="4" maxlength="8" size="10"/>
+
+            <input  type        =  "button" 
+                    id          =  "commit_button"
+                    value       =  "submit"
+                    data-eezz   =  "event: register(table_row = [template.cell])" 
+                    style =     "position:       absolute; 
+                                 top:            100px; 
+                                 left:           10px;"/>
+
+        </div>
+    </div> 
+</body>
+</html>

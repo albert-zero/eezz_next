@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="/css/eezz.css">
     <style>
         table {
+            border: 0px solid orange;
             position: relative;
             display: inline-block;
             background-color: white;
@@ -27,6 +28,23 @@
 
     </style>
 
+    <script type="text/javascript">
+        async function my_function(display_file) {
+            const url = "/index.html";
+            try {
+                const response = await fetch(url, {headers: {"Content-Type":"text/html"}});
+                if (!response.ok) {
+                    throw new Error(`Response status: ${response.status}`);
+                }
+
+                const sometext = await response.text();
+                console.log(sometext);
+            } catch (error) {
+                console.error(error.message);
+            }
+        }
+    </script>
+
 </head>
 <html lang="en">
 <body>
@@ -36,15 +54,19 @@
     <h1>Simple table</h1>
 
     <table id="Directory" data-eezz='assign: examples.directory.TDirTree(title="Simple Tree", path="/Users/alzer/Projects/github/eezz_full/webroot")'>
+        <thead>
+            <tr data-eezz="template: row, match: header">
+                <th></th><th class="clzz_th" data-eezz="template: cell, event: do_sort(column={cell.index}), update: this.tbody">{cell.value}</th></tr>
+        </thead>
         <tbody>
             <tr data-eezz="template: row, match: is_file,
                             event  : on_select(index={row.row_id}),
                             update : path_label.innerHTML={row.row_id}">
-                <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
+                <td><img src="file.png"></td><td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
             <tr data-eezz='template: row, match: is_dir,
                             event  : open_dir(path={row.row_id}),
-                            update : this.subtree=this.tbody, path_label.innerHTML={row.row_id}'>
-                <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
+                            update : this.subtree=restricted, path_label.innerHTML={row.row_id}'>
+                <td><img src="dir.png"></td><td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
         </tbody>
     </table>
 

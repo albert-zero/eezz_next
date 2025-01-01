@@ -101,8 +101,7 @@
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseColumn">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">TDatabaseColumn</span><span class="p">(</span><span class="n">TTableColumn</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Represents a database column as a subclass of a table column.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Represents a database column as a subclass of a table column.</span>
 
 <span class="sd">    This class provides additional features specific to database columns,</span>
 <span class="sd">    including the ability to specify whether a column is a primary key, options</span>
@@ -119,7 +118,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">primary_key</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1">#: :meta private:</span>
     <span class="n">options</span><span class="p">:</span>     <span class="nb">str</span>  <span class="o">=</span> <span class="s1">&#39;&#39;</span>     <span class="c1">#: :meta private:</span>
-    <span class="n">alias</span><span class="p">:</span>       <span class="nb">str</span>  <span class="o">=</span> <span class="s1">&#39;&#39;</span>     <span class="c1">#: :meta private:</span></div>
+    <span class="n">alias</span><span class="p">:</span>       <span class="nb">str</span>  <span class="o">=</span> <span class="s1">&#39;&#39;</span>     <span class="c1">#: :meta private:</span>
+    <span class="n">hidden</span><span class="p">:</span>      <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1">#: :meta private:</span></div>
 
 
 
@@ -127,8 +127,7 @@
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">TDatabaseTable</span><span class="p">(</span><span class="n">TTable</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Represents a database table, extending capabilities of a general table to include database interactions.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Represents a database table, extending capabilities of a general table to include database interactions.</span>
 
 <span class="sd">    The TDatabaseTable class is designed to manage a table within a database context. It handles the</span>
 <span class="sd">    creation of database statements, synchronization with a database table, and data navigation and</span>
@@ -140,22 +139,10 @@
 <span class="sd">    :type column_names: list</span>
 <span class="sd">    :ivar database_name: The name of the database file to connect or create.</span>
 <span class="sd">    :type database_name: str</span>
-<span class="sd">    :ivar statement_select: SQL select statement for the table.</span>
-<span class="sd">    :type statement_select: str</span>
-<span class="sd">    :ivar statement_count: SQL count statement for the table records.</span>
-<span class="sd">    :type statement_count: str</span>
-<span class="sd">    :ivar statement_create: SQL create statement to initialize the table.</span>
-<span class="sd">    :type statement_create: str</span>
-<span class="sd">    :ivar statement_insert: SQL insert statement for adding data to the table.</span>
-<span class="sd">    :type statement_insert: str</span>
-<span class="sd">    :ivar statement_where: List of conditions for SQL where clause.</span>
-<span class="sd">    :type statement_where: list</span>
 <span class="sd">    :ivar database_path: File path for the database.</span>
 <span class="sd">    :type database_path: str</span>
 <span class="sd">    :ivar virtual_len: Virtual length of the dataset.</span>
 <span class="sd">    :type virtual_len: int</span>
-<span class="sd">    :ivar column_descr: Description of each column in the database table.</span>
-<span class="sd">    :type column_descr: List[TDatabaseColumn]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">column_names</span><span class="p">:</span>     <span class="nb">list</span>      <span class="o">=</span> <span class="kc">None</span>
     <span class="n">database_name</span><span class="p">:</span>    <span class="nb">str</span>       <span class="o">=</span> <span class="s1">&#39;default.db&#39;</span>      <span class="c1">#: :meta private:</span>
@@ -213,8 +200,7 @@
 <div class="viewcode-block" id="TDatabaseTable.prepare_statements">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.prepare_statements">[docs]</a>
     <span class="k">def</span> <span class="nf">prepare_statements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Prepare SQL statements for a database table based on provided column descriptions.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Prepare SQL statements for a database table based on provided column descriptions.</span>
 
 <span class="sd">        This method constructs SQL statements for creating, selecting, counting,</span>
 <span class="sd">        and inserting data into a database table. The statements are built using</span>
@@ -251,8 +237,7 @@
 <div class="viewcode-block" id="TDatabaseTable.create_database">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.create_database">[docs]</a>
     <span class="k">def</span> <span class="nf">create_database</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates a new SQLite database using the specified database path. This method</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;  Creates a new SQLite database using the specified database path. This method</span>
 <span class="sd">        registers adapters and converters for the `datetime` type to facilitate proper</span>
 <span class="sd">        storage and retrieval of datetime objects within the database.</span>
 
@@ -275,8 +260,7 @@
 <div class="viewcode-block" id="TDatabaseTable.append">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.append">[docs]</a>
     <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_row</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;body&#39;</span><span class="p">,</span> <span class="n">row_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">exists_ok</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Appends a new row to the table with specified attributes and parameters.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Appends a new row to the table with specified attributes and parameters.</span>
 <span class="sd">        The function checks for a `row_id` and generates one if not provided,</span>
 <span class="sd">        based on primary keys.</span>
 
@@ -314,8 +298,7 @@
 <div class="viewcode-block" id="TDatabaseTable.commit">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.commit">[docs]</a>
     <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Commits new rows in the data to the database. This method iterates through</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Commits new rows in the data to the database. This method iterates through</span>
 <span class="sd">        entries marked as &#39;new&#39; in their &#39;_database&#39; attribute, removes this marker,</span>
 <span class="sd">        and then inserts the entries into the database using the provided insert</span>
 <span class="sd">        statement and column names.</span>
@@ -328,7 +311,8 @@
             <span class="n">x_new_row</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">xf_row</span><span class="p">:</span> <span class="n">xf_row</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;_database&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="s1">&#39;new&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_new_row</span><span class="p">:</span>
                 <span class="n">x_row</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_database&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-                <span class="n">x_cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">statement_insert</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x_row</span><span class="o">.</span><span class="n">get_values_list</span><span class="p">()))</span></div>
+                <span class="n">x_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x_row</span><span class="o">.</span><span class="n">get_values_list</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">)]</span>
+                <span class="n">x_cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">statement_insert</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x_values</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="TDatabaseTable.navigate">

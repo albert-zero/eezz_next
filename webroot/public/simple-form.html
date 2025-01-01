@@ -43,12 +43,16 @@
                 <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
             <tr data-eezz='template: row, match: is_dir,
                             event  : open_dir(path={row.row_id}),
-                            update : this.subtree=this.tbody, path_label.innerHTML={row.row_id}'>
+                            update : this.subtree=restricted, path_label.innerHTML={row.row_id}'>
                 <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
         </tbody>
     </table>
 
-    <h3>Output On Select</h3>
-    <span class="clz_output" id="path_label"></span>
+
+    <input type="text" id="name"     name="name" required minlength="4" maxlength="8" size="10" />
+    <input type="text" id="lastname" name="last" required minlength="4" maxlength="8" size="10" />
+    <input type="submit" value="Send Request" data-eezz="event: Directory.on_form(name.value, lastname.value)"/>
+
+
 </body>
 </html>
