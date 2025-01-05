@@ -43,7 +43,7 @@
                 <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
             <tr data-eezz='template: row, match: is_dir,
                             event  : open_dir(path={row.row_id}),
-                            update : this.subtree=this.tbody, path_label.innerHTML={row.row_id}'>
+                            update : this.subtree=this.tbody.tfoot, path_label.innerHTML={row.row_id}'>
                 <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
         </tbody>
     </table>

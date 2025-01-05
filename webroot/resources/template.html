@@ -12,21 +12,30 @@
         <thead>
             <tr data-eezz="template: row, match: header">
                  <th class="clzz_th"
-                     data-eezz="template: cell, event: do_sort(column={cell.index}), update: this.tbody">{cell.value}</th></tr>
+                     data-eezz="
+                        template:   cell, 
+                        event:      do_sort(column={cell.index}), 
+                        update:     this.tbody">{cell.value}</th></tr>
         </thead>
         <tbody>
             <tr data-eezz="template: row, match: body, event: on_select(index={row.row_id})">
                 <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
         </tbody>
         <tfoot>
-            <tr data-eezz="template: navigation, display_if: {table.block_navigation}">
-                <td style="text-align:center">
-                    <img class="clzz_navigation_img" src ="navbar.jpg" style="height:20px; width:160px" usemap="#{table.navigation}"/>
-                    <map class="clzz_navigation" name="{table.navigation}">
-                        <area shape="rect" coords="  0, 0,  40, 20" data-eezz="event: navigate(where_togo = {table.navigation.TOP} )"/>
-                        <area shape="rect" coords=" 40, 0,  80, 20" data-eezz="event: navigate(where_togo = {table.navigation.PREV} )"/>
-                        <area shape="rect" coords=" 80, 0, 120, 20" data-eezz="event: navigate(where_togo = {table.navigation.NEXT} )"/>
-                        <area shape="rect" coords="120, 0, 160, 20" data-eezz="event: navigate(where_togo = {table.navigation.LAST} )"/></map>
+            <tr data-eezz="template: reference(table), style: visibility={table.visible_navigation}">
+                <td style="text-align:center" colspan="4">
+                    <img class="clzz_navigation_img" src="navbar.png" 
+                            style ="height:20px; width:160px" 
+                            usemap="#table-navigation"/>
+                    <map class="clzz_navigation" name="table-navigation">
+                        <area shape="rect" coords="  0, 0,  40, 20" 
+                            data-eezz="event:  navigate(where_togo = 3), update: this.tbody"/>
+                        <area shape="rect" coords=" 40, 0,  80, 20" 
+                            data-eezz="event:  navigate(where_togo = 2), update: this.tbody"/>
+                        <area shape="rect" coords=" 80, 0, 120, 20" 
+                            data-eezz="event:  navigate(where_togo = 1), update: this.tbody"/>
+                        <area shape="rect" coords="120, 0, 160, 20" 
+                            data-eezz="event:  navigate(where_togo = 4), update: this.tbody"/></map>
                 </td>
             </tr>
         </tfoot>

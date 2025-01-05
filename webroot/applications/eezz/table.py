@@ -57,11 +57,11 @@ class TNavigation(Enum):
     :ref:`TTable.visible_items <ttable_parameter_list>`:
 
     """
-    ABS     = 0, 'Request an absolute position in the dataset'
-    NEXT    = 1, 'Set the cursor to show the next chunk of rows'
-    PREV    = 2, 'Set the cursor to show the previous chunk of rows'
-    TOP     = 3, 'Set the cursor to the first row'
-    LAST    = 4, 'Set the cursor to show the last chunk of rows'
+    ABS     = 0             #: :meta private:
+    NEXT    = 1             #: :meta private:
+    PREV    = 2             #: :meta private:
+    TOP     = 3             #: :meta private:
+    LAST    = 4             #: :meta private:
 
 
 class TSort(Enum):
@@ -100,7 +100,9 @@ class TTableCell:
     index:  int         = 0         #: :meta private: calculated index of a cell
     type:   str         = 'str'     #: :meta private: calculated type (could also be user defined)
     attrs:  dict        = None      #: :meta private: user attributes
-    details: List[TTableCellDetail]  = None      #: :meta private: detail list of dict
+
+    detail_class: TTableCellDetail   = TTableCellDetail     #: Possible user implementation to add more detail attributes
+    details: List[TTableCellDetail]  = None                 #: :meta private: detail list of dict
 
     @property
     def detail(self):
@@ -110,7 +112,7 @@ class TTableCell:
     @detail.setter
     def detail(self, values: list):
         """ :meta private: """
-        self.details = [TTableCellDetail(value=x, source=self.name) for x in values]
+        self.details = [self.detail_class(value=x, source=self.name) for x in values]
 
 
 @dataclass(kw_only=True)
@@ -307,6 +309,7 @@ class TTable(UserList):
     is_synchron:        bool        = False             #: :meta private: Used to reduce calls to do_select
     navigation:         TNavigation = TNavigation
     id:                 str         = None
+    visible_navigation: str         = 'collapse'        #: Defines the visibility of the navigation bar
 
     def __post_init__(self):
         """ Post init for a data class
@@ -622,8 +625,9 @@ class TTable(UserList):
 
             x_count += 1
             yield x_row
+        self.visible_navigation = 'collapse' if self.visible_items > x_count else 'visible'
 
-    def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:
+    def navigate(self, where_togo: int = TNavigation.NEXT.value, position: int = 0) -> None:
         """ Adjusts the current navigation offset based on the specified navigation
         command and position. It calculates a new offset value for navigating
         within a data structure while ensuring that boundaries are respected.
@@ -637,16 +641,16 @@ class TTable(UserList):
                         the offset in the data structure.
         :return:        None
         """
-        match where_togo:
-            case TNavigation.NEXT:
+        match int(where_togo):
+            case TNavigation.NEXT.value:
                 self.offset = max(0, min(len(self.data) - self.visible_items, self.offset + self.visible_items + 1))
-            case TNavigation.PREV:
+            case TNavigation.PREV.value:
                 self.offset = max(0, self.offset - self.visible_items - 1)
-            case TNavigation.ABS:
+            case TNavigation.ABS.value:
                 self.offset = max(0, min(int(position), len(self) - self.visible_items))
-            case TNavigation.TOP:
+            case TNavigation.TOP.value:
                 self.offset = 0
-            case TNavigation.LAST:
+            case TNavigation.LAST.value:
                 self.offset = max(0, len(self) - self.visible_items)
         self.is_synchron = False
 
@@ -745,7 +749,7 @@ def test_table():
     logger.debug(debug_out.getvalue())
 
     logger.debug('--- Navigate to next')
-    x_table.navigate(where_togo=TNavigation.NEXT)
+    x_table.navigate(where_togo=TNavigation.NEXT.value)
     debug_out = io.StringIO()
     x_table.print(file=debug_out)
     logger.debug(debug_out.getvalue())

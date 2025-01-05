@@ -130,11 +130,11 @@
 <span class="sd">    :ref:`TTable.visible_items &lt;ttable_parameter_list&gt;`:</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">ABS</span>     <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Request an absolute position in the dataset&#39;</span>
-    <span class="n">NEXT</span>    <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;Set the cursor to show the next chunk of rows&#39;</span>
-    <span class="n">PREV</span>    <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;Set the cursor to show the previous chunk of rows&#39;</span>
-    <span class="n">TOP</span>     <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;Set the cursor to the first row&#39;</span>
-    <span class="n">LAST</span>    <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;Set the cursor to show the last chunk of rows&#39;</span></div>
+    <span class="n">ABS</span>     <span class="o">=</span> <span class="mi">0</span>             <span class="c1">#: :meta private:</span>
+    <span class="n">NEXT</span>    <span class="o">=</span> <span class="mi">1</span>             <span class="c1">#: :meta private:</span>
+    <span class="n">PREV</span>    <span class="o">=</span> <span class="mi">2</span>             <span class="c1">#: :meta private:</span>
+    <span class="n">TOP</span>     <span class="o">=</span> <span class="mi">3</span>             <span class="c1">#: :meta private:</span>
+    <span class="n">LAST</span>    <span class="o">=</span> <span class="mi">4</span>             <span class="c1">#: :meta private:</span></div>
 
 
 
@@ -179,7 +179,9 @@
     <span class="n">index</span><span class="p">:</span>  <span class="nb">int</span>         <span class="o">=</span> <span class="mi">0</span>         <span class="c1">#: :meta private: calculated index of a cell</span>
     <span class="nb">type</span><span class="p">:</span>   <span class="nb">str</span>         <span class="o">=</span> <span class="s1">&#39;str&#39;</span>     <span class="c1">#: :meta private: calculated type (could also be user defined)</span>
     <span class="n">attrs</span><span class="p">:</span>  <span class="nb">dict</span>        <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: user attributes</span>
-    <span class="n">details</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableCellDetail</span><span class="p">]</span>  <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: detail list of dict</span>
+
+    <span class="n">detail_class</span><span class="p">:</span> <span class="n">TTableCellDetail</span>   <span class="o">=</span> <span class="n">TTableCellDetail</span>     <span class="c1">#: Possible user implementation to add more detail attributes</span>
+    <span class="n">details</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableCellDetail</span><span class="p">]</span>  <span class="o">=</span> <span class="kc">None</span>                 <span class="c1">#: :meta private: detail list of dict</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">detail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -189,7 +191,7 @@
     <span class="nd">@detail</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">detail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">details</span> <span class="o">=</span> <span class="p">[</span><span class="n">TTableCellDetail</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">details</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">detail_class</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span></div>
 
 
 
@@ -398,6 +400,7 @@
     <span class="n">is_synchron</span><span class="p">:</span>        <span class="nb">bool</span>        <span class="o">=</span> <span class="kc">False</span>             <span class="c1">#: :meta private: Used to reduce calls to do_select</span>
     <span class="n">navigation</span><span class="p">:</span>         <span class="n">TNavigation</span> <span class="o">=</span> <span class="n">TNavigation</span>
     <span class="nb">id</span><span class="p">:</span>                 <span class="nb">str</span>         <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">visible_navigation</span><span class="p">:</span> <span class="nb">str</span>         <span class="o">=</span> <span class="s1">&#39;collapse&#39;</span>        <span class="c1">#: Defines the visibility of the navigation bar</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Post init for a data class</span>
@@ -561,11 +564,9 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">header_row</span></div>
 
 
-<div class="viewcode-block" id="TTable.get_selected_row">
-<a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.get_selected_row">[docs]</a>
     <span class="k">def</span> <span class="nf">get_selected_row</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_row</span></div>
-
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_row</span>
 
 <div class="viewcode-block" id="TTable.get_next_values">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.get_next_values">[docs]</a>
@@ -737,12 +738,13 @@
                 <span class="k">continue</span>
 
             <span class="n">x_count</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="k">yield</span> <span class="n">x_row</span></div>
+            <span class="k">yield</span> <span class="n">x_row</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">visible_navigation</span> <span class="o">=</span> <span class="s1">&#39;collapse&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_items</span> <span class="o">&gt;</span> <span class="n">x_count</span> <span class="k">else</span> <span class="s1">&#39;visible&#39;</span></div>
 
 
 <div class="viewcode-block" id="TTable.navigate">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.navigate">[docs]</a>
-    <span class="k">def</span> <span class="nf">navigate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">where_togo</span><span class="p">:</span> <span class="n">TNavigation</span> <span class="o">=</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">navigate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">where_togo</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Adjusts the current navigation offset based on the specified navigation</span>
 <span class="sd">        command and position. It calculates a new offset value for navigating</span>
 <span class="sd">        within a data structure while ensuring that boundaries are respected.</span>
@@ -756,16 +758,16 @@
 <span class="sd">                        the offset in the data structure.</span>
 <span class="sd">        :return:        None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">match</span> <span class="n">where_togo</span><span class="p">:</span>
-            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">:</span>
+        <span class="k">match</span> <span class="nb">int</span><span class="p">(</span><span class="n">where_togo</span><span class="p">):</span>
+            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_items</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_items</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
-            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">PREV</span><span class="p">:</span>
+            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">PREV</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_items</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">ABS</span><span class="p">:</span>
+            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">ABS</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">position</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_items</span><span class="p">))</span>
-            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">TOP</span><span class="p">:</span>
+            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">TOP</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">LAST</span><span class="p">:</span>
+            <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">LAST</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_items</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span> <span class="o">=</span> <span class="kc">False</span></div>
 
@@ -872,7 +874,7 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">debug_out</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;--- Navigate to next&#39;</span><span class="p">)</span>
-    <span class="n">x_table</span><span class="o">.</span><span class="n">navigate</span><span class="p">(</span><span class="n">where_togo</span><span class="o">=</span><span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">)</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">navigate</span><span class="p">(</span><span class="n">where_togo</span><span class="o">=</span><span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
     <span class="n">debug_out</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">debug_out</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">debug_out</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>

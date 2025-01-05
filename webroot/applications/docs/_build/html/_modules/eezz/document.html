@@ -166,13 +166,13 @@
 <span class="sd">    :ivar TManifest     manifest:        Document header definition</span>
 <span class="sd">    :ivar List[TFile]   files_list:      List of embedded files</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">shelf_name</span><span class="p">:</span>   <span class="nb">str</span>
-    <span class="n">attributes</span><span class="p">:</span>   <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="n">manifest</span><span class="p">:</span>     <span class="n">TManifest</span>         <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
-    <span class="n">path</span><span class="p">:</span>         <span class="n">Path</span>              <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
-    <span class="n">count</span><span class="p">:</span>        <span class="nb">int</span>               <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">finished</span><span class="p">:</span>     <span class="nb">bool</span>              <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">file_sources</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>         <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">shelf_name</span><span class="p">:</span>   <span class="nb">str</span>                           <span class="c1">#: :meta private:</span>
+    <span class="n">attributes</span><span class="p">:</span>   <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                     <span class="c1">#: List of document attributes like author and title</span>
+    <span class="n">manifest</span><span class="p">:</span>     <span class="n">TManifest</span>         <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">path</span><span class="p">:</span>         <span class="n">Path</span>              <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">count</span><span class="p">:</span>        <span class="nb">int</span>               <span class="o">=</span> <span class="mi">0</span>         <span class="c1">#: :meta private:</span>
+    <span class="n">finished</span><span class="p">:</span>     <span class="nb">bool</span>              <span class="o">=</span> <span class="kc">False</span>     <span class="c1">#: :meta private:</span>
+    <span class="n">file_sources</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>         <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; combine attributes:</span>

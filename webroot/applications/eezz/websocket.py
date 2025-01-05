@@ -95,24 +95,28 @@ class TWebSocketClient:
     :vartype m_threads: Dict[Callable, Thread]
     """
     def __init__(self, a_client_addr: tuple, a_agent: type[TWebSocketAgent]):
-        self.m_headers      = None
-        self.m_socket       = a_client_addr[0]
-        self.m_cnt          = 0
-        self.m_buffer       = None
-        self.m_protocol     = str()
-        self.m_agent_class  = a_agent
-        self.m_agent_client = a_agent()
-        self.m_lock         = Lock()
+        self.m_headers              = None
+        self.m_socket               = a_client_addr[0]
+        self.m_cnt                  = 0
+        self.m_buffer               = None
+        self.m_protocol             = str()
+        self.m_agent_class          = a_agent
+        self.m_agent_client         = a_agent()
+        self.m_lock                 = Lock()
         self.m_threads: Dict[Callable, Thread] = {}
-        self.store_resp: bytes = bytes()
+        self.store_resp:    bytes   = bytes()
+        self.running:       bool    = True
 
     def shutdown(self):
+        """:meta private: Handles connection loss """
         # self.m_async.shutdown()
-        pass
+        if self.m_agent_client:
+            self.m_agent_client.shutdown()
+            self.m_agent_client = None
+        self.running = False
 
     def upgrade(self):
-        """
-        Establishes a web socket connection by performing a handshake with the server.
+        """ Establishes a web socket connection by performing a handshake with the server.
         This method handles receiving initial binary data, decoding it to UTF-8, generating
         a handshake response, and sending this response back to establish a connection.
         It also initializes a buffer used for further communications.
@@ -165,8 +169,12 @@ class TWebSocketClient:
             x_id        = x_call_jsn['id']
 
             logger.debug(f'websocket call {x_call_jsn["function"]}')
-            x_thread  = TAsyncHandler(socket_server=self, fkt_id=x_id, request=x_json_obj)
-            x_thread.start()
+            if x_json_obj.get('process') == 'sync':
+                x_handler = TAsyncHandler(socket_server=self, fkt_id=x_id, request=x_json_obj)
+                x_handler.handle_update()
+            else:
+                x_thread  = TAsyncHandler(socket_server=self, fkt_id=x_id, request=x_json_obj)
+                x_thread.start()
 
     def handle_async_request(self, request: dict) -> dict:
         """
@@ -230,8 +238,7 @@ class TWebSocketClient:
         except Exception as xEx:
             if self.m_agent_client:
                 logger.info(f'{str(xEx)} : shutdown')
-                self.m_agent_client.shutdown()
-                self.m_agent_client = None
+                self.shutdown()
             raise
 
     def gen_handshake(self, a_data: str):
@@ -553,6 +560,13 @@ class TAsyncHandler(Thread):
 
     @logger.catch(reraise=True)
     def run(self):
+        while self.running:
+            self.running = self.do_loop
+            if not self.socket_server.running:
+                return
+            self.handle_update()
+
+    def handle_update(self):
         """ Executes the request in either asynchronous or synchronous mode based on
         the request parameters. Continuously handles asynchronous requests while
         the 'running' attribute is True. In synchronous mode, processes the
@@ -560,47 +574,45 @@ class TAsyncHandler(Thread):
 
         :return: None
         """
-        while self.running:
-            self.running = self.do_loop
-            x_row        = self.method(**self.method_args) if self.method_args else self.method()
-            self.request['result-value'] = list()
-            self.request['result-type']  = ''
+        x_row  = self.method(**self.method_args) if self.method_args else self.method()
+        self.request['result-value'] = list()
+        self.request['result-type']  = ''
 
-            # execute value request:
-            if self.request.get('update'):
-                for x_key, x_value in self.request['update'].items():
-                    x_request_value = None
-                    if 'call' in x_key and 'function' in x_value:
-                        x_id       = self.id
-                        x_args     = x_value['args']
-                        x_callback = {'function': 'get_selected_row', 'args': {}, 'id': x_id}
-                        x_request_value = {'call': x_callback, 'target': x_value['function'], 'type': 'javascript', 'value': x_args}
-                    elif isinstance(x_value, dict):
-                        x_id     = self.id
-                        x_object, x_method, x_tag, x_descr = TService().get_method(x_id, x_value['function'])
-                        # -- x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
-                        x_args   = {x_key: x_val for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
-                        x_result = x_method(**x_args) if x_args else x_method()
-                        x_request_value = {'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')}
+        # execute value request:
+        if self.request.get('update'):
+            for x_key, x_value in self.request['update'].items():
+                x_request_value = None
+                if 'call' in x_key and 'function' in x_value:
+                    x_id       = self.id
+                    x_args     = x_value['args']
+                    x_callback = {'function': 'get_selected_row', 'args': {}, 'id': x_id}
+                    x_request_value = {'call': x_callback, 'target': x_value['function'], 'type': 'javascript', 'value': x_args}
+                elif isinstance(x_value, dict):
+                    x_id     = self.id
+                    x_object, x_method, x_tag, x_descr = TService().get_method(x_id, x_value['function'])
+                    # -- x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
+                    x_args   = {x_key: x_val for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
+                    x_result = x_method(**x_args) if x_args else x_method()
+                    x_request_value = {'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')}
 
-                    if x_request_value:
-                        self.request['result-value'].append(x_request_value)
+                if x_request_value:
+                    self.request['result-value'].append(x_request_value)
 
-                for x_key, x_value in self.request['update'].items():
-                    x_request_value = None
-                    if isinstance(x_value, str) and not x_value.startswith('this'):
-                        x_request_value = {'target': x_key, 'type': 'text', 'value': x_value.format(row=x_row)}
-                        # reference to earlier calculations
-                        for x in self.request['result-value']:
-                            if x_value == x.get('target', ''):
-                                x_request_value = {'target': x_key, 'type': x.get('type', 'text'), 'value': x.get('value', '')}
+            for x_key, x_value in self.request['update'].items():
+                x_request_value = None
+                if isinstance(x_value, str) and not x_value.startswith('this'):
+                    x_request_value = {'target': x_key, 'type': 'text', 'value': x_value.format(row=x_row)}
+                    # reference to earlier calculations
+                    for x in self.request['result-value']:
+                        if x_value == x.get('target', ''):
+                            x_request_value = {'target': x_key, 'type': x.get('type', 'text'), 'value': x.get('value', '')}
 
-                    if x_request_value:
-                        self.request['result-value'].append(x_request_value)
+                if x_request_value:
+                    self.request['result-value'].append(x_request_value)
 
-            self.request['result'] = x_row
-            if self.socket_server:
-                self.socket_server.handle_async_request(self.request)
+        self.request['result'] = x_row
+        if self.socket_server:
+            self.socket_server.handle_async_request(self.request)
 
 
 class TTestAsync(TTable):

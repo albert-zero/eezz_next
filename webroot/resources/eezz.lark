@@ -6,8 +6,8 @@
                   | "update"    ":" list_updates                -> update_section
                   | "onload"    ":" list_updates                -> onload_section
                   | "post_init" ":" function_call               -> post_init
-                  | "download"  ":" document "," files          -> download
                   | "template"  ":" string ( "(" value_string ")" )?  -> template_section
+                  | "style"     ":" string "=" format_string    -> set_style
                   | string      ":" string                      -> parameter_section
                   | qualified_string ":" value_string           -> setenv
 

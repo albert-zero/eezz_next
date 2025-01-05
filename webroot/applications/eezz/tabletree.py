@@ -102,7 +102,7 @@ class TTableTree(TTable):
                     x_row.child.clear()
                     x_row.child = None
                 else:
-                    x_row.child = self.__class__(title=self.title, path=x_row.row_id, column_names=self.column_names)
+                    x_row.child = self.__class__(title=self.title, path=x_row.row_id)
                     x_row.child.expanded = True
                     x_row.child.read_dir()
                     self.nodes.append(x_row.child)

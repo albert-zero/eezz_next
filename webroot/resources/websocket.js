@@ -118,7 +118,7 @@ function dynamic_update(a_update_json) {
 
     if (x_attr == 'subtree') {
         if (a_update_json.value == '') {
-            tree_collapse(x_element);
+            tree_collapse(x_elem);
             return;
         }
         if (a_update_json.value.option.startsWith('this')) {
@@ -145,16 +145,29 @@ function dynamic_update(a_update_json) {
             x_elem.style[x_attr] = a_update_json.value;
             return;
         }
-        x_elem = x_elem.getElementsByTagName(x_dest[i])[0];
+        x_elem = x_elem.querySelector(x_dest[i]);
+        // x_elem.querySelector('[data-eezz-subtree-id=]')
     }
 
     if (x_elem == null) {
-        console.log("warning: target not found " + a_update_json.target);
-        return;
+        if (x_dest.length > 1) {
+            x_elem = document.querySelector('[data-eezz-subtree-id=' + x_dest[0] + ']');
+            x_elem = x_elem.querySelector(x_dest[1]);
+        }
+
+        if (x_elem == null) {
+            console.log("warning: target not found " + a_update_json.target);
+            return;
+        }
     }
 
     if (x_attr == 'innerHTML') {
         x_elem.innerHTML = a_update_json.value;
+        return;
+    }
+
+    if (x_attr == 'outerHTML') {
+        x_elem.outerHTML = a_update_json.value;
         return;
     }
 
@@ -199,16 +212,16 @@ function tree_expand(a_node, subtree_value) {
     var x_caption       = x_td.getElementsByTagName('caption')[0];
     var x_thead         = x_td.getElementsByTagName('thead')[0];
     var x_tbody         = x_td.getElementsByTagName('tbody')[0];
-    // todo: var x_tfoot         = x_td.getElementsByTagName('tfoot')[0];
+    var x_tfoot         = x_td.getElementsByTagName('tfoot')[0];
 
     x_table.setAttribute('data-eezz-subtree-id',  a_node['id']);
     x_caption.remove();
 
     if (subtree_value.option.includes('tfoot')) {
-        // todo: x_tfoot.innerHTML = subtree_value.tfoot;
+        x_tfoot.innerHTML = subtree_value.tfoot;
     }
     else {
-        // todo: x_foot.remove();
+        x_tfoot.remove();
     }
 
     if (subtree_value.option.includes('thead')) {
@@ -382,8 +395,10 @@ function eezzy_click(aEvent, aElement) {
             }
             else {
                 x_attr = x_source.split('.');
-                x_elem = document.getElementById(x_attr[0]);
-                x_json.call.args[key] = x_elem.getAttribute(x_attr[1]);
+                if (x_attr.length > 1) {
+                    x_elem = document.getElementById(x_attr[0]);
+                    x_json.call.args[x_key] = x_elem.getAttribute(x_attr[1]);
+                }
             }
         }
         x_response = JSON.stringify(x_json);

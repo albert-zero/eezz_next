@@ -93,13 +93,13 @@ class TDocument:
     :ivar TManifest     manifest:        Document header definition
     :ivar List[TFile]   files_list:      List of embedded files
     """
-    shelf_name:   str
-    attributes:   List[str]
-    manifest:     TManifest         = None  #: :meta private:
-    path:         Path              = None  #: :meta private:
-    count:        int               = 0
-    finished:     bool              = False
-    file_sources: List[str]         = None
+    shelf_name:   str                           #: :meta private:
+    attributes:   List[str]                     #: List of document attributes like author and title
+    manifest:     TManifest         = None      #: :meta private:
+    path:         Path              = None      #: :meta private:
+    count:        int               = 0         #: :meta private:
+    finished:     bool              = False     #: :meta private:
+    file_sources: List[str]         = None      #: :meta private:
 
     def __post_init__(self):
         """ combine attributes:

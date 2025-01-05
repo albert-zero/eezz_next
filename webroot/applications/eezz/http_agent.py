@@ -61,6 +61,7 @@ class THttpAgent(TWebSocketAgent):
                 x_updates.append({'target': f'{x_id}.caption.innerHTML', 'value': x_html['caption']})
                 x_updates.append({'target': f'{x_id}.thead.innerHTML',   'value': x_html['thead']})
                 x_updates.append({'target': f'{x_id}.tbody.innerHTML',   'value': x_html['tbody']})
+                x_updates.append({'target': f'{x_id}.tfoot.innerHTML',   'value': x_html['tfoot']})
 
             for x in  self.soup.css.select('select[data-eezz-compiled], .clzz_grid[data-eezz-compiled]'):
                 x_html = self.generate_html_grid(x)
@@ -93,9 +94,10 @@ class THttpAgent(TWebSocketAgent):
 
                 x_obj, x_method, x_tag, x_descr  = TService().get_method(x_event_id, x_event['function'])
                 for x_key, x_value in request_data['update'].items():
-                    if x_key == 'this.tbody':
-                        x_html = self.generate_html_table(x_tag, x_tag['id'])
-                        x_updates.append({'target': f'{x_tag["id"]}.tbody.innerHTML', 'value': x_html['tbody']})
+                    x_sub_keys = x_key.split('.')
+                    if x_key.startswith('this') and 'tbody' in x_sub_keys:
+                        x_html = self.generate_html_table(x_tag, x_event_id)
+                        x_updates.append({'target': f'{x_event_id}.tbody.innerHTML', 'value': x_html['tbody']})
                     elif x_key == 'this.subtree':
                         x_id            = x_row.id
                         x_table: TTable = x_row.child
@@ -120,7 +122,7 @@ class THttpAgent(TWebSocketAgent):
 
                             x_html = self.generate_html_table(x_tag, x_id)
                             x_id   = x_row.id
-                            x_updates.append({'target': f'{x_id}.subtree', 'value': {'option': x_value, 'template': x_html['template'], 'thead': x_html['thead'], 'tbody': x_html['tbody']}})
+                            x_updates.append({'target': f'{x_id}.subtree', 'value': {'option': x_value, 'template': x_html['template'], 'thead': x_html['thead'], 'tbody': x_html['tbody'], 'tfoot': x_html['tfoot']}})
                         else:
                             tag_row_template = x_tag.soup.css.select('[data-eezz-template=row]')[0]
                             x_subtree_view   = self.generate_html_grid_item(tag_row_template, x_row)
@@ -169,8 +171,7 @@ class THttpAgent(TWebSocketAgent):
             if not x_chrom.css.select('tbody'):
                 x_chrom.append(copy.deepcopy(x_templ_table.tbody))
             if not x_chrom.css.select('tfoot'):
-                # x_chrom.append(copy.deepcopy(x_temp_table.tfoot))
-                pass
+                x_chrom.append(copy.deepcopy(x_templ_table.tfoot))
             if not x_chrom.has_attr('id'):
                 x_chrom['id'] = str(uuid.uuid1())[:8]
             # Compile subtree using the current table id for events
@@ -239,9 +240,10 @@ class THttpAgent(TWebSocketAgent):
                 logger.exception(ex)
 
     @staticmethod
-    def format_attributes(a_key: str, a_value: str, a_fmt_funct: Callable) -> str:
+    def format_attributes(a_key: str, a_value: str, a_fmt_funct: Callable, a_id: str = None) -> str:
         """ Eval template tag-attributes, diving deep into data-eezz-json
 
+        :param a_id:        The ID which replaces the placeholder 'this'
         :param a_key:       Thw key string to pick the items in an HTML tag
         :param a_value:     The dictionary in string format to be formatted
         :param a_fmt_funct: The function to be called to format the values
@@ -252,6 +254,8 @@ class THttpAgent(TWebSocketAgent):
             if 'call' in x_json:
                 x_args = x_json['call']['args']
                 x_json['call']['args'] = {x_key: a_fmt_funct(x_val) for x_key, x_val in x_args.items()}
+                if a_id:
+                    x_json['call']['id'] = a_id
             x_fmt_val = json.dumps(x_json)
         else:
             x_fmt_val = a_fmt_funct(a_value)
@@ -271,9 +275,12 @@ class THttpAgent(TWebSocketAgent):
         x_json_obj = json.loads(json_str)
         if x_update := x_json_obj.get('update', None):
             for x_key, x_val in x_update.items():
-                if x_args := x_val.get('args', None):
-                    for xx_key, xx_value in x_args.items():
-                        x_args.update({xx_key: formatter(xx_value)})
+                if isinstance(x_val, str):
+                    x_update[x_key] = formatter(x_val)
+                else:
+                    if x_args := x_val.get('args', None):
+                        for xx_key, xx_value in x_args.items():
+                            x_args.update({xx_key: formatter(xx_value)})
         return json.dumps(x_json_obj)
 
     def generate_html_cells(self, a_tag: Tag, a_cell: TTableCell) -> Tag:
@@ -329,6 +336,30 @@ class THttpAgent(TWebSocketAgent):
             x_new_tag.append(x)
         return x_new_tag
 
+    def generate_table_footer(self, a_table_tag: Tag, a_table: TTable, a_id: str) -> Tag | None:
+        """ Generate the table footer.
+        Methods in this section have to be redirected to the correct table.
+
+        :param a_table_tag:     The HTML table template
+        :param a_table:         The TTable object, parent for the footer to create
+        :param a_id:            The new ID for method calls and references
+        :return:                The footer inner HTML
+        :rtype:                 bs4 footer TAG
+        """
+        x_foot_templ = a_table_tag.select_one('tfoot')
+        if not x_foot_templ:
+            return None
+        x_foot = deepcopy(x_foot_templ)
+
+        for x_tag in x_foot.css.select('[data-eezz-json]'):
+            x_json_str = x_tag.get('data-eezz-json')
+            x_json_str = self.format_attributes_update(x_json_str, lambda x: x.replace('this', a_id))
+            x_tag.attrs['data-eezz-json'] = self.format_attributes('data-eezz-json', x_json_str, lambda x: x, a_id)
+        for x_tag in x_foot.css.select('[data-eezz-reference=table]'):
+            x_tag.attrs = {x: y.format(table=a_table) for x, y in x_tag.attrs.items()}
+            pass
+        return x_foot
+
     def generate_html_table(self, a_table_tag: Tag, a_id: str) -> dict:
         """ Generates a table structure in four steps
 
@@ -367,12 +398,16 @@ class THttpAgent(TWebSocketAgent):
         x_list_html_rows  = [(self.generate_html_rows(x_html_cells, x_tag_tr, x_row)) for x_html_cells, x_tag_tr, x_row in x_list_html_cells]
 
         # separate header and body
+        x_footer = a_table_tag.select_one('tfoot')
+        x_footer = self.generate_table_footer(a_table_tag, x_table_obj, a_id)
+
         # x_tbl_id = a_table_tag["id"]
         x_html = dict()
-        x_html['template'] = a_table_tag.prettify()
-        x_html['caption']  = a_table_tag.caption.string.format(table=x_table_obj)
-        x_html['thead']    = ''.join([str(x) for x in x_list_html_rows[:1]]) if len(x_list_html_rows) > 0 else ''
-        x_html['tbody']    = ''.join([str(x) for x in x_list_html_rows[1:]]) if len(x_list_html_rows) > 1 else ''
+        x_html['template']  = a_table_tag.prettify()
+        x_html['caption']   = a_table_tag.caption.string.format(table=x_table_obj)
+        x_html['thead']     = ''.join([str(x) for x in x_list_html_rows[:1]]) if len(x_list_html_rows) > 0 else ''
+        x_html['tbody']     = ''.join([str(x) for x in x_list_html_rows[1:]]) if len(x_list_html_rows) > 1 else ''
+        x_html['tfoot']     = x_footer.tr.prettify() if x_footer else ''
         return x_html
 
     def generate_html_grid(self, a_tag: Tag) -> dict:
@@ -417,7 +452,7 @@ class THttpAgent(TWebSocketAgent):
                             x_template.attrs['data-eezz-json'] = self.format_attributes_update(x_json_str, lambda x: x.format(detail=x_detail))
                         for x_key, x_val in x_attrs.items():
                             x_template.attrs.update({x_key: x_val})
-                        x_template.attrs['id'] = f'{a_row.row_id}.{x_cell.index}.{x_cnt}'
+                        x_template.attrs['id'] = f'{a_row.row_id}-{x_cell.index}-{x_cnt}'
                         if x_template.string:
                             x_template.string = x_template.string.format(cell=x_cell)
                         x_tag.insert_before(x_template)
@@ -431,7 +466,7 @@ class THttpAgent(TWebSocketAgent):
                 for x_key, x_val in x_attrs.items():
                     x_tag.attrs.update({x_key: x_val})
                 x_tag.attrs['data-eezz-index'] = str(x_cell.index)
-                x_tag.attrs['id'] = f'{a_row.row_id}.{x_cell.index}'
+                x_tag.attrs['id'] = f'{a_row.row_id}-{x_cell.index}'
                 if x_tag.string:
                     x_tag.string = x_tag.string.format(cell=x_cell)
 

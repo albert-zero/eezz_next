@@ -17,7 +17,7 @@ import re
 import itertools
 import json
 import sys
-from   bs4                  import Tag
+from   bs4                  import Tag, BeautifulSoup
 from   pathlib              import Path
 from   importlib            import import_module
 from   lark                 import Lark, Transformer, Tree
@@ -231,6 +231,15 @@ class TServiceCompiler(Transformer):
         """ :meta private: """
         return item
 
+    def set_style(self, item):
+        x_style_dict = dict()
+
+        if x_style := self.m_tag.attrs.get('style'):
+            x_style_dict = {y[0]: y[1] for y in [x.split(':') for x in x_style.strip(';').split(';')]}
+        x_style_dict.update({item[0]: item[1]})
+        self.m_tag.attrs['style'] = ';'.join([f'{x}:{y}' for x, y in x_style_dict.items()])
+        return {}
+
     @staticmethod
     def setenv(item):
         """ :meta private: """
@@ -255,11 +264,6 @@ class TServiceCompiler(Transformer):
     def update_section(item):
         """ :meta private: Parse 'update' section """
         return {'update': item[0]}
-
-    @staticmethod
-    def download(item):
-        """ :meta private: Parse 'download' section """
-        return {'download': {'document': item[0].children[0], 'file': item[1].children[0]}}
 
     @staticmethod
     def update_item(item):
@@ -380,7 +384,12 @@ class TQuery:
 # --- Section for module tests
 def test_parser(source: str) -> json:
     """ :meta private: """
-    x_parent_tag   = Tag(name='text')
+
+    html = '<td style="font-size: .8em; font-family: monospace; background-color: rgb(244, 244, 244);"></td>'
+    html = """ <area shape="rect" coords="  0, 0,  40, 20" data-eezz="event:  navigate(where_togo = 3), update: this.tbody"/>"""
+    # Create soup from html
+    soup           = BeautifulSoup(html, 'html.parser')
+    x_parent_tag   = soup.area
     x_parser       = Lark.open(str(TService().resource_path / 'eezz.lark'))
 
     try:
@@ -388,6 +397,7 @@ def test_parser(source: str) -> json:
         x_transformer  = TServiceCompiler(x_parent_tag, 'Directory')
         x_list_json    = x_transformer.transform(x_syntax_tree)
 
+        logger.debug(x_parent_tag.prettify())
         if type(x_list_json) is Tree:
             x_result = list(itertools.accumulate(x_list_json.children, lambda a, b: a | b))[-1]
             logger.debug(x_result)
@@ -412,6 +422,11 @@ class TestRow:
     row_id: int = 100
 
 
+def test_parser_area():
+    source = """ event:  navigate(where_togo = 3), update: this.tbody  """
+    test_parser(source=source)
+
+
 if __name__ == '__main__':
     """ :meta private: """
     # test parser
@@ -420,8 +435,8 @@ if __name__ == '__main__':
     logger.debug(f'{TService().resource_path=}')
     logger.debug("Test Lark Parser")
 
-    logger.debug("download statement")
-    test_parser(source="download: document(name=test1, author=albert), files( main=main, prev=prev )")
+    test_parser_area()
+    exit(0)
 
     logger.debug("assign statement")
     x_source = """assign: examples.directory.TDirView(title="", path="/Users/alzer/Projects/github/eezz_full/webroot")"""
@@ -446,20 +461,15 @@ if __name__ == '__main__':
         x_reslist.append(x_json_obj)
     logger.debug(x_reslist)
 
-    x_source = 'name: directory, assign: examples.directory.TDirView(path=".", title="dir")'
+    x_source = 'name: directory, assign: examples.directory.TDirView(path=".", title="dir"), process:sync'
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
 
-    x_source = "event: FormInput.append(table_row = [field_index.value])"
+    x_source = "event: FormInput.append(table_row = [field_index.value]), process:sync"
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
 
-    x_source = """
-                            template: cell (detail),     
-                            onload: this.src = read_file(file = this.file),                                                   
-                            update: 
-                                progress_detail.style.width = download_file(file = this.file, stream = this.bytestream),
-                                progress_detail.innerHTML   = progress_detail.style.width   """
+    x_source = """ template: reference(table), style:visibility={table.visible_navigation} """
 
     x_result = test_parser(source=x_source)
     logger.debug(f'{x_source} ==> {x_result}')
