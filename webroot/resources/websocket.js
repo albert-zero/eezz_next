@@ -163,6 +163,20 @@ function dynamic_update(a_update_json) {
 
     if (x_attr == 'innerHTML') {
         x_elem.innerHTML = a_update_json.value;
+
+        x_new_elements   = x_elem.querySelectorAll('[data-eezz-onload]');
+        if (x_new_elements) {
+            var x_function_call;
+            var x_function;
+
+            for (var i = 0; i < x_new_elements.length; i++) {
+                x_function_call = x_new_elements[i].getAttribute('data-eezz-onload');
+                x_function      = x_function_call.split('(')[0];
+                if (typeof window[x_function] === 'function') {
+                    window[x_function](x_new_elements[i]);
+                }
+            }
+        }
         return;
     }
 
@@ -246,17 +260,24 @@ function tree_expand(a_node, subtree_value) {
 
 // Read one file as set of chunks
 // ------------------------------------------------------------------------------------------
-function readOneFile(a_file, a_reference, a_response, volume) {
+function readOneFile(a_file, a_reference, a_response, src_files, src_volume, all_files, all_volume) {
     var x_chunk_size   = 1000000;
     var x_stream_descr = {
             'opcode':       'continue',
+            'all_files':    all_files,
+            'all_volume':   all_volume,
+            'src_files':    src_files,
+            'src_volume':   src_volume,
+            'source':       a_reference,
             'name':         a_file.name,
-            'chunk_size':   x_chunk_size,
-            'source':       a_reference};
+            'chunk_size':   x_chunk_size};
 
     var x_finish_descr = {
             'opcode':       'finished',
-            'volume':       volume,
+            'all_volume':   all_volume,
+            'all_files':    all_files,
+            'src_files':    src_files,
+            'src_volume':   src_volume,
             'source':       a_reference};
 
     var x_sequence = 0;
@@ -274,6 +295,8 @@ function readOneFile(a_file, a_reference, a_response, volume) {
             x_stream_descr['name']       = a_file.name;
             x_stream_descr['size']       = a_file.size;
             x_stream_descr['sequence']   = x_sequence;
+            x_stream_descr['source']     = a_reference;
+
             for (var x_key in a_response.update) {
                 if (a_response.update[x_key]['args']) {
                     a_response.update[x_key]['args']['file']        = x_stream_descr;
@@ -307,36 +330,61 @@ function read_files(a_descr) {
     var x_source_list = a_descr['value'].files;
     var x_response    = a_descr;
 
+    var x_all_files  = 0;
+    var x_all_volume = 0;
+
+    // Evaluate the full amount of files and data to transfer
+    for (var i = 0; i < x_source_list.length; i++) {
+        var x_reference      = x_source_list[i];
+        var x_elements       = document.querySelector('[data-eezz-reference = ' + x_source_list[i] + ']');
+        var x_file_element   = x_elements;
+	    for (var j = 0; j < x_file_element.files.length; j++) {
+	        x_all_files  += 1;
+	        x_all_volume += x_file_element.files[j].size;
+        }
+    }
+
     for (var i = 0; i < x_source_list.length; i++) {
         var x_reference      = x_source_list[i];
         var x_elements       = document.querySelectorAll('[data-eezz-reference = ' + x_source_list[i] + ']');
         var x_file_element   = x_elements[0];
-        var x_update_str     = x_file_element.  getAttribute('data-eezz-json');
+        var x_update_str     = x_file_element.getAttribute('data-eezz-json');
         var x_update         = JSON.parse(x_update_str);
         x_response['update'] = x_update.update;
 
-        // each element might have one or more selected files
+        if (x_update.process) {
+            x_response['process'] = x_update.process;
+        }
+
+        // Evaluate the amount of files and data to transfer for a specific source
+        var x_src_volume = 0;
+        for (var j = 0; j < x_file_element.files.length; j++) {
+	        var x_file       = x_file_element.files[j];
+	        x_src_volume    += x_file.size;
+        }
+
 	    for (var j = 0; j < x_file_element.files.length; j++) {
-	        var x_file  = x_file_element.files[j];
-            readOneFile(x_file, x_reference, x_response, x_file_element.files.length);
+	        var x_file       = x_file_element.files[j];
+	        var x_src_files  = x_file_element.files.length;
+            readOneFile(x_file, x_reference, x_response, x_src_files, x_src_volume, x_all_files, x_all_volume);
 	    }
     }
 }
 
 // ------------------------------------------------------------------------------------------
-function eezz_onload(aElement) {
+function eezzy_onload(aElement) {
     var x_json = JSON.parse(aElement.getAttribute('data-eezz-json'));
-    for (x_key in x_json) {
-        if (x_key.startswith('this')) {
-            x_new_key = x_key.replace('this', aElement['id']);
-            x_json.update[x_new_key] = x_json[x_key];
-        }
-    }
-    x_json['call'] = {'function': 'get_selected_row', 'args': {}, 'id': x_json.call['id']}
-    setTimeout(function(a_args) {
-        x_response = JSON.stringify(a_args);
+    var x_json_onload = x_json['onload'];
+    var x_key_source  = Object.keys(x_json_onload)[0];
+    var x_new_key     = x_key_source.replace('this', aElement.id);
+    var x_json_update = {'update': {}};
+
+    x_json_update['update'][x_new_key] = x_json_onload[x_key_source];
+    console.log(JSON.stringify(x_json_update));
+    setTimeout(function(a_json_args) {
+        x_response = JSON.stringify(a_json_args);
         g_eezz_web_socket.send(x_response);
-     }, 0, x_json);
+    }, 0, x_json_update);
 }
 
 // Function collects all eezz events from page using WEB-socket to

@@ -1365,7 +1365,7 @@ Cells which are not included as template for table data are used to add a consta
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The row with values rendered to HZML</p>
+<dd class="field-even"><p>The row with values rendered to HTML</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1840,8 +1840,11 @@ This way you could implement a monitor measurement, sending actual data in some 
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>socket_server</strong> (<a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><em>TWebSocketClient</em></a>) – The server to send the result. None for test and validation only</p></li>
 <li><p><strong>fkt_id</strong> (<em>str</em>) – Reference tp the function object</p></li>
-<li><p><strong>request</strong> (<em>dict</em><em>[</em><em>key:value</em><em>]</em>) – The browser JavaScript request, containing the method to call. The request takes the result of the method call and returns it to the rendering machine to return it to JavaScript.</p></li>
-<li><p><strong>do_loop</strong> (<em>bool</em>) – If True the thread does not return, but allows the method to trigger any number of update events for the browser.</p></li>
+<li><p><strong>request</strong> (<em>dict</em>) – The browser JavaScript request, containing the method to call.
+The request takes the result of the method call and returns it to the rendering
+machine to return it to JavaScript.</p></li>
+<li><p><strong>do_loop</strong> (<em>bool</em>) – If True the thread does not return, but allows the method to trigger any number of
+update events for the browser.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1885,11 +1888,11 @@ independently of the main application flow.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Variables<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>m_web_socket</strong> – The main server socket for accepting client connections.</p></li>
-<li><p><strong>m_web_addr</strong> – The tuple containing the IP address and port where the server listens.</p></li>
-<li><p><strong>m_clients</strong> – A dictionary mapping client sockets to their handler instances.</p></li>
-<li><p><strong>m_agent_class</strong> – The class type used for creating client agent instances.</p></li>
-<li><p><strong>m_running</strong> – A boolean flag indicating if the server is currently active and accepting connections.</p></li>
+<li><p><strong>m_web_socket</strong> (<em>socket.socket</em>) – The main server socket for accepting client connections.</p></li>
+<li><p><strong>m_web_addr</strong> (<em>tuple</em>) – The tuple containing the IP address and port where the server listens.</p></li>
+<li><p><strong>m_clients</strong> (<em>dict</em>) – A dictionary mapping client sockets to their handler instances.</p></li>
+<li><p><strong>m_agent_class</strong> (<em>type</em><em>[</em><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><em>TWebSocketAgent</em></a><em>]</em>) – The class type used for creating client agent instances.</p></li>
+<li><p><strong>m_running</strong> (<em>bool</em>) – A boolean flag indicating if the server is currently active and accepting connections.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1988,7 +1991,7 @@ formatted for a WebSocket handshake.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TWebSocketClient.gen_key">
-<span class="sig-name descname"><span class="pre">gen_key</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.gen_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.gen_key" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">gen_key</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketClient.gen_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketClient.gen_key" title="Link to this definition"></a></dt>
 <dd><p>Generates a WebSocket accept key by concatenating the client’s key with a
 GUID and hashing the result using SHA-1, followed by base64 encoding. This
 process is described in RFC 6455, Section 4.2.2, which is part of the
@@ -2014,7 +2017,7 @@ request and subsequently sending the response. This function is
 intended to ensure thread safety when accessing shared resources.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>request</strong> – A dictionary containing the details of the request to be
+<dd class="field-odd"><p><strong>request</strong> (<em>dict</em>) – A dictionary containing the details of the request to be
 processed. It typically includes all necessary information
 required by the client for processing.</p>
 </dd>
@@ -2051,8 +2054,8 @@ web socket communication.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x_opcode</strong> (<em>int</em><em>, </em><em>typically a WebSocket OpCode</em>) – OpCode of the frame to be read, determining the type of frame.</p></li>
-<li><p><strong>a_mask_vector</strong> (<em>Optional</em><em>[</em><em>bytes</em><em>]</em><em>, </em><em>4-byte sequence if present</em>) – Mask vector for unmasking the frame’s payload, if present.</p></li>
+<li><p><strong>x_opcode</strong> (<em>int</em>) – OpCode of the frame to be read, determining the type of frame.</p></li>
+<li><p><strong>a_mask_vector</strong> (<em>bytes</em>) – Mask vector for unmasking the frame’s payload, if present.</p></li>
 <li><p><strong>a_payload_len</strong> (<em>int</em>) – Length of the payload that needs to be read from the socket.</p></li>
 </ul>
 </dd>
@@ -2133,8 +2136,8 @@ and sends the frame through the established socket connection.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>a_data</strong> (<em>bytes</em>) – The payload data to be sent in the WebSocket frame.</p></li>
-<li><p><strong>a_opcode</strong> (<em>hex</em><em>, </em><em>optional</em>) – The opcode for the frame, indicating the type of data being sent (e.g., text, binary).</p></li>
-<li><p><strong>a_final</strong> (<em>hex</em><em>, </em><em>optional</em>) – A flag indicating if this is the final fragment in a message. Defaults to 1 &lt;&lt; 7.</p></li>
+<li><p><strong>a_opcode</strong> (<em>hex</em>) – The opcode for the frame, indicating the type of data being sent (e.g., text, binary).</p></li>
+<li><p><strong>a_final</strong> (<em>hex</em>) – A flag indicating if this is the final fragment in a message. Defaults to 1 &lt;&lt; 7.</p></li>
 <li><p><strong>a_mask_vector</strong> (<em>list</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – A list of four byte mask keys used for masking the payload data.
 If None, no masking is applied. Must be exactly 4 bytes if provided.</p></li>
 </ul>

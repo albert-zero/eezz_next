@@ -44,6 +44,10 @@ from    threading   import Condition, Lock
 import  sqlite3
 from    loguru      import logger
 
+# forward declaration
+TTable      = NewType('TTable',     None)
+TTableCell  = NewType('TTableCell', None)
+
 
 class TTableException(Exception):
     """ The table exception: trying to insert a double row-id """
@@ -74,8 +78,13 @@ class TSort(Enum):
 @dataclass
 class TTableCellDetail:
     """ Container for TTableCell details """
-    value:  str = None      #: :meta private:
-    source: str = None      #: :meta private:
+    parent: TTableCell          #: :meta private:
+    value:  str = None          #: :meta private:
+    source: str = None          #: :meta private:
+
+    @property
+    def id(self) -> str:
+        return self.parent.id if self.parent else ''
 
 
 @dataclass(kw_only=True)
@@ -96,6 +105,7 @@ class TTableCell:
     """
     name:   str                     #: :meta private: Name of the column
     value:  Any                     #: :meta private: Value of the cell
+    id:     str         = ''        #: :meta private: Unique ID evaluated in process
     width:  int         = 10        #: :meta private: calculated width of a cell
     index:  int         = 0         #: :meta private: calculated index of a cell
     type:   str         = 'str'     #: :meta private: calculated type (could also be user defined)
@@ -112,7 +122,7 @@ class TTableCell:
     @detail.setter
     def detail(self, values: list):
         """ :meta private: """
-        self.details = [self.detail_class(value=x, source=self.name) for x in values]
+        self.details = [self.detail_class(value=x, source=self.name, parent=self) for x in values]
 
 
 @dataclass(kw_only=True)
@@ -150,10 +160,6 @@ class TTableColumn:
     sort:       bool    = True      #: :meta private: Sort direction of the column
     type:       str     = 'str'     #: :meta private: Type of the column
     filter:     str     = None      #: :meta private: Filter string
-
-
-# forward declaration
-TTable = NewType('TTable', None)
 
 
 @dataclass(kw_only=True)
@@ -483,15 +489,15 @@ class TTable(UserList):
             if search_filter(x_row):
                 yield tuple(x_value for x_value in x_row.get_values_list())
 
-    def on_select(self, index: str) -> TTableRow | None:
+    def on_select(self, row: str) -> TTableRow | None:
         """ Updates the selected row in the table if a row with the given index
         exists. If the row exists, it sets the selected row to it and
         returns the row. If the row does not exist, it returns None.
 
-        :param index:   The unique identifier for the table row that is to be selected.
+        :param row_id:   The unique identifier for the table row that is to be selected.
         :return:        The selected table row if it exists, otherwise None.
         """
-        if selected_row := self.table_index.get(index):
+        if selected_row := self.table_index.get(row_id):
             self.selected_row = selected_row
             return self.selected_row
         else:

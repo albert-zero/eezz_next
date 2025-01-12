@@ -48,10 +48,11 @@ class TFile:
     :param size:        The size of the file
     :param chunk_size:  Fixed size for each chunk of data, except the last element
     """
-    file_type:   str    #: :meta private:
-    destination: Path   #: :meta private:
-    size:        int    #: :meta private:
-    chunk_size:  int    #: :meta private:
+    file_type:   str        #: :meta private:
+    destination: Path       #: :meta private:
+    size:        int        #: :meta private:
+    chunk_size:  int        #: :meta private:
+    transferred: int = 0    #: :meta private:
 
     def __post_init__(self):
         self.chunk_count = divmod(self.size, self.chunk_size)[0] + 1
@@ -61,6 +62,10 @@ class TFile:
         with self.destination.open('w+b') as x_output:
             x_output.seek(self.size-1)
             x_output.write(b'\x00')
+
+    @property
+    def name(self) -> str:
+        return self.destination.name
 
     def write(self, raw_data: Any, sequence_nr: int, mode: TFileMode = TFileMode.NORMAL) -> str:
         """ Write constant chunks of raw data to file. Only the last chunk might be smaller.

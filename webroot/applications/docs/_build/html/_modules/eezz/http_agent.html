@@ -115,8 +115,8 @@
 <span class="sd">        * **initialize**: The browser sends the complete HTML for analysis.</span>
 <span class="sd">        * **call**: The request issues a method call and the result is sent back to the browser</span>
 
-<span class="sd">        :param request_data: The request send by the browser</span>
-<span class="sd">        :return: Response in JSON stream, containing valid HTML parts for the browser</span>
+<span class="sd">        :param request_data:    The request send by the browser</span>
+<span class="sd">        :return:                Response in JSON stream, containing valid HTML parts for the browser</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_updates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="n">x_tasks</span>   <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
@@ -221,10 +221,10 @@
 <span class="sd">        The agent reads the source, compiles the data-eezz sections and adds the web-socket component</span>
 <span class="sd">        It returns the enriched document</span>
 
-<span class="sd">        :param a_resource: The path to the HTML document, containing EEZZ extensions</span>
-<span class="sd">        :type a_resource: pathlib.Path</span>
-<span class="sd">        :param a_query: The query string of the URL</span>
-<span class="sd">        :return: The compiled version of the HTML file</span>
+<span class="sd">        :param a_resource:  The path to the HTML document, containing EEZZ extensions</span>
+<span class="sd">        :type a_resource:   pathlib.Path</span>
+<span class="sd">        :param a_query:     The query string of the URL</span>
+<span class="sd">        :return:            The compiled version of the HTML file</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_html</span>    <span class="o">=</span> <span class="n">a_resource</span>
         <span class="n">x_service</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span>
@@ -272,11 +272,11 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Compile data-eezz-json to data-eezz-compile,</span>
 <span class="sd">        create tag attributes and generate tag-id to manage incoming requests</span>
 
-<span class="sd">        :param a_parser: The Lark parser to compile EEZZ to json</span>
-<span class="sd">        :param a_tag_list: HTML-Tag to compile</span>
-<span class="sd">        :param a_id: The ID of the tag to be identified for update</span>
-<span class="sd">        :param a_query: The query of the HTML request</span>
-<span class="sd">        :return: None</span>
+<span class="sd">        :param a_parser:    The Lark parser to compile EEZZ to json</span>
+<span class="sd">        :param a_tag_list:  HTML-Tag to compile</span>
+<span class="sd">        :param a_id:        The ID of the tag to be identified for update</span>
+<span class="sd">        :param a_query:     The query of the HTML request</span>
+<span class="sd">        :return:            None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># logger.debug(f&#39;compile data \n{a_tag_list[0].prettify()}&#39;)</span>
         <span class="n">x_service</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span>
@@ -331,7 +331,7 @@
 <span class="sd">        :param a_key:       Thw key string to pick the items in an HTML tag</span>
 <span class="sd">        :param a_value:     The dictionary in string format to be formatted</span>
 <span class="sd">        :param a_fmt_funct: The function to be called to format the values</span>
-<span class="sd">        :return: The formatted string</span>
+<span class="sd">        :return:            The formatted string</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">a_key</span> <span class="o">==</span> <span class="s1">&#39;data-eezz-json&#39;</span><span class="p">:</span>
             <span class="n">x_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">a_value</span><span class="p">)</span>
@@ -376,12 +376,12 @@
     <span class="k">def</span> <span class="nf">generate_html_cells</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_tag</span><span class="p">:</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">a_cell</span><span class="p">:</span> <span class="n">TTableCell</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tag</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Generate HTML cells</span>
 
-<span class="sd">        :param  a_tag:  The template tag to generate a table cell</span>
-<span class="sd">        :type   a_tag:  bs4.Tag</span>
-<span class="sd">        :param  a_cell: The cell providing the data for the HTML tag element</span>
-<span class="sd">        :type   a_cell: TTableCell</span>
-<span class="sd">        :return: A new tag, based on the template and the cell data</span>
-<span class="sd">        :rtype:  bs4.Tag</span>
+<span class="sd">        :param  a_tag:      The template tag to generate a table cell</span>
+<span class="sd">        :type   a_tag:      bs4.Tag</span>
+<span class="sd">        :param  a_cell:     The cell providing the data for the HTML tag element</span>
+<span class="sd">        :type   a_cell:     TTableCell</span>
+<span class="sd">        :return:            A new tag, based on the template and the cell data</span>
+<span class="sd">        :rtype:             bs4.Tag</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_fmt_attrs</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_attributes</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">z</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">a_cell</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
         <span class="n">x_new_tag</span>   <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">a_tag</span><span class="p">)</span>
@@ -404,10 +404,10 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; This operation add fixed cells to the table.</span>
 <span class="sd">        Cells which are not included as template for table data are used to add a constant info to the row</span>
 
-<span class="sd">        :param a_html_cells: A list of cells to build up a row</span>
-<span class="sd">        :param a_tag: The parent containing the templates for the row</span>
-<span class="sd">        :param a_row: The table row values to insert</span>
-<span class="sd">        :return: The row with values rendered to HZML</span>
+<span class="sd">        :param a_html_cells:    A list of cells to build up a row</span>
+<span class="sd">        :param a_tag:           The parent containing the templates for the row</span>
+<span class="sd">        :param a_row:           The table row values to insert</span>
+<span class="sd">        :return:                The row with values rendered to HTML</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_fmt_attrs</span>  <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_attributes</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">z</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="n">a_row</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
         <span class="n">x_html_cells</span> <span class="o">=</span> <span class="p">[[</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">x</span><span class="p">)]</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">has_attr</span><span class="p">(</span><span class="s1">&#39;data-eezz-compiled&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">a_html_cells</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">a_tag</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;th,td&#39;</span><span class="p">)]</span>
@@ -467,12 +467,12 @@
 <span class="sd">        3. Evaluate the table cells</span>
 <span class="sd">        4. Send the result separated by table main elements</span>
 
-<span class="sd">        :param  a_id:   Unique element ID</span>
-<span class="sd">        :type   a_id:   str</span>
-<span class="sd">        :param  a_table_tag: The parent table tag to produce the output</span>
-<span class="sd">        :type   a_table_tag: bs4.Tag</span>
-<span class="sd">        :return: The generated table separated in sections as dictionary</span>
-<span class="sd">        :rtype:  dict</span>
+<span class="sd">        :param  a_id:           Unique element ID</span>
+<span class="sd">        :type   a_id:           str</span>
+<span class="sd">        :param  a_table_tag:    The parent table tag to produce the output</span>
+<span class="sd">        :type   a_table_tag:    bs4.Tag</span>
+<span class="sd">        :return:                The generated table separated in sections as dictionary</span>
+<span class="sd">        :rtype:                 dict</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_table_obj</span><span class="p">:</span> <span class="n">TTable</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span><span class="n">a_id</span><span class="p">)</span>
         <span class="n">x_row_template</span> <span class="o">=</span> <span class="n">a_table_tag</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;tr[data-eezz-compiled]&#39;</span><span class="p">)</span>
@@ -496,11 +496,8 @@
         <span class="n">x_list_html_cells</span> <span class="o">=</span> <span class="p">[([</span><span class="bp">self</span><span class="o">.</span><span class="n">generate_html_cells</span><span class="p">(</span><span class="n">x_tag</span><span class="p">,</span> <span class="n">x_cell</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_tag</span><span class="p">,</span> <span class="n">x_cell</span> <span class="ow">in</span> <span class="n">x_row_templates</span><span class="p">],</span> <span class="n">x_tag_tr</span><span class="p">,</span> <span class="n">x_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_row_templates</span><span class="p">,</span> <span class="n">x_tag_tr</span><span class="p">,</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_format_cell</span><span class="p">]</span>
         <span class="n">x_list_html_rows</span>  <span class="o">=</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">generate_html_rows</span><span class="p">(</span><span class="n">x_html_cells</span><span class="p">,</span> <span class="n">x_tag_tr</span><span class="p">,</span> <span class="n">x_row</span><span class="p">))</span> <span class="k">for</span> <span class="n">x_html_cells</span><span class="p">,</span> <span class="n">x_tag_tr</span><span class="p">,</span> <span class="n">x_row</span> <span class="ow">in</span> <span class="n">x_list_html_cells</span><span class="p">]</span>
 
-        <span class="c1"># separate header and body</span>
-        <span class="n">x_footer</span> <span class="o">=</span> <span class="n">a_table_tag</span><span class="o">.</span><span class="n">select_one</span><span class="p">(</span><span class="s1">&#39;tfoot&#39;</span><span class="p">)</span>
-        <span class="n">x_footer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_table_footer</span><span class="p">(</span><span class="n">a_table_tag</span><span class="p">,</span> <span class="n">x_table_obj</span><span class="p">,</span> <span class="n">a_id</span><span class="p">)</span>
+        <span class="n">x_footer</span>          <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_table_footer</span><span class="p">(</span><span class="n">a_table_tag</span><span class="p">,</span> <span class="n">x_table_obj</span><span class="p">,</span> <span class="n">a_id</span><span class="p">)</span>
 
-        <span class="c1"># x_tbl_id = a_table_tag[&quot;id&quot;]</span>
         <span class="n">x_html</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="n">x_html</span><span class="p">[</span><span class="s1">&#39;template&#39;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">a_table_tag</span><span class="o">.</span><span class="n">prettify</span><span class="p">()</span>
         <span class="n">x_html</span><span class="p">[</span><span class="s1">&#39;caption&#39;</span><span class="p">]</span>   <span class="o">=</span> <span class="n">a_table_tag</span><span class="o">.</span><span class="n">caption</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">table</span><span class="o">=</span><span class="n">x_table_obj</span><span class="p">)</span>
@@ -544,11 +541,16 @@
         <span class="n">x_format_cell</span>    <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">y</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">a_row</span><span class="o">.</span><span class="n">column_descr</span><span class="p">,</span> <span class="n">a_row</span><span class="o">.</span><span class="n">cells</span><span class="p">)}</span>
         <span class="n">x_new_element</span>    <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">tag_template</span><span class="p">)</span>
 
+        <span class="c1"># Cells might split into details</span>
         <span class="k">if</span> <span class="n">x_cell_templates</span> <span class="o">:=</span> <span class="n">x_new_element</span><span class="o">.</span><span class="n">css</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;[data-eezz-template=cell]&#39;</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">x_tag</span> <span class="ow">in</span> <span class="n">x_cell_templates</span><span class="p">:</span>
-                <span class="n">x_ref</span>   <span class="o">=</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data-eezz-reference&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
-                <span class="n">x_cell</span>  <span class="o">=</span> <span class="n">x_format_cell</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x_ref</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="kc">None</span><span class="p">)</span>
-                <span class="n">x_cnt</span>   <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">x_ref</span>    <span class="o">=</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data-eezz-reference&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+                <span class="n">x_cell</span>   <span class="o">=</span> <span class="n">x_format_cell</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x_ref</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">x_cnt</span>    <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">x_format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+                <span class="c1"># Cells details part and continue.</span>
+                <span class="c1"># Detail tags have to be generated from template. The template will be removed as a last step</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_ref</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">x_ref</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;detail&#39;</span><span class="p">:</span>
                     <span class="n">x_templates</span> <span class="o">=</span> <span class="p">[(</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">x_tag</span><span class="p">),</span> <span class="n">detail</span><span class="p">)</span> <span class="k">for</span> <span class="n">detail</span> <span class="ow">in</span> <span class="n">x_cell</span><span class="o">.</span><span class="n">details</span><span class="p">]</span>
                     <span class="k">for</span> <span class="n">x_template</span><span class="p">,</span> <span class="n">x_detail</span> <span class="ow">in</span> <span class="n">x_templates</span><span class="p">:</span>
@@ -557,6 +559,8 @@
                             <span class="n">x_template</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;data-eezz-json&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_attributes_update</span><span class="p">(</span><span class="n">x_json_str</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">detail</span><span class="o">=</span><span class="n">x_detail</span><span class="p">))</span>
                         <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_val</span> <span class="ow">in</span> <span class="n">x_attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                             <span class="n">x_template</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">x_key</span><span class="p">:</span> <span class="n">x_val</span><span class="p">})</span>
+
+                        <span class="c1"># Generate unique ID, format attributes and strings</span>
                         <span class="n">x_template</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">a_row</span><span class="o">.</span><span class="n">row_id</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="n">x_cell</span><span class="o">.</span><span class="n">index</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="n">x_cnt</span><span class="si">}</span><span class="s1">&#39;</span>
                         <span class="k">if</span> <span class="n">x_template</span><span class="o">.</span><span class="n">string</span><span class="p">:</span>
                             <span class="n">x_template</span><span class="o">.</span><span class="n">string</span> <span class="o">=</span> <span class="n">x_template</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">x_cell</span><span class="p">)</span>
@@ -565,15 +569,23 @@
                     <span class="n">x_tag</span><span class="o">.</span><span class="n">decompose</span><span class="p">()</span>
                     <span class="k">continue</span>
 
+                <span class="c1"># Cells main part</span>
+                <span class="c1"># Generate unique ID, format call parameter, attributes and strings</span>
                 <span class="n">x_attrs</span> <span class="o">=</span> <span class="p">{</span><span class="n">x_key</span><span class="p">:</span> <span class="n">x_val</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">x_cell</span><span class="p">)</span> <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_val</span> <span class="ow">in</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x_key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;data-eezz&#39;</span><span class="p">)}</span>
                 <span class="k">if</span> <span class="n">x_json_str</span> <span class="o">:=</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data-eezz-json&#39;</span><span class="p">):</span>
+                    <span class="n">x_json_obj</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x_json_str</span><span class="p">)</span>
+                    <span class="n">x_format</span>   <span class="o">=</span> <span class="n">x_json_obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;format&#39;</span><span class="p">)</span>
                     <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;data-eezz-json&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_attributes_update</span><span class="p">(</span><span class="n">x_json_str</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">x_cell</span><span class="p">))</span>
+
                 <span class="k">for</span> <span class="n">x_key</span><span class="p">,</span> <span class="n">x_val</span> <span class="ow">in</span> <span class="n">x_attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                     <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">x_key</span><span class="p">:</span> <span class="n">x_val</span><span class="p">})</span>
+
                 <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;data-eezz-index&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">x_cell</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
                 <span class="n">x_tag</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">a_row</span><span class="o">.</span><span class="n">row_id</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="n">x_cell</span><span class="o">.</span><span class="n">index</span><span class="si">}</span><span class="s1">&#39;</span>
                 <span class="k">if</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">string</span><span class="p">:</span>
                     <span class="n">x_tag</span><span class="o">.</span><span class="n">string</span> <span class="o">=</span> <span class="n">x_tag</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">x_cell</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">x_format</span><span class="p">:</span>
+                        <span class="n">x_tag</span><span class="o">.</span><span class="n">string</span> <span class="o">=</span> <span class="n">x_format</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x_tag</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">&#39;</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">x_new_element</span></div>
 </div>

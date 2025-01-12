@@ -11,12 +11,11 @@ The database is created in sqlite3 in the first call of the class.
 
 """
 import sqlite3
-import logging
+from   loguru           import logger
 import itertools
 import os
 from   datetime         import datetime, timezone
 
-from   Crypto.Hash       import SHA256
 from   typing_extensions import override
 
 from   service           import TService
@@ -30,18 +29,14 @@ from   pathlib           import Path
 class TDatabaseColumn(TTableColumn):
     """ Represents a database column as a subclass of a table column.
 
-    This class provides additional features specific to database columns,
-    including the ability to specify whether a column is a primary key, options
-    related to its behavior or properties, and an alias for referencing the
-    column under a different name. It is designed to be extended for specific
-    use cases in managing and interacting with database tables.
+    This class provides additional features specific to database columns, including the ability to specify whether
+    a column is a primary key, options related to its behavior or properties, and an alias for referencing the
+    column under a different name. It is designed to be extended for specific use cases in managing and interacting with
+    database tables.
 
-    :ivar primary_key: Boolean flag indicating if the column is a primary key.
-    :type primary_key: bool
-    :ivar options: Additional options or settings for the column.
-    :type options: str
-    :ivar alias: Alternative name for referring to the column.
-    :type alias: str
+    :ivar bool  primary_key:    Boolean flag indicating if the column is a primary key.
+    :ivar str   options:        Additional options or settings for the column.
+    :ivar str   alias:          Alternative name for referring to the column.
     """
     primary_key: bool = False  #: :meta private:
     options:     str  = ''     #: :meta private:
@@ -59,14 +54,10 @@ class TDatabaseTable(TTable):
     path, name, and column descriptors to construct necessary SQL statements for operations.
     Initialization involves setting up the data structure and checking for primary keys.
 
-    :ivar column_names: List of column names for the database table.
-    :type column_names: list
-    :ivar database_name: The name of the database file to connect or create.
-    :type database_name: str
-    :ivar database_path: File path for the database.
-    :type database_path: str
-    :ivar virtual_len: Virtual length of the dataset.
-    :type virtual_len: int
+    :ivar list  column_names:   List of column names for the database table.
+    :ivar str   database_name:  The name of the database file to connect or create.
+    :ivar str   database_path:  File path for the database.
+    :ivar int   virtual_len:    Virtual length of the dataset.
     """
     column_names:     list      = None
     database_name:    str       = 'default.db'      #: :meta private:
@@ -124,18 +115,11 @@ class TDatabaseTable(TTable):
     def prepare_statements(self):
         """ Prepare SQL statements for a database table based on provided column descriptions.
 
-        This method constructs SQL statements for creating, selecting, counting,
-        and inserting data into a database table. The statements are built using
-        the table title and column descriptions provided to the instance. The
-        resulting SQL statements include a 'CREATE TABLE' statement with primary
-        key constraint, a 'SELECT' statement to retrieve all data, a 'COUNT'
-        statement to tally the rows, and an 'INSERT OR REPLACE' statement for
+        This method constructs SQL statements for creating, selecting, counting, and inserting data into a database table.
+        The statements are built using the table title and column descriptions provided to the instance. The
+        resulting SQL statements include a 'CREATE TABLE' statement with primary key constraint, a 'SELECT' statement to
+        retrieve all data, a 'COUNT' statement to tally the rows, and an 'INSERT OR REPLACE' statement for
         adding or updating records.
-
-        :param self: The instance of the class containing table title and
-                     column descriptions required for preparing SQL statements.
-        :return: None. The function operates by side-effect, updating instance
-                 attributes with the generated SQL statements.
         """
         x_sections = list()
         x_sections.append(f'create table if not exists {self.title}')
@@ -165,7 +149,7 @@ class TDatabaseTable(TTable):
         and then closes the connection ensuring the changes are committed.
 
         :raises sqlite3.Error: If an error occurs while connecting to the database
-            or executing the SQL statement.
+                                or executing the SQL statement.
         """
         sqlite3.register_adapter(datetime, lambda x_val: x_val.isoformat())
         sqlite3.register_converter("datetime", lambda x_val: datetime.fromisoformat(x_val.decode()))
@@ -186,17 +170,12 @@ class TDatabaseTable(TTable):
         The method accepts parameters to specify the type
         of the row, presence check, and any additional attributes.
 
-        :param table_row: List of values representing the table row to append.
-        :type table_row: list
-        :param attrs: Optional dictionary of additional attributes. Defaults to None.
-        :type attrs: dict, optional
-        :param row_type: Type of the row, default is 'body'.
-        :type row_type: str
-        :param row_id: Identifier for the row. If not provided, it is generated automatically.
-        :type row_id: str
-        :param exists_ok: Indicates if appending should proceed without error if row exists. Defaults to True.
-        :type exists_ok: bool
-        :return: A reference to the appended table row.
+        :param list     table_row:  List of values representing the table row to append.
+        :param dict     attrs:      Optional dictionary of additional attributes. Defaults to None.
+        :param str      row_type:   Type of the row, default is 'body'.
+        :param str      row_id:     Identifier for the row. If not provided, it is generated automatically.
+        :param bool     exists_ok:  Indicates if appending should proceed without error if row exists. Defaults to True.
+        :return:                    A reference to the appended table row.
         :rtype: TTableRow
         """
         x_row_descr = list(zip(table_row, self.column_descr))
@@ -227,19 +206,17 @@ class TDatabaseTable(TTable):
                 x_values = [x for x, y in zip(x_row.get_values_list(), self.column_descr)]
                 x_cursor.execute(self.statement_insert.format(*self.column_names), tuple(x_values))
 
-    def navigate(self, where_togo: TNavigation = TNavigation.NEXT, position: int = 0) -> None:
+    def navigate(self, where_togo: int = TNavigation.NEXT.value, position: int = 0) -> None:
         """ Navigate to a specified position within a data structure. This method
         allows navigation through different points based on the parameters provided. If the `position`
         is set to 0, synchronization is disabled by setting `is_synchron` to False.
         This allows to select data and restrict the number of data records transferred to the application.
         It allows the user to navigate in the selected data set if needed
 
-        :param where_togo: The direction or target to which the navigation should occur. Defaults to
-                           `TNavigation.NEXT`.
-        :type where_togo: TNavigation
-        :param position: The index or position to navigate to. If the value is 0, internal synchronization
-                         will be set to False. Defaults to 0.
-        :type position: int
+        :param TNavigation  where_togo: The direction or target to which the navigation should occur.
+                                Defaults to TNavigation.NEXT`.
+        :param int          position:   The index or position to navigate to. If the value is 0, internal synchronization
+                                will be set to False. Defaults to 0.
         :return: None
         """
         super().navigate(where_togo=where_togo, position=position)
@@ -254,7 +231,7 @@ class TDatabaseTable(TTable):
         description. The method subsequently yields visible rows as determined by
         the superclass implementation.
 
-        :param get_all: A boolean to determine if all rows should be retrieved.
+        :param  get_all:    A boolean to determine if all rows should be retrieved.
         :return: A list of visible rows.
         """
         if not self.is_synchron:
@@ -276,7 +253,7 @@ def test_database():
                 TDatabaseColumn(header='Size',       type='integer'),
                 TDatabaseColumn(header='AccessTime', type='text')])
 
-    logging.debug(msg=f'database.py::main: insert elements and commit')
+    logger.debug(f'database.py::main: insert elements and commit')
     x_path = Path.cwd()
     for x_item in x_path.iterdir():
         x_stat = os.stat(x_item.name)
@@ -284,24 +261,13 @@ def test_database():
         x_table.append([str(x_item.name), x_stat.st_size, x_time], attrs={'path': x_item}, row_id=x_item.name)
     x_table.commit()
 
-    logging.debug(msg=f'database.py::main: select elements and print table')
-    x_table.filter_rows([['Size > 20000'],['File like %py']])
+    logger.debug(f'database.py::main: select elements and print table')
+    x_table.filter_rows([['Size > 20000'], ['File like %py']])
     x_table.print()
+    logger.success('test database')
 
 
 # --- section for module tests
 if __name__ == '__main__':
     """:meta private:"""
-    x_service  = TService(root_path=Path(r'C:\Users\alzer\Projects\github\eezz_full\webroot'))
-
-    x_log_path = x_service.logging_path / 'test_database.log'
-    x_log_path.unlink(missing_ok=True)
-    x_database = x_service.document_path / 'test.db'
-    x_database.unlink(missing_ok=True)
-
-    logging.basicConfig(filename=x_log_path, filemode='w', style='{', format='{name} - {levelname} - {message}')
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-
-    logging.debug(msg=f'database.py::main: create database {x_database}')
     test_database()

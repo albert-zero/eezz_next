@@ -152,32 +152,15 @@
 <span class="sd">    specific tasks, handle incoming data frames, generate handshake responses, and maintain</span>
 <span class="sd">    the overall stability of the WebSocket communication channel.</span>
 
-<span class="sd">    :ivar m_headers: Stores HTTP headers relevant for WebSocket handshake.</span>
-<span class="sd">    :vartype m_headers: dict</span>
-
-<span class="sd">    :ivar m_socket: The socket object related to the client connection.</span>
-<span class="sd">    :vartype m_socket: Any</span>
-
-<span class="sd">    :ivar m_cnt: A counter used internally (specific usage/context not documented).</span>
-<span class="sd">    :vartype m_cnt: int</span>
-
-<span class="sd">    :ivar m_buffer: A buffer space used for storing data received over the WebSocket.</span>
-<span class="sd">    :vartype m_buffer: bytearray</span>
-
-<span class="sd">    :ivar m_protocol: The protocol name used during WebSocket handshake.</span>
-<span class="sd">    :vartype m_protocol: str</span>
-
-<span class="sd">    :ivar m_agent_class: The class type of the WebSocket agent associated with this client.</span>
-<span class="sd">    :vartype m_agent_class: type[TWebSocketAgent]</span>
-
-<span class="sd">    :ivar m_agent_client: An instance of the WebSocket agent class, facilitating task delegation.</span>
-<span class="sd">    :vartype m_agent_client: TWebSocketAgent</span>
-
-<span class="sd">    :ivar m_lock: A threading lock used to ensure thread safety during operations.</span>
-<span class="sd">    :vartype m_lock: Lock</span>
-
-<span class="sd">    :ivar m_threads: A dictionary mapping asynchronous callables to their respective threads.</span>
-<span class="sd">    :vartype m_threads: Dict[Callable, Thread]</span>
+<span class="sd">    :ivar dict m_headers:       Stores HTTP headers relevant for WebSocket handshake.</span>
+<span class="sd">    :ivar Any m_socket:         The socket object related to the client connection.</span>
+<span class="sd">    :ivar int m_cnt:            A counter used internally (specific usage/context not documented).</span>
+<span class="sd">    :ivar bytearray m_buffer:   A buffer space used for storing data received over the WebSocket.</span>
+<span class="sd">    :ivar str m_protocol:       The protocol name used during WebSocket handshake.</span>
+<span class="sd">    :ivar type[TWebSocketAgent] m_agent_class: The class type of the WebSocket agent associated with this client.</span>
+<span class="sd">    :ivar TWebSocketAgent m_agent_client: An instance of the WebSocket agent class, facilitating task delegation.</span>
+<span class="sd">    :ivar Lock m_lock:          A threading lock used to ensure thread safety during operations.</span>
+<span class="sd">    :ivar Dict[Callable, Thread] m_threads: A dictionary mapping asynchronous callables to their respective threads.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_client_addr</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">a_agent</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">TWebSocketAgent</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">m_headers</span>              <span class="o">=</span> <span class="kc">None</span>
@@ -239,6 +222,9 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;handle request </span><span class="si">{</span><span class="n">x_json_obj</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="s1">&#39;initialize&#39;</span> <span class="ow">in</span> <span class="n">x_json_obj</span><span class="p">:</span>
             <span class="n">x_init_update</span><span class="p">:</span> <span class="nb">dict</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_async_request</span><span class="p">(</span><span class="n">request</span><span class="o">=</span><span class="n">x_json_obj</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;call&#39;</span> <span class="ow">in</span> <span class="n">x_json_obj</span><span class="p">:</span>
+                <span class="n">x_handler</span> <span class="o">=</span> <span class="n">TAsyncHandler</span><span class="p">(</span><span class="n">socket_server</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">fkt_id</span><span class="o">=</span><span class="n">x_json_obj</span><span class="p">[</span><span class="s1">&#39;call&#39;</span><span class="p">][</span><span class="s1">&#39;id&#39;</span><span class="p">],</span> <span class="n">request</span><span class="o">=</span><span class="n">x_json_obj</span><span class="p">)</span>
+                <span class="n">x_handler</span><span class="o">.</span><span class="n">handle_update</span><span class="p">()</span>
 
             <span class="k">if</span> <span class="n">x_init_update</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">x_id</span><span class="p">,</span> <span class="n">x_task_jsn</span> <span class="ow">in</span> <span class="n">x_init_update</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tasks&#39;</span><span class="p">):</span>
@@ -275,13 +261,13 @@
 <span class="sd">        request and subsequently sending the response. This function is</span>
 <span class="sd">        intended to ensure thread safety when accessing shared resources.</span>
 
-<span class="sd">        :param request:</span>
-<span class="sd">            A dictionary containing the details of the request to be</span>
-<span class="sd">            processed. It typically includes all necessary information</span>
-<span class="sd">            required by the client for processing.</span>
+<span class="sd">        :param dict request:</span>
+<span class="sd">                    A dictionary containing the details of the request to be</span>
+<span class="sd">                    processed. It typically includes all necessary information</span>
+<span class="sd">                    required by the client for processing.</span>
 <span class="sd">        :return:</span>
-<span class="sd">            A string response generated by the client after handling the</span>
-<span class="sd">            request. The response is also sent in an encoded format.</span>
+<span class="sd">                    A string response generated by the client after handling the</span>
+<span class="sd">                    request. The response is also sent in an encoded format.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_lock</span><span class="p">:</span>
             <span class="n">x_json_obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_agent_client</span><span class="o">.</span><span class="n">handle_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
@@ -298,10 +284,10 @@
 <span class="sd">        text, binary, ping, and pong, until a final frame is encountered. Handles exceptions</span>
 <span class="sd">        during the reading process, logging them and shutting down the client connection if necessary.</span>
 
-<span class="sd">        :return: The raw bytes data read from the websocket until a final frame is encountered.</span>
-
-<span class="sd">        :raises TWebSocketException: If a close frame is received or an unknown opcode is encountered.</span>
-<span class="sd">        :raises Exception: For any other unexpected exceptions during the reading process.</span>
+<span class="sd">        :return:            The raw bytes data read from the websocket until a final frame is encountered.</span>
+<span class="sd">        :raises TWebSocketException:</span>
+<span class="sd">                            If a close frame is received or an unknown opcode is encountered.</span>
+<span class="sd">        :raises Exception:  For any other unexpected exceptions during the reading process.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">x_raw_data</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">()</span>
@@ -348,11 +334,10 @@
 <span class="sd">        switch. This is essential for establishing a connection that adheres to</span>
 <span class="sd">        WebSocket protocol specifications.</span>
 
-<span class="sd">        :param a_data: The raw HTTP request string containing headers that are used</span>
-<span class="sd">                       to construct the WebSocket handshake response.</span>
-<span class="sd">        :type a_data: str</span>
-<span class="sd">        :return: A string representing the HTTP response for switching protocols,</span>
-<span class="sd">                 formatted for a WebSocket handshake.</span>
+<span class="sd">        :param str a_data:  The raw HTTP request string containing headers that are used</span>
+<span class="sd">                            to construct the WebSocket handshake response.</span>
+<span class="sd">        :return:            A string representing the HTTP response for switching protocols,</span>
+<span class="sd">                            formatted for a WebSocket handshake.</span>
 <span class="sd">        :rtype: str</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_key</span>           <span class="o">=</span> <span class="s1">&#39;accept&#39;</span>
@@ -374,7 +359,7 @@
 
 <div class="viewcode-block" id="TWebSocketClient.gen_key">
 <a class="viewcode-back" href="../../eezz.html#eezz.websocket.TWebSocketClient.gen_key">[docs]</a>
-    <span class="k">def</span> <span class="nf">gen_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">gen_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Generates a WebSocket accept key by concatenating the client&#39;s key with a</span>
 <span class="sd">        GUID and hashing the result using SHA-1, followed by base64 encoding. This</span>
@@ -384,8 +369,8 @@
 <span class="sd">        doesn&#39;t understand WebSockets, thereby providing a level of handshake</span>
 <span class="sd">        security.</span>
 
-<span class="sd">        :return: The WebSocket accept key, encoded in base64 format</span>
-<span class="sd">        :rtype: str</span>
+<span class="sd">        :return:    The WebSocket accept key, encoded in base64 format</span>
+<span class="sd">        :rtype:     str</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_hash</span>     <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">()</span>
         <span class="n">x_64key</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m_headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Sec-WebSocket-Key&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
@@ -405,10 +390,10 @@
 <span class="sd">        in a compliant manner.</span>
 
 <span class="sd">        :return: A tuple containing the following elements:</span>
-<span class="sd">            - x_final (bool): Indicates if the frame is the final fragment.</span>
-<span class="sd">            - x_opcode (int): Specifies the opcode defining the frame&#39;s content type.</span>
-<span class="sd">            - x_mask_vector (bytes or None): The mask key if the payload is masked.</span>
-<span class="sd">            - x_payload_len (int): Length of the payload data.</span>
+<span class="sd">                - x_final (bool): Indicates if the frame is the final fragment.</span>
+<span class="sd">                - x_opcode (int): Specifies the opcode defining the frame&#39;s content type.</span>
+<span class="sd">                - x_mask_vector (bytes or None): The mask key if the payload is masked.</span>
+<span class="sd">                - x_payload_len (int): Length of the payload data.</span>
 <span class="sd">        :rtype: tuple</span>
 <span class="sd">        :raises TWebSocketException: If no data is received from the socket.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -449,14 +434,11 @@
 <span class="sd">        XOR operations. The method supports both masked and unmasked frames typical of</span>
 <span class="sd">        web socket communication.</span>
 
-<span class="sd">        :param x_opcode: OpCode of the frame to be read, determining the type of frame.</span>
-<span class="sd">        :type x_opcode: int, typically a WebSocket OpCode</span>
-<span class="sd">        :param a_mask_vector: Mask vector for unmasking the frame&#39;s payload, if present.</span>
-<span class="sd">        :type a_mask_vector: Optional[bytes], 4-byte sequence if present</span>
-<span class="sd">        :param a_payload_len: Length of the payload that needs to be read from the socket.</span>
-<span class="sd">        :type a_payload_len: int</span>
-<span class="sd">        :return: A bytearray containing the unmasked payload of the read frame.</span>
-<span class="sd">        :rtype: bytearray</span>
+<span class="sd">        :param int x_opcode:        OpCode of the frame to be read, determining the type of frame.</span>
+<span class="sd">        :param bytes a_mask_vector: Mask vector for unmasking the frame&#39;s payload, if present.</span>
+<span class="sd">        :param int a_payload_len:   Length of the payload that needs to be read from the socket.</span>
+<span class="sd">        :return:                    A bytearray containing the unmasked payload of the read frame.</span>
+<span class="sd">        :rtype:                     bytearray</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">a_payload_len</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">bytearray</span><span class="p">()</span>
@@ -496,16 +478,13 @@
 <span class="sd">        the payload if a mask vector is provided, maintains the frame structure as per the WebSocket protocol,</span>
 <span class="sd">        and sends the frame through the established socket connection.</span>
 
-<span class="sd">        :param a_data: The payload data to be sent in the WebSocket frame.</span>
-<span class="sd">        :type a_data: bytes</span>
-<span class="sd">        :param a_opcode: The opcode for the frame, indicating the type of data being sent (e.g., text, binary).</span>
-<span class="sd">        :type a_opcode: hex, optional</span>
-<span class="sd">        :param a_final: A flag indicating if this is the final fragment in a message. Defaults to 1 &lt;&lt; 7.</span>
-<span class="sd">        :type a_final: hex, optional</span>
-<span class="sd">        :param a_mask_vector: A list of four byte mask keys used for masking the payload data.</span>
-<span class="sd">                              If None, no masking is applied. Must be exactly 4 bytes if provided.</span>
-<span class="sd">        :type a_mask_vector: list or None, optional</span>
-<span class="sd">        :return: None</span>
+<span class="sd">        :param bytes a_data:        The payload data to be sent in the WebSocket frame.</span>
+<span class="sd">        :param hex a_opcode:        The opcode for the frame, indicating the type of data being sent (e.g., text, binary).</span>
+<span class="sd">        :param hex a_final:         A flag indicating if this is the final fragment in a message. Defaults to 1 &lt;&lt; 7.</span>
+<span class="sd">        :param a_mask_vector:       A list of four byte mask keys used for masking the payload data.</span>
+<span class="sd">                                    If None, no masking is applied. Must be exactly 4 bytes if provided.</span>
+<span class="sd">        :type a_mask_vector:        list or None, optional</span>
+<span class="sd">        :return:                    None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_payload_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">a_data</span><span class="p">)</span>
         <span class="n">x_bytes</span>       <span class="o">=</span> <span class="nb">bytearray</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
@@ -565,16 +544,12 @@
 <span class="sd">    when required. The server runs as a daemon thread, allowing it to operate</span>
 <span class="sd">    independently of the main application flow.</span>
 
-<span class="sd">    :ivar m_web_socket: The main server socket for accepting client connections.</span>
-<span class="sd">    :type m_web_socket: socket.socket</span>
-<span class="sd">    :ivar m_web_addr: The tuple containing the IP address and port where the server listens.</span>
-<span class="sd">    :type m_web_addr: tuple</span>
-<span class="sd">    :ivar m_clients: A dictionary mapping client sockets to their handler instances.</span>
-<span class="sd">    :type m_clients: dict</span>
-<span class="sd">    :ivar m_agent_class: The class type used for creating client agent instances.</span>
-<span class="sd">    :type m_agent_class: type[TWebSocketAgent]</span>
-<span class="sd">    :ivar m_running: A boolean flag indicating if the server is currently active and accepting connections.</span>
-<span class="sd">    :type m_running: bool</span>
+<span class="sd">    :ivar socket.socket m_web_socket:   The main server socket for accepting client connections.</span>
+<span class="sd">    :ivar tuple m_web_addr:             The tuple containing the IP address and port where the server listens.</span>
+<span class="sd">    :ivar dict m_clients:               A dictionary mapping client sockets to their handler instances.</span>
+<span class="sd">    :ivar type[TWebSocketAgent] m_agent_class:</span>
+<span class="sd">                                        The class type used for creating client agent instances.</span>
+<span class="sd">    :ivar bool m_running:               A boolean flag indicating if the server is currently active and accepting connections.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a_web_address</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">a_agent_class</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">TWebSocketAgent</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">m_web_socket</span><span class="p">:</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span> <span class="o">|</span> <span class="kc">None</span>  <span class="o">=</span> <span class="kc">None</span>
@@ -660,14 +635,14 @@
 <span class="sd">    It&#39;s also possible to specify dp_loop to allow successive calls to the same method.</span>
 <span class="sd">    This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.</span>
 
-<span class="sd">    :param socket_server:   The server to send the result. None for test and validation only</span>
-<span class="sd">    :type  socket_server:   TWebSocketClient</span>
-<span class="sd">    :param fkt_id:          Reference tp the function object</span>
-<span class="sd">    :type  fkt_id:          str</span>
-<span class="sd">    :param request:         The browser JavaScript request, containing the method to call. The request takes the result of the method call and returns it to the rendering machine to return it to JavaScript.</span>
-<span class="sd">    :type  request:         dict[key:value]</span>
-<span class="sd">    :param do_loop:         If True the thread does not return, but allows the method to trigger any number of update events for the browser.</span>
-<span class="sd">    :type  do_loop:         bool</span>
+<span class="sd">    :param TWebSocketClient socket_server:</span>
+<span class="sd">                                    The server to send the result. None for test and validation only</span>
+<span class="sd">    :param str fkt_id:              Reference tp the function object</span>
+<span class="sd">    :param dict request:            The browser JavaScript request, containing the method to call.</span>
+<span class="sd">                                    The request takes the result of the method call and returns it to the rendering</span>
+<span class="sd">                                    machine to return it to JavaScript.</span>
+<span class="sd">    :param bool do_loop:            If True the thread does not return, but allows the method to trigger any number of</span>
+<span class="sd">                                    update events for the browser.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket_server</span><span class="p">:</span> <span class="n">TWebSocketClient</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">fkt_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">do_loop</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">method_name</span> <span class="o">=</span> <span class="n">request</span><span class="p">[</span><span class="s1">&#39;call&#39;</span><span class="p">][</span><span class="s1">&#39;function&#39;</span><span class="p">]</span>

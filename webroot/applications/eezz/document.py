@@ -15,15 +15,16 @@ import re
 import time
 import tarfile
 import json
-from   loguru         import logger
+from   loguru       import logger
 
-from io               import BytesIO
-from filesrv          import TFile, TFileMode
-from service          import TService
-from pathlib          import Path
-from dataclasses      import dataclass
-from math             import floor
-from typing           import List, Dict, override
+from    abc         import abstractmethod
+from    io          import BytesIO
+from    filesrv     import TFile, TFileMode
+from    service     import TService
+from    pathlib     import Path
+from    dataclasses import dataclass
+from    math        import floor
+from    typing      import List, Dict, override
 
 
 @dataclass(kw_only=True)
@@ -32,7 +33,6 @@ class TManifest:
     structure for parsing the internal attributes.
     """
     keys_section_header: list
-    title:               str  = None
     keys_section_doc:    list = None
     keys_section_files:  list = None
     structure_document:  dict = None
@@ -46,19 +46,23 @@ class TManifest:
 
     @property
     def document(self) -> dict:
+        """:meta private:"""
         return self.structure_document['document']
 
     @document.setter
     def document(self, value: dict):
+        """:meta private:"""
         self.map_files = dict()
         x_document_descr = {x: value.get(x, '') for x in self.keys_section_header}
         self.structure_document['document'] = x_document_descr
 
     @property
     def files(self) -> list:
+        """:meta private:"""
         return self.structure_document['files']
 
     def append_file(self, file: dict):
+        """:meta private:"""
         if not self.map_files.get(file['source']):
             self.map_files[file['source']] = list()
 
@@ -68,18 +72,18 @@ class TManifest:
 
     @property
     def column_names(self) -> list:
+        """:meta private:"""
         return self.keys_section_header
 
     @override
     def __str__(self):
-        self.structure_document['document']['title'] = self.title
         for x, y in self.map_files.items():
             self.structure_document['document'][x] = y
         return json.dumps(self.structure_document, indent=4)
 
     def loads(self, manifest_str):
+        """:meta private:"""
         self.structure_document = json.loads(manifest_str)
-        self.title = self.structure_document['document']['title']
 
 
 @dataclass(kw_only=True)
@@ -93,13 +97,18 @@ class TDocument:
     :ivar TManifest     manifest:        Document header definition
     :ivar List[TFile]   files_list:      List of embedded files
     """
-    shelf_name:   str                           #: :meta private:
-    attributes:   List[str]                     #: List of document attributes like author and title
-    manifest:     TManifest         = None      #: :meta private:
-    path:         Path              = None      #: :meta private:
-    count:        int               = 0         #: :meta private:
-    finished:     bool              = False     #: :meta private:
-    file_sources: List[str]         = None      #: :meta private:
+    shelf_name:     str                             #: :meta private:
+    attributes:     List[str]                       #: List of document attributes like author and title
+    manifest:       TManifest           = None      #: :meta private:
+    path:           Path                = None      #: :meta private:
+    count:          int                 = 0         #: :meta private:
+    finished:       bool                = False     #: :meta private:
+    file_sources:   List[str]           = None      #: :meta private:
+    files_transferred: int              = 0
+    map_files:      Dict[str, TFile]    = None      #: :meta private:
+    map_source:     Dict[str, List[TFile]] = None   #: :meta private:
+    transferred:    int                 = 0         #: :meta private:
+    title:          str                 = ''        #: :meta private:
 
     def __post_init__(self):
         """ combine attributes:
@@ -108,9 +117,7 @@ class TDocument:
 
         The file sources might have one or more references, which are represented as list of files in the Manif<est
         """
-        self.map_files:         Dict[str, TFile] = dict()
-        self.map_source:        Dict[str, list]  = dict()
-        self.attributes = ['title'] + [x for x in self.attributes if x != 'title']
+        self.attributes = [x for x in self.attributes]
 
         if self.file_sources:
             self.attributes += self.file_sources
@@ -119,16 +126,18 @@ class TDocument:
             self.path = TService().document_path
         self.manifest = TManifest(keys_section_header=self.attributes)
 
-    def initialize_document(self, values: list):
+    def initialize_document(self, values: list) -> None:
         """ Initializes the document, providing values for the Manifest header
 
-        :param values:  List of values according to the definition of columns
-        :type  values:  List[str]
+        :param List[str] values:  List of values according to the definition of columns
         """
         self.finished           = False
         self.count              = 0
         self.manifest.document  = {x: y for x, y in zip(self.attributes, values)}
-        self.manifest.title     = values[0]
+        self.map_source         = dict()
+        self.map_files          = dict()
+        self.transferred        = 0
+        self.title              = values[0]
 
     def download_file(self, file: dict, stream: bytes = b'') -> bytes:
         """ Download file callback.
@@ -136,31 +145,28 @@ class TDocument:
         are transferred, the document is created.
         For each final acknowledge a 100% is returned.
 
-        :param file:    File descriptor with details on file and byte stream
-        :type  file:    dict
-        :param stream:  File stream, usually a chunk of
-        :param stream:  bytearray
-        :return:        The percentage of transferred document size as bytearray, terminated with the percent sign
-        :rtype:         bytearray
+        :param dict      file:   File descriptor with details on file and byte stream
+        :param bytearray stream: File stream, usually a chunk of
+        :return:                 The percentage of transferred document size as bytearray, terminated with the percent sign
+        :rtype:                  bytearray
 
         """
         if file['opcode'] == 'finished':
             # Check if we got all elements of a single source:
-            if len(self.map_source[file['source']]) == file['volume']:
-                self.count += 1
-
-            # Check if we got all elements of all sources
-            if self.count == len(self.file_sources):
+            if self.transferred == file['all_volume']:
                 self.create_document()
                 self.finished = True
-            return b'100%'
+                return '100%'.encode('utf8')
+            x_fraction = 100 * len(self.map_source[file['source']]) / int(file['src_files'])
+            return f'{x_fraction}%'.encode('utf8')
 
+        # Manage the file sources: Each source may have many entries
+        # Drag hte number of successful loaded elements of this specific source
         if not self.map_source.get(file['source']):
             self.map_source[file['source']] = list()
 
         if not self.map_files.get(file['name']):
-            x_title = self.manifest.title
-            x_path  = TService().document_path / x_title
+            x_path  = TService().document_path / self.title
             x_path.mkdir(exist_ok=True)
             x_path /= file['name']
 
@@ -171,20 +177,33 @@ class TDocument:
 
         xt_file = self.map_files[file['name']]
         xt_file.write(stream, file['sequence'], mode = TFileMode.NORMAL)
-        x_percent = ((1 + int(file['sequence'])) * int(file['chunk_size'])) / xt_file.size
-        x_percent = min(100, floor(x_percent))
+
+        # return percentage for a specific source
+        self.transferred += xt_file.transferred
+
+        x_src_volume = 0
+        for xt_f in self.map_source[file['source']]:
+            x_src_volume += xt_f.transferred
+
+        x_percent  = 100 * x_src_volume / int(file['src_volume'])
         return f'{x_percent}%'.encode('utf8')
 
+    @abstractmethod
     def create_document(self):
+        """ Abstract method which is called after all files are in place """
+        pass
+
+    def create_archive(self, document_title: str):
         """ ZIP the given files and the manifest to a document.
         The TFile class keeps track on the location of the file content and their properties.
+
+        :param str document_title: The name of the archive
         """
-        x_zip_title    = self.manifest.document['title']
         x_zip_stream   = BytesIO()
         x_zip_stream.write(str(self.manifest).encode('utf-8'))
-        x_zip_root     = Path(x_zip_title)
+        x_zip_root     = Path('.')
         # Path is: destination / book / document
-        x_destination  = self.path / f'{self.shelf_name}/{x_zip_title}.tar'
+        x_destination  = self.path / f'{self.shelf_name}/{document_title}.tar'
         x_destination.parent.mkdir(exist_ok=True)
 
         with tarfile.TarFile(x_destination, "w") as x_zip_file:
@@ -210,7 +229,11 @@ class TDocument:
                     x_zip_file.addfile(tarinfo=x_tar_info, fileobj=x_input)
 
     def read_file(self, document_title: str, file_name: str) -> bytes:
-        """ Returns the bytestream of the specified file in the archive """
+        """ Returns the bytestream of the specified file in the archive
+
+        :param document_title:  The title of the document is the name of the archive
+        :param str file_name:   The file content to return
+        """
         x_source = self.path / f'{self.shelf_name}/{document_title}.tar'
         with tarfile.TarFile(x_source, "r") as x_zip_file:
             for x_tar_info in x_zip_file.getmembers():
@@ -220,7 +243,12 @@ class TDocument:
                         return x_buffer.read()
 
     def extract_file(self, document_title: str, file_pattern: str = None, dest_root: Path = '.') -> None:
-        """ Restores the specified files, given by the regular expression in file_pattern """
+        """ Restores the specified files, given by the regular expression in file_pattern
+
+        :param str  document_title: The document title is the name of the archive
+        :param Path dest_root:      The path within the archive for all entries
+        :param str  file_pattern:   The files to extract
+        """
         if not file_pattern:
             file_pattern = r'\S*'
 
@@ -240,23 +268,7 @@ def test_document():
     """:meta private:"""
     logger.debug('Test class Document')
     my_doc = TDocument(shelf_name='First', attributes=['title', 'desc', 'author', 'price', 'valid'], file_sources=['main'])
-
-    x_file_source = TService().root_path / 'testdata/bird.jpg'
-    x_size        = os.path.getsize(x_file_source)
-
-    x_file_dest   = TService().document_path / 'title'
-    x_file_dest.mkdir(exist_ok=True)
-    x_file_dest   = x_file_dest/'bird.jpg'
-    x_tfile       = TFile(file_type='main', destination=x_file_dest, size=x_size, chunk_size=x_size)
-    with x_file_source.open('rb') as file:
-        x_tfile.write(raw_data=file.read(), sequence_nr=0)
-
-    my_doc.map_files['bird.jpg'] = x_tfile
-    my_doc.initialize_document(['Level', 'descr', 'author', 'price', 'valid', 'bird.jpg'])
-    my_doc.manifest.append_file({'name': 'bird.jpg', 'source': 'main', 'size': x_size, 'type': 'jpg'})
-    my_doc.manifest.append_file({'name': 'bird.jpg', 'source': 'main', 'size': x_size, 'type': 'jpg'})
-    my_doc.create_document()
-    logger.debug(f'Created document {my_doc.path}/{my_doc.shelf_name}/{my_doc.manifest.document["title"]}.tar')
+    logger.success('test document')
 
 
 if __name__ == '__main__':

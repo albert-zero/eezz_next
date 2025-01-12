@@ -10,6 +10,7 @@
 
 """
 from dataclasses import dataclass
+from operator import itemgetter
 
 from   loguru import logger
 
@@ -20,7 +21,7 @@ import sys
 from   bs4                  import Tag, BeautifulSoup
 from   pathlib              import Path
 from   importlib            import import_module
-from   lark                 import Lark, Transformer, Tree
+from   lark                 import Lark, Transformer, Tree, UnexpectedInput
 from   lark.exceptions      import UnexpectedCharacters
 from   typing               import Any, TypeVar
 from   Crypto.PublicKey     import RSA
@@ -189,6 +190,10 @@ class TService:
         x_object, x_tag, x_descr = self.objects[obj_id]
         return x_object
 
+    def get_tag_ref(self, obj_id: str) -> Any:
+        x_object, x_tag, x_descr = self.objects[obj_id]
+        return x_tag, x_descr
+
 
 class TServiceCompiler(Transformer):
     """ Transforms the parser tree into a list of dictionaries
@@ -255,9 +260,9 @@ class TServiceCompiler(Transformer):
         """ :meta private: Accumulate arguments for function call """
         return list(itertools.accumulate(item, lambda a, b: a | b))[-1]
 
-    @staticmethod
-    def onload_section(item):
+    def onload_section(self, item):
         """ :meta private: """
+        self.m_tag['data-eezz-onload'] = 'eezzy_onload(this)'
         return {'onload': item[0]}
 
     @staticmethod
@@ -276,11 +281,10 @@ class TServiceCompiler(Transformer):
         x_function, x_args = item[0].children
         return {'call': {'function': x_function, 'args': x_args}}
 
-    @staticmethod
-    def update_function(item):
+    def update_function(self, item):
         """ :meta private: """
         x_function, x_args = item[1].children
-        return {item[0]: {'function': x_function, 'args': x_args}}
+        return {item[0]: {'function': x_function, 'args': x_args, 'id': self.m_id}}
 
     @staticmethod
     def assignment(item):
@@ -310,7 +314,14 @@ class TServiceCompiler(Transformer):
         """ :meta private: Create tag attributes """
         if item[0] in ('name', 'match', 'file', 'progress', 'type'):
             self.m_tag[f'data-eezz-{item[0]}'] = item[1]
-        return {item[0]: item[1]}
+            return {item[0]: item[1]}
+        if item[0] in 'format' and item[1] in ('br', 'p'):
+            self.m_tag[f'data-eezz-{item[0]}'] = '<br>' if item[1] == 'br' else '</p><p>'
+            return {item[0]: item[1]}
+        if item[0] in 'process' and item[1] in ('sync'):
+            return {item[0]: item[1]}
+        raise UnexpectedInput(f'parameter section: {item[0]} = {item[1]}')
+        # return {item[0]: item[1]}
 
     def funct_assignment(self, item):
         """ :meta private: Parse 'function' section """
@@ -320,10 +331,10 @@ class TServiceCompiler(Transformer):
 
     def post_init(self, item):
         """ :meta private: Parse 'post-init' section for function assignment """
-        x_function, x_args = item[0].children
-        x_json_obj = {'call': {'function': x_function, 'args': x_args, 'id': self.m_id}}
-        self.m_tag['data-eezz-init'] = json.dumps(x_json_obj)
-        return x_json_obj
+        x_method_name, x_method_args = item[0].children
+        x_obj, x_method, x_tag, x_descr = TService().get_method(self.m_id, x_method_name)
+        x_method(**x_method_args) if x_method_args else x_method()
+        return {'oninit':'done'}
 
     def table_assignment(self, item):
         """ :meta private: Parse 'assign' section, assigning a Python object to an HTML-Tag
@@ -423,7 +434,7 @@ class TestRow:
 
 
 def test_parser_area():
-    source = """ event:  navigate(where_togo = 3), update: this.tbody  """
+    source = """ format: p,  event:  navigate(where_togo = 3), update: this.tbody  """
     test_parser(source=source)
 
 
@@ -436,7 +447,7 @@ if __name__ == '__main__':
     logger.debug("Test Lark Parser")
 
     test_parser_area()
-    exit(0)
+
 
     logger.debug("assign statement")
     x_source = """assign: examples.directory.TDirView(title="", path="/Users/alzer/Projects/github/eezz_full/webroot")"""
@@ -450,26 +461,17 @@ if __name__ == '__main__':
     x_source = """ event: on_select(index={row.row_id}), update: elem1.innerHTML = {object.path}, elem2.innerHTML = {object.row_id}  """
     x_result = test_parser(source=x_source)
 
-    logger.debug("template statement 3")
-    x_source = "template: cell, event: do_sort(index={cell}), update: this.tbody"
-    x_result = test_parser(source=x_source)
-
-    x_update  = x_result['update']
-    x_reslist = list()
-    for x, y in x_update.items():
-        x_json_obj = {'target': x, 'value': y.format(object=TestRow())}
-        x_reslist.append(x_json_obj)
-    logger.debug(x_reslist)
-
     x_source = 'name: directory, assign: examples.directory.TDirView(path=".", title="dir"), process:sync'
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
 
-    x_source = "event: FormInput.append(table_row = [field_index.value]), process:sync"
+    x_source = "event: FormInput.append(table_row = [field_index.value]), reference: cell.title"
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
 
-    x_source = """ template: reference(table), style:visibility={table.visible_navigation} """
+    x_source = """ 
+                        template: cell (main), 
+                        onload:   this.src = read_file(document_title={cell.attrs},file_name={cell.value}) """
 
     x_result = test_parser(source=x_source)
     logger.debug(f'{x_source} ==> {x_result}')

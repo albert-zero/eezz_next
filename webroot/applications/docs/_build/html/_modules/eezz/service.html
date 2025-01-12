@@ -398,6 +398,8 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: Create tag attributes &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;match&#39;</span><span class="p">,</span> <span class="s1">&#39;file&#39;</span><span class="p">,</span> <span class="s1">&#39;progress&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">m_tag</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;data-eezz-</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;format&#39;</span> <span class="ow">and</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;br&#39;</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="s1">&#39;&lt;br&gt;&#39;</span> <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;br&#39;</span> <span class="k">else</span> <span class="s1">&#39;&lt;/p&gt;&lt;p&gt;&#39;</span><span class="p">}</span>
         <span class="k">return</span> <span class="p">{</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span>
 
     <span class="k">def</span> <span class="nf">funct_assignment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
@@ -520,7 +522,7 @@
 <div class="viewcode-block" id="test_parser_area">
 <a class="viewcode-back" href="../../eezz.html#eezz.service.test_parser_area">[docs]</a>
 <span class="k">def</span> <span class="nf">test_parser_area</span><span class="p">():</span>
-    <span class="n">source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot; event:  navigate(where_togo = 3), update: this.tbody  &quot;&quot;&quot;</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot; format: p,  event:  navigate(where_togo = 3), update: this.tbody  &quot;&quot;&quot;</span>
     <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span></div>
 
 
@@ -567,7 +569,7 @@
     <span class="n">x_result</span> <span class="o">=</span> <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">x_result</span><span class="p">)</span>
 
-    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot; template: reference(table), style:visibility=</span><span class="si">{table.visible_navigation}</span><span class="s2"> &quot;&quot;&quot;</span>
+    <span class="n">x_source</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot; template: reference(table), style:visibility=</span><span class="si">{table.visible_navigation}</span><span class="s2">, format = &lt;br&gt; &quot;&quot;&quot;</span>
 
     <span class="n">x_result</span> <span class="o">=</span> <span class="n">test_parser</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">x_source</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_source</span><span class="si">}</span><span class="s1"> ==&gt; </span><span class="si">{</span><span class="n">x_result</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>

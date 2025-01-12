@@ -8,7 +8,7 @@ and implements the following classes
 
 """
 import select
-from   threading       import Thread, Lock, Condition
+from   threading       import Thread, Lock
 from   table           import TTable, TTableRow
 
 import bluetooth
@@ -20,7 +20,7 @@ import gettext
 from   dataclasses      import dataclass
 from   itertools        import filterfalse
 from   typing           import List
-import asyncio
+from   loguru           import logger
 
 _ = gettext.gettext
 
@@ -35,18 +35,12 @@ class TBluetoothService:
     managing connections, it provides mechanisms for sending requests and handling responses from the EEZZ service.
     It also includes error handling for various connection states and exceptions.
 
-    :ivar address:      Address of the Bluetooth device to connect to.
-    :type address:      str
-    :ivar eezz_service: Service GUID of the EEZZ app.
-    :type eezz_service: str
-    :ivar m_lock:       A lock to synchronize communication with the Bluetooth service.
-    :type m_lock:       Lock
-    :ivar bt_socket:    The communication socket once established.
-    :type bt_socket:    BluetoothSocket
-    :ivar bt_service:   List of EEZZ services for establishing a connection.
-    :type bt_service:   list
-    :ivar connected:    Indicates whether the connection to the EEZZ service is established.
-    :type connected:    bool
+    :ivar str       address:        Address of the Bluetooth device to connect to.
+    :ivar str       eezz_service:   Service GUID of the EEZZ app.
+    :ivar Lock      m_lock:         A lock to synchronize communication with the Bluetooth service.
+    :ivar BluetoothSocket bt_socket: The communication socket once established.
+    :ivar List      bt_service:     List of EEZZ services for establishing a connection.
+    :ivar bool      connected:      Indicates whether the connection to the EEZZ service is established.
     """
     address:        str                  #: :meta private:
     eezz_service:   str        = "07e30214-406b-11e3-8770-84a6c8168ea0"  # :meta private: service GUID of the eezz App
@@ -81,21 +75,18 @@ class TBluetoothService:
             self.connected = False
 
     def send_request(self, command: str, args: list) -> dict:
-        """
-        Sends a request to a remote server via a Bluetooth socket.
+        """ Sends a request to a remote server via a Bluetooth socket.
 
         This function attempts to open a connection, format the request message,
         send the message through a Bluetooth socket, and wait for a response. If
         any issue occurs during these steps, it handles the errors appropriately
         and returns a corresponding error message.
 
-        :param command: The command to be sent to the remote server
-        :type command:  str
-        :param args:    List of arguments associated with the command
-        :type args:     list
-        :return:        A dictionary with the result of the operation, containing either
-                        the server's response or an error code and description
-        :rtype:         dict
+        :param str command:     The command to be sent to the remote server
+        :param List args:       List of arguments associated with the command
+        :return:                A dictionary with the result of the operation, containing either
+                                the server's response or an error code and description
+        :rtype:                 dict
         """
         if not self.open_connection():
             x_code, x_text = self.error_codes['open_connection']
@@ -153,8 +144,7 @@ class TBluetooth(TTable):
         self.scan_bluetooth.start()
 
     def find_devices(self) -> None:
-        """
-        Manages discovery of nearby Bluetooth devices and maintains an internal list
+        """ Manages discovery of nearby Bluetooth devices and maintains an internal list
         of these devices, notifying when there are changes.
 
         This is a time-consuming function and should run in a separate thread.
@@ -184,15 +174,13 @@ class TBluetooth(TTable):
             time.sleep(2)
 
     def get_visible_rows(self, get_all: bool = False) -> List[TTableRow]:
-        """
-        Retrieves the visible rows from the table. If `get_all` is set to True,
+        """ Retrieves the visible rows from the table. If `get_all` is set to True,
         it retrieves all the rows regardless of their visibility.
 
-        :param get_all: Boolean flag to indicate whether to retrieve all rows
-                        or only visible rows, defaults to False
-        :type get_all:  bool
-        :return:        List of visible rows or all rows depending on the `get_all` flag
-        :rtype:         List[TTableRow]
+        :param bool get_all:    Boolean flag to indicate whether to retrieve all rows
+                                or only visible rows, defaults to False
+        :return:                List of visible rows or all rows depending on the `get_all` flag
+        :rtype:                 List[TTableRow]
         """
         with self.async_lock:
             return super().get_visible_rows(get_all=get_all)
@@ -202,15 +190,16 @@ class TBluetooth(TTable):
 def test_bluetooth_table():
     """:meta private:"""
     """ Test the access to the bluetooth environment """
+    logger.debug('test TBluetooth: find devices and print')
     bt = TBluetooth()
 
     # Wait for the table to change
     with bt.async_condition:
         bt.async_condition.wait()
     bt.print()
+    logger.success('test TBluetooth')
 
 
 if __name__ == '__main__':
     """:meta private:"""
-    """ Main entry point for module tests """
     test_bluetooth_table()

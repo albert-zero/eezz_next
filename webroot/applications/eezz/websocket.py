@@ -67,32 +67,15 @@ class TWebSocketClient:
     specific tasks, handle incoming data frames, generate handshake responses, and maintain
     the overall stability of the WebSocket communication channel.
 
-    :ivar m_headers: Stores HTTP headers relevant for WebSocket handshake.
-    :vartype m_headers: dict
-
-    :ivar m_socket: The socket object related to the client connection.
-    :vartype m_socket: Any
-
-    :ivar m_cnt: A counter used internally (specific usage/context not documented).
-    :vartype m_cnt: int
-
-    :ivar m_buffer: A buffer space used for storing data received over the WebSocket.
-    :vartype m_buffer: bytearray
-
-    :ivar m_protocol: The protocol name used during WebSocket handshake.
-    :vartype m_protocol: str
-
-    :ivar m_agent_class: The class type of the WebSocket agent associated with this client.
-    :vartype m_agent_class: type[TWebSocketAgent]
-
-    :ivar m_agent_client: An instance of the WebSocket agent class, facilitating task delegation.
-    :vartype m_agent_client: TWebSocketAgent
-
-    :ivar m_lock: A threading lock used to ensure thread safety during operations.
-    :vartype m_lock: Lock
-
-    :ivar m_threads: A dictionary mapping asynchronous callables to their respective threads.
-    :vartype m_threads: Dict[Callable, Thread]
+    :ivar dict m_headers:       Stores HTTP headers relevant for WebSocket handshake.
+    :ivar Any m_socket:         The socket object related to the client connection.
+    :ivar int m_cnt:            A counter used internally (specific usage/context not documented).
+    :ivar bytearray m_buffer:   A buffer space used for storing data received over the WebSocket.
+    :ivar str m_protocol:       The protocol name used during WebSocket handshake.
+    :ivar type[TWebSocketAgent] m_agent_class: The class type of the WebSocket agent associated with this client.
+    :ivar TWebSocketAgent m_agent_client: An instance of the WebSocket agent class, facilitating task delegation.
+    :ivar Lock m_lock:          A threading lock used to ensure thread safety during operations.
+    :ivar Dict[Callable, Thread] m_threads: A dictionary mapping asynchronous callables to their respective threads.
     """
     def __init__(self, a_client_addr: tuple, a_agent: type[TWebSocketAgent]):
         self.m_headers              = None
@@ -148,15 +131,17 @@ class TWebSocketClient:
 
         logger.debug(f'handle request {x_json_obj}')
         if 'initialize' in x_json_obj:
-            x_init_update: dict  = self.handle_async_request(request=x_json_obj)
+            x_handler           = TAsyncHandler(socket_server=self, request=x_json_obj)
+            x_init_update: dict = x_handler.handle_update()
 
             if x_init_update:
                 for x_id, x_task_jsn in x_init_update.get('tasks'):
-                    x_thread = TAsyncHandler(socket_server=self, fkt_id=x_id, request=x_task_jsn, do_loop=True)
+                    x_task_jsn['call']['id'] = x_id
+                    x_thread = TAsyncHandler(socket_server=self, request=x_task_jsn, do_loop=True)
                     x_thread.start()
             return
 
-        if 'call' in x_json_obj:
+        if 'call' in x_json_obj or 'update' in x_json_obj:
             # Put declaration and bytestream together.
             # JavaScript attribute is "this.bytestream": Step through all update function args and check for replacement
             if x_dict_update := x_json_obj['update']:
@@ -165,15 +150,14 @@ class TWebSocketClient:
                         x_args = x_function.get('args')
                         x_function['args'] = {x: x_binary if y and y == 'this.bytestream' else y for x, y in x_args.items()}
 
-            x_call_jsn  = x_json_obj['call']
-            x_id        = x_call_jsn['id']
+            if x_call_jsn := x_json_obj.get('call'):
+                logger.debug(f'websocket call {x_call_jsn["function"]}')
 
-            logger.debug(f'websocket call {x_call_jsn["function"]}')
             if x_json_obj.get('process') == 'sync':
-                x_handler = TAsyncHandler(socket_server=self, fkt_id=x_id, request=x_json_obj)
+                x_handler = TAsyncHandler(socket_server=self, request=x_json_obj)
                 x_handler.handle_update()
             else:
-                x_thread  = TAsyncHandler(socket_server=self, fkt_id=x_id, request=x_json_obj)
+                x_thread  = TAsyncHandler(socket_server=self, request=x_json_obj)
                 x_thread.start()
 
     def handle_async_request(self, request: dict) -> dict:
@@ -182,13 +166,13 @@ class TWebSocketClient:
         request and subsequently sending the response. This function is
         intended to ensure thread safety when accessing shared resources.
 
-        :param request:
-            A dictionary containing the details of the request to be
-            processed. It typically includes all necessary information
-            required by the client for processing.
+        :param dict request:
+                    A dictionary containing the details of the request to be
+                    processed. It typically includes all necessary information
+                    required by the client for processing.
         :return:
-            A string response generated by the client after handling the
-            request. The response is also sent in an encoded format.
+                    A string response generated by the client after handling the
+                    request. The response is also sent in an encoded format.
         """
         with self.m_lock:
             x_json_obj = self.m_agent_client.handle_request(request)
@@ -202,30 +186,36 @@ class TWebSocketClient:
         text, binary, ping, and pong, until a final frame is encountered. Handles exceptions
         during the reading process, logging them and shutting down the client connection if necessary.
 
-        :return: The raw bytes data read from the websocket until a final frame is encountered.
-
-        :raises TWebSocketException: If a close frame is received or an unknown opcode is encountered.
-        :raises Exception: For any other unexpected exceptions during the reading process.
+        :return:            The raw bytes data read from the websocket until a final frame is encountered.
+        :raises TWebSocketException:
+                            If a close frame is received or an unknown opcode is encountered.
+        :raises Exception:  For any other unexpected exceptions during the reading process.
         """
         try:
             x_raw_data = bytes()
             x_binary   = bytes()
             x_continue = False
+            x_last_op  = 0
+            x_utf_data = bytes()
 
             while True:
                 x_final, x_opcode, x_mask_vector, x_payload_len = self.read_frame_header()
-                if x_opcode   == 0x8:
+                if  x_opcode == 0x0:
+                    x_opcode = x_last_op
+                x_last_op = x_opcode
+
+                if  x_opcode   == 0x8:
                     raise TWebSocketException("closed connection")
                 elif x_opcode == 0x1:  # text frame
                     x_raw_data += self.read_frame(x_opcode, x_mask_vector, x_payload_len)
                 elif x_opcode == 0x2:  # binary frame
-                    x_binary   = self.read_frame(x_opcode, x_mask_vector, x_payload_len)
+                    x_binary  += self.read_frame(x_opcode, x_mask_vector, x_payload_len)
                     x_continue = True
                 elif x_opcode == 0x9:
-                    x_utf_data = self.read_frame(x_opcode, x_mask_vector, x_payload_len)
+                    x_utf_data += self.read_frame(x_opcode, x_mask_vector, x_payload_len)
                     self.write_frame(a_data=x_utf_data[:x_payload_len], a_opcode=0xA, a_final=(1 << 7))
                 elif x_opcode == 0xA:
-                    x_utf_data = self.read_frame(x_opcode, x_mask_vector, x_payload_len)
+                    x_utf_data += self.read_frame(x_opcode, x_mask_vector, x_payload_len)
                     self.write_frame(a_data=x_utf_data[:x_payload_len], a_opcode=0x9, a_final=(1 << 7))
                 else:
                     raise TWebSocketException(f"unknown opcode={x_opcode}")
@@ -249,11 +239,10 @@ class TWebSocketClient:
         switch. This is essential for establishing a connection that adheres to
         WebSocket protocol specifications.
 
-        :param a_data: The raw HTTP request string containing headers that are used
-                       to construct the WebSocket handshake response.
-        :type a_data: str
-        :return: A string representing the HTTP response for switching protocols,
-                 formatted for a WebSocket handshake.
+        :param str a_data:  The raw HTTP request string containing headers that are used
+                            to construct the WebSocket handshake response.
+        :return:            A string representing the HTTP response for switching protocols,
+                            formatted for a WebSocket handshake.
         :rtype: str
         """
         x_key           = 'accept'
@@ -272,7 +261,7 @@ class TWebSocketClient:
         x_handshake.write('\r\n')
         return x_handshake.getvalue()
 
-    def gen_key(self):
+    def gen_key(self) -> str:
         """
         Generates a WebSocket accept key by concatenating the client's key with a
         GUID and hashing the result using SHA-1, followed by base64 encoding. This
@@ -282,8 +271,8 @@ class TWebSocketClient:
         doesn't understand WebSockets, thereby providing a level of handshake
         security.
 
-        :return: The WebSocket accept key, encoded in base64 format
-        :rtype: str
+        :return:    The WebSocket accept key, encoded in base64 format
+        :rtype:     str
         """
         x_hash     = hashlib.sha1()
         x_64key    = self.m_headers.get('Sec-WebSocket-Key').strip()
@@ -300,10 +289,10 @@ class TWebSocketClient:
         in a compliant manner.
 
         :return: A tuple containing the following elements:
-            - x_final (bool): Indicates if the frame is the final fragment.
-            - x_opcode (int): Specifies the opcode defining the frame's content type.
-            - x_mask_vector (bytes or None): The mask key if the payload is masked.
-            - x_payload_len (int): Length of the payload data.
+                - x_final (bool): Indicates if the frame is the final fragment.
+                - x_opcode (int): Specifies the opcode defining the frame's content type.
+                - x_mask_vector (bytes or None): The mask key if the payload is masked.
+                - x_payload_len (int): Length of the payload data.
         :rtype: tuple
         :raises TWebSocketException: If no data is received from the socket.
         """
@@ -341,14 +330,11 @@ class TWebSocketClient:
         XOR operations. The method supports both masked and unmasked frames typical of
         web socket communication.
 
-        :param x_opcode: OpCode of the frame to be read, determining the type of frame.
-        :type x_opcode: int, typically a WebSocket OpCode
-        :param a_mask_vector: Mask vector for unmasking the frame's payload, if present.
-        :type a_mask_vector: Optional[bytes], 4-byte sequence if present
-        :param a_payload_len: Length of the payload that needs to be read from the socket.
-        :type a_payload_len: int
-        :return: A bytearray containing the unmasked payload of the read frame.
-        :rtype: bytearray
+        :param int x_opcode:        OpCode of the frame to be read, determining the type of frame.
+        :param bytes a_mask_vector: Mask vector for unmasking the frame's payload, if present.
+        :param int a_payload_len:   Length of the payload that needs to be read from the socket.
+        :return:                    A bytearray containing the unmasked payload of the read frame.
+        :rtype:                     bytearray
         """
         if a_payload_len == 0:
             return bytearray()
@@ -385,16 +371,13 @@ class TWebSocketClient:
         the payload if a mask vector is provided, maintains the frame structure as per the WebSocket protocol,
         and sends the frame through the established socket connection.
 
-        :param a_data: The payload data to be sent in the WebSocket frame.
-        :type a_data: bytes
-        :param a_opcode: The opcode for the frame, indicating the type of data being sent (e.g., text, binary).
-        :type a_opcode: hex, optional
-        :param a_final: A flag indicating if this is the final fragment in a message. Defaults to 1 << 7.
-        :type a_final: hex, optional
-        :param a_mask_vector: A list of four byte mask keys used for masking the payload data.
-                              If None, no masking is applied. Must be exactly 4 bytes if provided.
-        :type a_mask_vector: list or None, optional
-        :return: None
+        :param bytes a_data:        The payload data to be sent in the WebSocket frame.
+        :param hex a_opcode:        The opcode for the frame, indicating the type of data being sent (e.g., text, binary).
+        :param hex a_final:         A flag indicating if this is the final fragment in a message. Defaults to 1 << 7.
+        :param a_mask_vector:       A list of four byte mask keys used for masking the payload data.
+                                    If None, no masking is applied. Must be exactly 4 bytes if provided.
+        :type a_mask_vector:        list or None, optional
+        :return:                    None
         """
         x_payload_len = len(a_data)
         x_bytes       = bytearray(10)
@@ -450,16 +433,12 @@ class TWebSocket(Thread):
     when required. The server runs as a daemon thread, allowing it to operate
     independently of the main application flow.
 
-    :ivar m_web_socket: The main server socket for accepting client connections.
-    :type m_web_socket: socket.socket
-    :ivar m_web_addr: The tuple containing the IP address and port where the server listens.
-    :type m_web_addr: tuple
-    :ivar m_clients: A dictionary mapping client sockets to their handler instances.
-    :type m_clients: dict
-    :ivar m_agent_class: The class type used for creating client agent instances.
-    :type m_agent_class: type[TWebSocketAgent]
-    :ivar m_running: A boolean flag indicating if the server is currently active and accepting connections.
-    :type m_running: bool
+    :ivar socket.socket m_web_socket:   The main server socket for accepting client connections.
+    :ivar tuple m_web_addr:             The tuple containing the IP address and port where the server listens.
+    :ivar dict m_clients:               A dictionary mapping client sockets to their handler instances.
+    :ivar type[TWebSocketAgent] m_agent_class:
+                                        The class type used for creating client agent instances.
+    :ivar bool m_running:               A boolean flag indicating if the server is currently active and accepting connections.
     """
     def __init__(self, a_web_address: tuple, a_agent_class: type[TWebSocketAgent]):
         self.m_web_socket: socket.socket | None  = None
@@ -536,25 +515,20 @@ class TAsyncHandler(Thread):
     It's also possible to specify dp_loop to allow successive calls to the same method.
     This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.
 
-    :param socket_server:   The server to send the result. None for test and validation only
-    :type  socket_server:   TWebSocketClient
-    :param fkt_id:          Reference tp the function object
-    :type  fkt_id:          str
-    :param request:         The browser JavaScript request, containing the method to call. The request takes the result of the method call and returns it to the rendering machine to return it to JavaScript.
-    :type  request:         dict[key:value]
-    :param do_loop:         If True the thread does not return, but allows the method to trigger any number of update events for the browser.
-    :type  do_loop:         bool
+    :param TWebSocketClient socket_server:
+                                    The server to send the result. None for test and validation only
+    :param str fkt_id:              Reference tp the function object
+    :param dict request:            The browser JavaScript request, containing the method to call.
+                                    The request takes the result of the method call and returns it to the rendering
+                                    machine to return it to JavaScript.
+    :param bool do_loop:            If True the thread does not return, but allows the method to trigger any number of
+                                    update events for the browser.
     """
-    def __init__(self, socket_server: TWebSocketClient | None, fkt_id: str, request: dict, do_loop: bool = False):
-        self.method_name = request['call']['function']
-        self.method_args = request['call']['args']
-        self.id          = fkt_id
-        x_obj, x_method, x_tag, x_descr = TService().get_method(self.id, self.method_name)
-        super().__init__(daemon = True, name = x_descr)
+    def __init__(self, socket_server: TWebSocketClient | None, request: dict, do_loop: bool = False):
+        super().__init__(daemon = True, name = 'TAsyncHandler')
 
-        self.method         = x_method
-        self.socket_server  = socket_server
         self.request        = request
+        self.socket_server  = socket_server
         self.running: bool  = True
         self.do_loop: bool  = do_loop
 
@@ -566,7 +540,7 @@ class TAsyncHandler(Thread):
                 return
             self.handle_update()
 
-    def handle_update(self):
+    def handle_update(self) -> dict:
         """ Executes the request in either asynchronous or synchronous mode based on
         the request parameters. Continuously handles asynchronous requests while
         the 'running' attribute is True. In synchronous mode, processes the
@@ -574,23 +548,33 @@ class TAsyncHandler(Thread):
 
         :return: None
         """
-        x_row  = self.method(**self.method_args) if self.method_args else self.method()
-        self.request['result-value'] = list()
-        self.request['result-type']  = ''
+        x_id:  str  = ''
+        x_row: TTable|None = None
+
+        if x_json_call := self.request.get('call'):
+            x_method_name   = x_json_call.get('function')
+            x_method_args   = x_json_call['args']
+            x_id            = x_json_call['id']
+
+            x_obj, x_method, x_tag, x_descr = TService().get_method(x_id, x_method_name)
+            x_row  = x_method(**x_method_args) if x_method_args else x_method()
+
+        self.request['result-value']    = list()
+        self.request['result-type']     = ''
+        self.request['result']          = None
 
         # execute value request:
         if self.request.get('update'):
             for x_key, x_value in self.request['update'].items():
                 x_request_value = None
                 if 'call' in x_key and 'function' in x_value:
-                    x_id       = self.id
-                    x_args     = x_value['args']
-                    x_callback = {'function': 'get_selected_row', 'args': {}, 'id': x_id}
+                    x_args          = x_value['args']
+                    x_callback      = {'function': 'get_selected_row', 'args': {}, 'id': x_id}
                     x_request_value = {'call': x_callback, 'target': x_value['function'], 'type': 'javascript', 'value': x_args}
                 elif isinstance(x_value, dict):
-                    x_id     = self.id
+                    if not x_id:
+                        x_id = x_value['id']
                     x_object, x_method, x_tag, x_descr = TService().get_method(x_id, x_value['function'])
-                    # -- x_args   = {x_key: x_val.format(row=x_row) for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
                     x_args   = {x_key: x_val for x_key, x_val in x_value['args'].items()} if x_value.get('args') else {}
                     x_result = x_method(**x_args) if x_args else x_method()
                     x_request_value = {'target': x_key, 'type': 'base64', 'value': base64.b64encode(x_result).decode('utf8')}
@@ -611,8 +595,7 @@ class TAsyncHandler(Thread):
                     self.request['result-value'].append(x_request_value)
 
         self.request['result'] = x_row
-        if self.socket_server:
-            self.socket_server.handle_async_request(self.request)
+        return self.socket_server.handle_async_request(self.request) if self.socket_server else None
 
 
 class TTestAsync(TTable):
