@@ -29,8 +29,8 @@ class TTableTree(TTable):
     :ivar bool expanded:        A boolean indicating whether the current node is expanded.
     :ivar TTableTree selected: The currently selected node within the tree structure.
     """
-    def __init__(self, column_names: list[str], title: str, path: str) -> None:
-        super().__init__(column_names=column_names, title=title)
+    def __init__(self, column_names: list[str], title: str, path: str, visible_items=20) -> None:
+        super().__init__(column_names=column_names, title=title, visible_items=visible_items)
         self.root_path            = Path(path)
         self.nodes: List[TTable]  = [self]
         self.expanded: bool       = False

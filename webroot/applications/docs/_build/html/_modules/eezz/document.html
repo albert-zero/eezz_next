@@ -86,15 +86,16 @@
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">tarfile</span>
 <span class="kn">import</span> <span class="nn">json</span>
-<span class="kn">from</span>   <span class="nn">loguru</span>         <span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span>   <span class="nn">loguru</span>       <span class="kn">import</span> <span class="n">logger</span>
 
-<span class="kn">from</span> <span class="nn">io</span>               <span class="kn">import</span> <span class="n">BytesIO</span>
-<span class="kn">from</span> <span class="nn">filesrv</span>          <span class="kn">import</span> <span class="n">TFile</span><span class="p">,</span> <span class="n">TFileMode</span>
-<span class="kn">from</span> <span class="nn">service</span>          <span class="kn">import</span> <span class="n">TService</span>
-<span class="kn">from</span> <span class="nn">pathlib</span>          <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">dataclasses</span>      <span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span> <span class="nn">math</span>             <span class="kn">import</span> <span class="n">floor</span>
-<span class="kn">from</span> <span class="nn">typing</span>           <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">override</span>
+<span class="kn">from</span>    <span class="nn">abc</span>         <span class="kn">import</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span>    <span class="nn">io</span>          <span class="kn">import</span> <span class="n">BytesIO</span>
+<span class="kn">from</span>    <span class="nn">filesrv</span>     <span class="kn">import</span> <span class="n">TFile</span><span class="p">,</span> <span class="n">TFileMode</span>
+<span class="kn">from</span>    <span class="nn">service</span>     <span class="kn">import</span> <span class="n">TService</span>
+<span class="kn">from</span>    <span class="nn">pathlib</span>     <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span>    <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span>    <span class="nn">math</span>        <span class="kn">import</span> <span class="n">floor</span>
+<span class="kn">from</span>    <span class="nn">typing</span>      <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">override</span>
 
 
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -103,7 +104,6 @@
 <span class="sd">    structure for parsing the internal attributes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">keys_section_header</span><span class="p">:</span> <span class="nb">list</span>
-    <span class="n">title</span><span class="p">:</span>               <span class="nb">str</span>  <span class="o">=</span> <span class="kc">None</span>
     <span class="n">keys_section_doc</span><span class="p">:</span>    <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">keys_section_files</span><span class="p">:</span>  <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">structure_document</span><span class="p">:</span>  <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
@@ -117,19 +117,23 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">document</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">]</span>
 
     <span class="nd">@document</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="n">x_document_descr</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_header</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_document_descr</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">files</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">append_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
@@ -139,18 +143,18 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">column_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys_section_header</span>
 
     <span class="nd">@override</span>
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="s1">&#39;title&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span>
         <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span>
         <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">loads</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">manifest_str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">manifest_str</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">structure_document</span><span class="p">[</span><span class="s1">&#39;document&#39;</span><span class="p">][</span><span class="s1">&#39;title&#39;</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="TDocument">
@@ -166,13 +170,18 @@
 <span class="sd">    :ivar TManifest     manifest:        Document header definition</span>
 <span class="sd">    :ivar List[TFile]   files_list:      List of embedded files</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">shelf_name</span><span class="p">:</span>   <span class="nb">str</span>                           <span class="c1">#: :meta private:</span>
-    <span class="n">attributes</span><span class="p">:</span>   <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                     <span class="c1">#: List of document attributes like author and title</span>
-    <span class="n">manifest</span><span class="p">:</span>     <span class="n">TManifest</span>         <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
-    <span class="n">path</span><span class="p">:</span>         <span class="n">Path</span>              <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
-    <span class="n">count</span><span class="p">:</span>        <span class="nb">int</span>               <span class="o">=</span> <span class="mi">0</span>         <span class="c1">#: :meta private:</span>
-    <span class="n">finished</span><span class="p">:</span>     <span class="nb">bool</span>              <span class="o">=</span> <span class="kc">False</span>     <span class="c1">#: :meta private:</span>
-    <span class="n">file_sources</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>         <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">shelf_name</span><span class="p">:</span>     <span class="nb">str</span>                             <span class="c1">#: :meta private:</span>
+    <span class="n">attributes</span><span class="p">:</span>     <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                       <span class="c1">#: List of document attributes like author and title</span>
+    <span class="n">manifest</span><span class="p">:</span>       <span class="n">TManifest</span>           <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">path</span><span class="p">:</span>           <span class="n">Path</span>                <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">count</span><span class="p">:</span>          <span class="nb">int</span>                 <span class="o">=</span> <span class="mi">0</span>         <span class="c1">#: :meta private:</span>
+    <span class="n">finished</span><span class="p">:</span>       <span class="nb">bool</span>                <span class="o">=</span> <span class="kc">False</span>     <span class="c1">#: :meta private:</span>
+    <span class="n">file_sources</span><span class="p">:</span>   <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>           <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">files_transferred</span><span class="p">:</span> <span class="nb">int</span>              <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">map_files</span><span class="p">:</span>      <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TFile</span><span class="p">]</span>    <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">map_source</span><span class="p">:</span>     <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">TFile</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>   <span class="c1">#: :meta private:</span>
+    <span class="n">transferred</span><span class="p">:</span>    <span class="nb">int</span>                 <span class="o">=</span> <span class="mi">0</span>         <span class="c1">#: :meta private:</span>
+    <span class="n">title</span><span class="p">:</span>          <span class="nb">str</span>                 <span class="o">=</span> <span class="s1">&#39;&#39;</span>        <span class="c1">#: :meta private:</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; combine attributes:</span>
@@ -181,9 +190,7 @@
 
 <span class="sd">        The file sources might have one or more references, which are represented as list of files in the Manif&lt;est</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">:</span>         <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TFile</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">:</span>        <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span>  <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="s1">&#39;title&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_sources</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_sources</span>
@@ -194,16 +201,18 @@
 
 <div class="viewcode-block" id="TDocument.initialize_document">
 <a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.initialize_document">[docs]</a>
-    <span class="k">def</span> <span class="nf">initialize_document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">initialize_document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Initializes the document, providing values for the Manifest header</span>
 
-<span class="sd">        :param values:  List of values according to the definition of columns</span>
-<span class="sd">        :type  values:  List[str]</span>
+<span class="sd">        :param List[str] values:  List of values according to the definition of columns</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">finished</span>           <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">count</span>              <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">document</span>  <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">y</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">,</span> <span class="n">values</span><span class="p">)}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">title</span>     <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span>         <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span>          <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transferred</span>        <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span>              <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
 
 <div class="viewcode-block" id="TDocument.download_file">
@@ -214,31 +223,28 @@
 <span class="sd">        are transferred, the document is created.</span>
 <span class="sd">        For each final acknowledge a 100% is returned.</span>
 
-<span class="sd">        :param file:    File descriptor with details on file and byte stream</span>
-<span class="sd">        :type  file:    dict</span>
-<span class="sd">        :param stream:  File stream, usually a chunk of</span>
-<span class="sd">        :param stream:  bytearray</span>
-<span class="sd">        :return:        The percentage of transferred document size as bytearray, terminated with the percent sign</span>
-<span class="sd">        :rtype:         bytearray</span>
+<span class="sd">        :param dict      file:   File descriptor with details on file and byte stream</span>
+<span class="sd">        :param bytearray stream: File stream, usually a chunk of</span>
+<span class="sd">        :return: The percentage of transferred document size as bytearray, terminated with the percent sign</span>
+<span class="sd">        :rtype:  bytearray</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;opcode&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;finished&#39;</span><span class="p">:</span>
             <span class="c1"># Check if we got all elements of a single source:</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]])</span> <span class="o">==</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
-
-            <span class="c1"># Check if we got all elements of all sources</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_sources</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transferred</span> <span class="o">==</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;all_volume&#39;</span><span class="p">]:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">create_document</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">finished</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="k">return</span> <span class="sa">b</span><span class="s1">&#39;100%&#39;</span>
+                <span class="k">return</span> <span class="s1">&#39;100%&#39;</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span>
+            <span class="n">x_fraction</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]])</span> <span class="o">/</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;src_files&#39;</span><span class="p">])</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_fraction</span><span class="si">}</span><span class="s1">%&#39;</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span>
 
+        <span class="c1"># Manage the file sources: Each source may have many entries</span>
+        <span class="c1"># Drag hte number of successful loaded elements of this specific source</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]):</span>
-            <span class="n">x_title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">title</span>
-            <span class="n">x_path</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="n">x_title</span>
+            <span class="n">x_path</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span>
             <span class="n">x_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">x_path</span> <span class="o">/=</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
 
@@ -249,23 +255,39 @@
 
         <span class="n">xt_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]]</span>
         <span class="n">xt_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">file</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">],</span> <span class="n">mode</span> <span class="o">=</span> <span class="n">TFileMode</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span>
-        <span class="n">x_percent</span> <span class="o">=</span> <span class="p">((</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;sequence&#39;</span><span class="p">]))</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;chunk_size&#39;</span><span class="p">]))</span> <span class="o">/</span> <span class="n">xt_file</span><span class="o">.</span><span class="n">size</span>
-        <span class="n">x_percent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">floor</span><span class="p">(</span><span class="n">x_percent</span><span class="p">))</span>
+
+        <span class="c1"># return percentage for a specific source</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transferred</span> <span class="o">+=</span> <span class="n">xt_file</span><span class="o">.</span><span class="n">transferred</span>
+
+        <span class="n">x_src_volume</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">xt_f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_source</span><span class="p">[</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]]:</span>
+            <span class="n">x_src_volume</span> <span class="o">+=</span> <span class="n">xt_f</span><span class="o">.</span><span class="n">transferred</span>
+
+        <span class="n">x_percent</span>  <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">x_src_volume</span> <span class="o">/</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;src_volume&#39;</span><span class="p">])</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">x_percent</span><span class="si">}</span><span class="s1">%&#39;</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TDocument.create_document">
 <a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.create_document">[docs]</a>
+    <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">create_document</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Abstract method which is called after all files are in place &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="TDocument.create_archive">
+<a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.create_archive">[docs]</a>
+    <span class="k">def</span> <span class="nf">create_archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document_title</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; ZIP the given files and the manifest to a document.</span>
 <span class="sd">        The TFile class keeps track on the location of the file content and their properties.</span>
+
+<span class="sd">        :param str document_title: The name of the archive</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">x_zip_title</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">document</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span>
         <span class="n">x_zip_stream</span>   <span class="o">=</span> <span class="n">BytesIO</span><span class="p">()</span>
         <span class="n">x_zip_stream</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
-        <span class="n">x_zip_root</span>     <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">x_zip_title</span><span class="p">)</span>
+        <span class="n">x_zip_root</span>     <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
         <span class="c1"># Path is: destination / book / document</span>
-        <span class="n">x_destination</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shelf_name</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">x_zip_title</span><span class="si">}</span><span class="s1">.tar&#39;</span>
+        <span class="n">x_destination</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shelf_name</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">document_title</span><span class="si">}</span><span class="s1">.tar&#39;</span>
         <span class="n">x_destination</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarFile</span><span class="p">(</span><span class="n">x_destination</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_zip_file</span><span class="p">:</span>
@@ -294,7 +316,11 @@
 <div class="viewcode-block" id="TDocument.read_file">
 <a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.read_file">[docs]</a>
     <span class="k">def</span> <span class="nf">read_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document_title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Returns the bytestream of the specified file in the archive &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Returns the bytestream of the specified file in the archive</span>
+
+<span class="sd">        :param str document_title:  The title of the document is the name of the archive</span>
+<span class="sd">        :param str file_name:       The file content to return</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shelf_name</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">document_title</span><span class="si">}</span><span class="s1">.tar&#39;</span>
         <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">TarFile</span><span class="p">(</span><span class="n">x_source</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_zip_file</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">x_tar_info</span> <span class="ow">in</span> <span class="n">x_zip_file</span><span class="o">.</span><span class="n">getmembers</span><span class="p">():</span>
@@ -307,7 +333,12 @@
 <div class="viewcode-block" id="TDocument.extract_file">
 <a class="viewcode-back" href="../../eezz.html#eezz.document.TDocument.extract_file">[docs]</a>
     <span class="k">def</span> <span class="nf">extract_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document_title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">dest_root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Restores the specified files, given by the regular expression in file_pattern &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Restores the specified files, given by the regular expression in file_pattern</span>
+
+<span class="sd">        :param str  document_title: The document title is the name of the archive</span>
+<span class="sd">        :param Path dest_root:      The path within the archive for all entries</span>
+<span class="sd">        :param str  file_pattern:   The files to extract</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">file_pattern</span><span class="p">:</span>
             <span class="n">file_pattern</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;\S*&#39;</span>
 
@@ -329,23 +360,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Test class Document&#39;</span><span class="p">)</span>
     <span class="n">my_doc</span> <span class="o">=</span> <span class="n">TDocument</span><span class="p">(</span><span class="n">shelf_name</span><span class="o">=</span><span class="s1">&#39;First&#39;</span><span class="p">,</span> <span class="n">attributes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;desc&#39;</span><span class="p">,</span> <span class="s1">&#39;author&#39;</span><span class="p">,</span> <span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="s1">&#39;valid&#39;</span><span class="p">],</span> <span class="n">file_sources</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;main&#39;</span><span class="p">])</span>
-
-    <span class="n">x_file_source</span> <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">root_path</span> <span class="o">/</span> <span class="s1">&#39;testdata/bird.jpg&#39;</span>
-    <span class="n">x_size</span>        <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">x_file_source</span><span class="p">)</span>
-
-    <span class="n">x_file_dest</span>   <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="s1">&#39;title&#39;</span>
-    <span class="n">x_file_dest</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">x_file_dest</span>   <span class="o">=</span> <span class="n">x_file_dest</span><span class="o">/</span><span class="s1">&#39;bird.jpg&#39;</span>
-    <span class="n">x_tfile</span>       <span class="o">=</span> <span class="n">TFile</span><span class="p">(</span><span class="n">file_type</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="n">destination</span><span class="o">=</span><span class="n">x_file_dest</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">x_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="n">x_size</span><span class="p">)</span>
-    <span class="k">with</span> <span class="n">x_file_source</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-        <span class="n">x_tfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">raw_data</span><span class="o">=</span><span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="n">sequence_nr</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-    <span class="n">my_doc</span><span class="o">.</span><span class="n">map_files</span><span class="p">[</span><span class="s1">&#39;bird.jpg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x_tfile</span>
-    <span class="n">my_doc</span><span class="o">.</span><span class="n">initialize_document</span><span class="p">([</span><span class="s1">&#39;Level&#39;</span><span class="p">,</span> <span class="s1">&#39;descr&#39;</span><span class="p">,</span> <span class="s1">&#39;author&#39;</span><span class="p">,</span> <span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="s1">&#39;valid&#39;</span><span class="p">,</span> <span class="s1">&#39;bird.jpg&#39;</span><span class="p">])</span>
-    <span class="n">my_doc</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">append_file</span><span class="p">({</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;bird.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="n">x_size</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;jpg&#39;</span><span class="p">})</span>
-    <span class="n">my_doc</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">append_file</span><span class="p">({</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;bird.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="n">x_size</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;jpg&#39;</span><span class="p">})</span>
-    <span class="n">my_doc</span><span class="o">.</span><span class="n">create_document</span><span class="p">()</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Created document </span><span class="si">{</span><span class="n">my_doc</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">my_doc</span><span class="o">.</span><span class="n">shelf_name</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">my_doc</span><span class="o">.</span><span class="n">manifest</span><span class="o">.</span><span class="n">document</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">.tar&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s1">&#39;test document&#39;</span><span class="p">)</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>

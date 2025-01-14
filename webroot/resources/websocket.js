@@ -146,7 +146,6 @@ function dynamic_update(a_update_json) {
             return;
         }
         x_elem = x_elem.querySelector(x_dest[i]);
-        // x_elem.querySelector('[data-eezz-subtree-id=]')
     }
 
     if (x_elem == null) {
@@ -390,6 +389,38 @@ function eezzy_onload(aElement) {
 // Function collects all eezz events from page using WEB-socket to
 // send a request to the server
 // ------------------------------------------------------------------------------------------
+function eezzy_get_local_values(aElement, argument_dict) {
+    var x_elem;
+    var x_key;
+    var x_source_descr;
+
+    for (x_key in argument_dict) {
+        x_source_descr = argument_dict[x_key].split('.');
+        if (x_source_descr.length != 2) {
+            continue;
+        }
+        if (x_key == 'this.subtree') {
+            continue;
+        }
+
+        if (x_source_descr[0]) {
+            x_elem = aElement
+        }
+        else {
+            x_elem = document.getElementById(x_source_descr[0]);
+        }
+
+        if (x_elem) {
+            var x_value = x_elem[x_source_descr[1]] || x_elem.getAttribute(x_source_descr[1]);
+            if (x_value)
+                argument_dict[x_key] = x_value;
+        }
+    }
+}
+
+// Function collects all eezz events from page using WEB-socket to
+// send a request to the server
+// ------------------------------------------------------------------------------------------
 function eezzy_click(aEvent, aElement) {
     var x_post     = true;
     var x_response = "";
@@ -399,22 +430,30 @@ function eezzy_click(aEvent, aElement) {
         return;
     }
 
-    // Generated elements: Return without modifications
-    if (aElement.hasAttribute('data-eezz-template')) {
-        x_response = JSON.stringify(x_json);
-        g_eezz_web_socket.send(x_response);
-        return;
-    }
+    // Generated elements:
+    //if (aElement.hasAttribute('data-eezz-template')) {
+    //    if (x_json.call) {
+    //        eezzy_get_local_values(aElement, x_json.call.args);
+    //    }
+
+    //    if (x_json.update) {
+    //        eezzy_get_local_values(aElement, x_json.update);
+    //    }
+    //    x_response = JSON.stringify(x_json);
+    //    g_eezz_web_socket.send(x_response);
+    //    return;
+    //}
 
     // User form elements: Collect the input data of this page.
     // The syntax for collection is as follows
-    // function: <name>, args: { name1: "id-of-element"."attribute-of-element", name2:... }
+    // function: {<name>, args: { name1: "id-of-element"."attribute-of-element", name2:... }, id: element}
     var x_function = x_json.call;
     if (x_function) {
         var x_args    = x_function.args;
         var x_element = document.getElementById(x_function.id);
         var x_attr;
 
+        // We have to put the cells into the correct order again, before sending the result
         for (x_key in x_args) {
             var x_source = x_args[x_key];
 
@@ -425,7 +464,6 @@ function eezzy_click(aEvent, aElement) {
                 var x_index;
 
                 x_source      = x_source.replace('template.', 'data-eezz-template=');
-                // x_source      = '[data-eezz-template="cell"]'
                 x_elem_list   = x_element.querySelectorAll(x_source);
 
                 for (var i = 0; i < x_elem_list.length; i++) {
@@ -441,14 +479,17 @@ function eezzy_click(aEvent, aElement) {
                 }
                 x_json.call.args[x_key] = x_new_row;
             }
-            else {
-                x_attr = x_source.split('.');
-                if (x_attr.length > 1) {
-                    x_elem = document.getElementById(x_attr[0]);
-                    x_json.call.args[x_key] = x_elem.getAttribute(x_attr[1]);
-                }
-            }
         }
+    }
+
+    if (x_json.call) {
+        eezzy_get_local_values(aElement, x_json.call.args);
+    }
+    if (x_json.update) {
+        eezzy_get_local_values(aElement, x_json.update);
+    }
+
+    if (x_json.call || x_json.update) {
         x_response = JSON.stringify(x_json);
         g_eezz_web_socket.send(x_response);
     }

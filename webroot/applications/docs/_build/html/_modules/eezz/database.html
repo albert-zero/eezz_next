@@ -82,12 +82,11 @@
 
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">sqlite3</span>
-<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span>   <span class="nn">loguru</span>           <span class="kn">import</span> <span class="n">logger</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">from</span>   <span class="nn">datetime</span>         <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 
-<span class="kn">from</span>   <span class="nn">Crypto.Hash</span>       <span class="kn">import</span> <span class="n">SHA256</span>
 <span class="kn">from</span>   <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">override</span>
 
 <span class="kn">from</span>   <span class="nn">service</span>           <span class="kn">import</span> <span class="n">TService</span>
@@ -103,18 +102,14 @@
 <span class="k">class</span> <span class="nc">TDatabaseColumn</span><span class="p">(</span><span class="n">TTableColumn</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; Represents a database column as a subclass of a table column.</span>
 
-<span class="sd">    This class provides additional features specific to database columns,</span>
-<span class="sd">    including the ability to specify whether a column is a primary key, options</span>
-<span class="sd">    related to its behavior or properties, and an alias for referencing the</span>
-<span class="sd">    column under a different name. It is designed to be extended for specific</span>
-<span class="sd">    use cases in managing and interacting with database tables.</span>
+<span class="sd">    This class provides additional features specific to database columns, including the ability to specify whether</span>
+<span class="sd">    a column is a primary key, options related to its behavior or properties, and an alias for referencing the</span>
+<span class="sd">    column under a different name. It is designed to be extended for specific use cases in managing and interacting with</span>
+<span class="sd">    database tables.</span>
 
-<span class="sd">    :ivar primary_key: Boolean flag indicating if the column is a primary key.</span>
-<span class="sd">    :type primary_key: bool</span>
-<span class="sd">    :ivar options: Additional options or settings for the column.</span>
-<span class="sd">    :type options: str</span>
-<span class="sd">    :ivar alias: Alternative name for referring to the column.</span>
-<span class="sd">    :type alias: str</span>
+<span class="sd">    :ivar bool  primary_key:    Boolean flag indicating if the column is a primary key.</span>
+<span class="sd">    :ivar str   options:        Additional options or settings for the column.</span>
+<span class="sd">    :ivar str   alias:          Alternative name for referring to the column.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">primary_key</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1">#: :meta private:</span>
     <span class="n">options</span><span class="p">:</span>     <span class="nb">str</span>  <span class="o">=</span> <span class="s1">&#39;&#39;</span>     <span class="c1">#: :meta private:</span>
@@ -135,14 +130,10 @@
 <span class="sd">    path, name, and column descriptors to construct necessary SQL statements for operations.</span>
 <span class="sd">    Initialization involves setting up the data structure and checking for primary keys.</span>
 
-<span class="sd">    :ivar column_names: List of column names for the database table.</span>
-<span class="sd">    :type column_names: list</span>
-<span class="sd">    :ivar database_name: The name of the database file to connect or create.</span>
-<span class="sd">    :type database_name: str</span>
-<span class="sd">    :ivar database_path: File path for the database.</span>
-<span class="sd">    :type database_path: str</span>
-<span class="sd">    :ivar virtual_len: Virtual length of the dataset.</span>
-<span class="sd">    :type virtual_len: int</span>
+<span class="sd">    :ivar list  column_names:   List of column names for the database table.</span>
+<span class="sd">    :ivar str   database_name:  The name of the database file to connect or create.</span>
+<span class="sd">    :ivar str   database_path:  File path for the database.</span>
+<span class="sd">    :ivar int   virtual_len:    Virtual length of the dataset.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">column_names</span><span class="p">:</span>     <span class="nb">list</span>      <span class="o">=</span> <span class="kc">None</span>
     <span class="n">database_name</span><span class="p">:</span>    <span class="nb">str</span>       <span class="o">=</span> <span class="s1">&#39;default.db&#39;</span>      <span class="c1">#: :meta private:</span>
@@ -202,18 +193,11 @@
     <span class="k">def</span> <span class="nf">prepare_statements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Prepare SQL statements for a database table based on provided column descriptions.</span>
 
-<span class="sd">        This method constructs SQL statements for creating, selecting, counting,</span>
-<span class="sd">        and inserting data into a database table. The statements are built using</span>
-<span class="sd">        the table title and column descriptions provided to the instance. The</span>
-<span class="sd">        resulting SQL statements include a &#39;CREATE TABLE&#39; statement with primary</span>
-<span class="sd">        key constraint, a &#39;SELECT&#39; statement to retrieve all data, a &#39;COUNT&#39;</span>
-<span class="sd">        statement to tally the rows, and an &#39;INSERT OR REPLACE&#39; statement for</span>
+<span class="sd">        This method constructs SQL statements for creating, selecting, counting, and inserting data into a database table.</span>
+<span class="sd">        The statements are built using the table title and column descriptions provided to the instance. The</span>
+<span class="sd">        resulting SQL statements include a &#39;CREATE TABLE&#39; statement with primary key constraint, a &#39;SELECT&#39; statement to</span>
+<span class="sd">        retrieve all data, a &#39;COUNT&#39; statement to tally the rows, and an &#39;INSERT OR REPLACE&#39; statement for</span>
 <span class="sd">        adding or updating records.</span>
-
-<span class="sd">        :param self: The instance of the class containing table title and</span>
-<span class="sd">                     column descriptions required for preparing SQL statements.</span>
-<span class="sd">        :return: None. The function operates by side-effect, updating instance</span>
-<span class="sd">                 attributes with the generated SQL statements.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_sections</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="n">x_sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;create table if not exists </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
@@ -246,7 +230,7 @@
 <span class="sd">        and then closes the connection ensuring the changes are committed.</span>
 
 <span class="sd">        :raises sqlite3.Error: If an error occurs while connecting to the database</span>
-<span class="sd">            or executing the SQL statement.</span>
+<span class="sd">                                or executing the SQL statement.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sqlite3</span><span class="o">.</span><span class="n">register_adapter</span><span class="p">(</span><span class="n">datetime</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x_val</span><span class="p">:</span> <span class="n">x_val</span><span class="o">.</span><span class="n">isoformat</span><span class="p">())</span>
         <span class="n">sqlite3</span><span class="o">.</span><span class="n">register_converter</span><span class="p">(</span><span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x_val</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">x_val</span><span class="o">.</span><span class="n">decode</span><span class="p">()))</span>
@@ -270,17 +254,12 @@
 <span class="sd">        The method accepts parameters to specify the type</span>
 <span class="sd">        of the row, presence check, and any additional attributes.</span>
 
-<span class="sd">        :param table_row: List of values representing the table row to append.</span>
-<span class="sd">        :type table_row: list</span>
-<span class="sd">        :param attrs: Optional dictionary of additional attributes. Defaults to None.</span>
-<span class="sd">        :type attrs: dict, optional</span>
-<span class="sd">        :param row_type: Type of the row, default is &#39;body&#39;.</span>
-<span class="sd">        :type row_type: str</span>
-<span class="sd">        :param row_id: Identifier for the row. If not provided, it is generated automatically.</span>
-<span class="sd">        :type row_id: str</span>
-<span class="sd">        :param exists_ok: Indicates if appending should proceed without error if row exists. Defaults to True.</span>
-<span class="sd">        :type exists_ok: bool</span>
-<span class="sd">        :return: A reference to the appended table row.</span>
+<span class="sd">        :param list     table_row:  List of values representing the table row to append.</span>
+<span class="sd">        :param dict     attrs:      Optional dictionary of additional attributes. Defaults to None.</span>
+<span class="sd">        :param str      row_type:   Type of the row, default is &#39;body&#39;.</span>
+<span class="sd">        :param str      row_id:     Identifier for the row. If not provided, it is generated automatically.</span>
+<span class="sd">        :param bool     exists_ok:  Indicates if appending should proceed without error if row exists. Defaults to True.</span>
+<span class="sd">        :return:                    A reference to the appended table row.</span>
 <span class="sd">        :rtype: TTableRow</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_row_descr</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">table_row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">))</span>
@@ -317,19 +296,17 @@
 
 <div class="viewcode-block" id="TDatabaseTable.navigate">
 <a class="viewcode-back" href="../../eezz.html#eezz.database.TDatabaseTable.navigate">[docs]</a>
-    <span class="k">def</span> <span class="nf">navigate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">where_togo</span><span class="p">:</span> <span class="n">TNavigation</span> <span class="o">=</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">navigate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">where_togo</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Navigate to a specified position within a data structure. This method</span>
 <span class="sd">        allows navigation through different points based on the parameters provided. If the `position`</span>
 <span class="sd">        is set to 0, synchronization is disabled by setting `is_synchron` to False.</span>
 <span class="sd">        This allows to select data and restrict the number of data records transferred to the application.</span>
 <span class="sd">        It allows the user to navigate in the selected data set if needed</span>
 
-<span class="sd">        :param where_togo: The direction or target to which the navigation should occur. Defaults to</span>
-<span class="sd">                           `TNavigation.NEXT`.</span>
-<span class="sd">        :type where_togo: TNavigation</span>
-<span class="sd">        :param position: The index or position to navigate to. If the value is 0, internal synchronization</span>
-<span class="sd">                         will be set to False. Defaults to 0.</span>
-<span class="sd">        :type position: int</span>
+<span class="sd">        :param TNavigation  where_togo: The direction or target to which the navigation should occur.</span>
+<span class="sd">                                Defaults to TNavigation.NEXT`.</span>
+<span class="sd">        :param int          position:   The index or position to navigate to. If the value is 0, internal synchronization</span>
+<span class="sd">                                will be set to False. Defaults to 0.</span>
 <span class="sd">        :return: None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">navigate</span><span class="p">(</span><span class="n">where_togo</span><span class="o">=</span><span class="n">where_togo</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">)</span>
@@ -347,7 +324,7 @@
 <span class="sd">        description. The method subsequently yields visible rows as determined by</span>
 <span class="sd">        the superclass implementation.</span>
 
-<span class="sd">        :param get_all: A boolean to determine if all rows should be retrieved.</span>
+<span class="sd">        :param  get_all:    A boolean to determine if all rows should be retrieved.</span>
 <span class="sd">        :return: A list of visible rows.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span><span class="p">:</span>
@@ -371,7 +348,7 @@
                 <span class="n">TDatabaseColumn</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s1">&#39;Size&#39;</span><span class="p">,</span>       <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;integer&#39;</span><span class="p">),</span>
                 <span class="n">TDatabaseColumn</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s1">&#39;AccessTime&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;text&#39;</span><span class="p">)])</span>
 
-    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;database.py::main: insert elements and commit&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;database.py::main: insert elements and commit&#39;</span><span class="p">)</span>
     <span class="n">x_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">x_item</span> <span class="ow">in</span> <span class="n">x_path</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
         <span class="n">x_stat</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
@@ -379,26 +356,15 @@
         <span class="n">x_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="p">),</span> <span class="n">x_stat</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span> <span class="n">x_time</span><span class="p">],</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;path&#39;</span><span class="p">:</span> <span class="n">x_item</span><span class="p">},</span> <span class="n">row_id</span><span class="o">=</span><span class="n">x_item</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
-    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;database.py::main: select elements and print table&#39;</span><span class="p">)</span>
-    <span class="n">x_table</span><span class="o">.</span><span class="n">filter_rows</span><span class="p">([[</span><span class="s1">&#39;Size &gt; 20000&#39;</span><span class="p">],[</span><span class="s1">&#39;File like %py&#39;</span><span class="p">]])</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;database.py::main: select elements and print table&#39;</span><span class="p">)</span>
+    <span class="n">x_table</span><span class="o">.</span><span class="n">filter_rows</span><span class="p">([[</span><span class="s1">&#39;Size &gt; 20000&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;File like %py&#39;</span><span class="p">]])</span>
     <span class="n">x_table</span><span class="o">.</span><span class="n">print</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s1">&#39;test database&#39;</span><span class="p">)</span>
 
 
 <span class="c1"># --- section for module tests</span>
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;:meta private:&quot;&quot;&quot;</span>
-    <span class="n">x_service</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;C:\Users\alzer\Projects\github\eezz_full\webroot&#39;</span><span class="p">))</span>
-
-    <span class="n">x_log_path</span> <span class="o">=</span> <span class="n">x_service</span><span class="o">.</span><span class="n">logging_path</span> <span class="o">/</span> <span class="s1">&#39;test_database.log&#39;</span>
-    <span class="n">x_log_path</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">x_database</span> <span class="o">=</span> <span class="n">x_service</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="s1">&#39;test.db&#39;</span>
-    <span class="n">x_database</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">x_log_path</span><span class="p">,</span> <span class="n">filemode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;{&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">{name}</span><span class="s1"> - </span><span class="si">{levelname}</span><span class="s1"> - </span><span class="si">{message}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
-
-    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;database.py::main: create database </span><span class="si">{</span><span class="n">x_database</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
     <span class="n">test_database</span><span class="p">()</span>
 </pre></div>
 

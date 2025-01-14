@@ -12,7 +12,7 @@ import urllib
 import urllib.request
 import base64
 import struct
-from   Crypto.Cipher     import AES
+from   Crypto.Cipher     import AES, PKCS1_v1_5
 from   Crypto            import Random
 import service
 
@@ -24,9 +24,6 @@ class TSecureSocket:
     This class provides mechanisms to send requests securely by encrypting the request data with
     AES encryption and then using RSA encryption to secure the AES key and initialization vector.
     The response is then decrypted and parsed.
-
-    :ivar service: Service instance to fetch the RSA private key.
-    :type service: TService
     """
     def __init__(self):
         pass

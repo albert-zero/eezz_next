@@ -81,7 +81,7 @@
 <span class="sd">    put together in the correct order again. Furthermore, a hash is calculated for each chunk, so that the</span>
 <span class="sd">    data consistency of a file could be ensured during reading.</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">import</span>  <span class="nn">logging</span>
+<span class="kn">from</span>    <span class="nn">loguru</span>          <span class="kn">import</span> <span class="n">logger</span>
 <span class="kn">import</span>  <span class="nn">os</span>
 <span class="kn">import</span>  <span class="nn">mmap</span>
 <span class="kn">from</span>    <span class="nn">typing</span>         <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
@@ -93,7 +93,6 @@
 <span class="kn">from</span>    <span class="nn">dataclasses</span>    <span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span>    <span class="nn">pathlib</span>        <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span>    <span class="nn">service</span>        <span class="kn">import</span> <span class="n">TService</span>
-<span class="kn">from</span>    <span class="nn">queue</span>          <span class="kn">import</span> <span class="n">Queue</span>
 <span class="kn">from</span>    <span class="nn">io</span>             <span class="kn">import</span> <span class="n">BufferedReader</span>
 <span class="kn">from</span>    <span class="nn">enum</span>           <span class="kn">import</span> <span class="n">Enum</span>
 
@@ -124,10 +123,11 @@
 <span class="sd">    :param size:        The size of the file</span>
 <span class="sd">    :param chunk_size:  Fixed size for each chunk of data, except the last element</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">file_type</span><span class="p">:</span>   <span class="nb">str</span>    <span class="c1">#: :meta private:</span>
-    <span class="n">destination</span><span class="p">:</span> <span class="n">Path</span>   <span class="c1">#: :meta private:</span>
-    <span class="n">size</span><span class="p">:</span>        <span class="nb">int</span>    <span class="c1">#: :meta private:</span>
-    <span class="n">chunk_size</span><span class="p">:</span>  <span class="nb">int</span>    <span class="c1">#: :meta private:</span>
+    <span class="n">file_type</span><span class="p">:</span>   <span class="nb">str</span>        <span class="c1">#: :meta private:</span>
+    <span class="n">destination</span><span class="p">:</span> <span class="n">Path</span>       <span class="c1">#: :meta private:</span>
+    <span class="n">size</span><span class="p">:</span>        <span class="nb">int</span>        <span class="c1">#: :meta private:</span>
+    <span class="n">chunk_size</span><span class="p">:</span>  <span class="nb">int</span>        <span class="c1">#: :meta private:</span>
+    <span class="n">transferred</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>    <span class="c1">#: :meta private:</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">chunk_count</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
@@ -138,6 +138,11 @@
             <span class="n">x_output</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
             <span class="n">x_output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
 
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; :return: Returns the file path &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">destination</span><span class="o">.</span><span class="n">name</span>
+
 <div class="viewcode-block" id="TFile.write">
 <a class="viewcode-back" href="../../eezz.html#eezz.filesrv.TFile.write">[docs]</a>
     <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">sequence_nr</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="n">TFileMode</span> <span class="o">=</span> <span class="n">TFileMode</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -145,10 +150,10 @@
 <span class="sd">        The sequence number is passed along, because we cannot guarantee, that elements received in the same</span>
 <span class="sd">        order as they are send.</span>
 
-<span class="sd">        :param raw_data:        Raw chunk of data</span>
-<span class="sd">        :param sequence_nr:     Sequence number to insert chunks at the right place</span>
-<span class="sd">        :param mode: Ignored:   set signature for derived classes</span>
-<span class="sd">        :return: Empty string:  set signature for derived classes</span>
+<span class="sd">        :param Any          raw_data:       Raw chunk of data</span>
+<span class="sd">        :param int          sequence_nr:    Sequence number to insert chunks at the right place</span>
+<span class="sd">        :param TFileMode    mode:           Set signature for derived classes</span>
+<span class="sd">        :return: Signature for derived classes</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_offset</span>          <span class="o">=</span> <span class="n">sequence_nr</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">transferred</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span>
@@ -179,18 +184,12 @@
 <span class="sd">    After finishing the transfer, the instance is pushed into the response queue, which allows to implement a</span>
 <span class="sd">    supervisor thread, which blocks on the queue reading</span>
 
-<span class="sd">    :param key:             AES key for cypher</span>
-<span class="sd">    :type  key:             Crypto.Random.new(16)</span>
-<span class="sd">    :param vector:          AES vector for cypher</span>
-<span class="sd">    :type  vector:          Crypto.Random.new(16)</span>
-<span class="sd">    :param response:        Queue to get the final state of an instance</span>
-<span class="sd">    :type  response:        Queue.queue</span>
-<span class="sd">    :param hash_chain:      A list of hash values for each chunk</span>
-<span class="sd">    :type hash_chain:       List[SHA256.hexdigest]</span>
+<span class="sd">    :param Crypto.Random.new(16)  key:          AES key for cypher</span>
+<span class="sd">    :param Crypto.Random.new(16)  vector:       AES vector for cypher</span>
+<span class="sd">    :param List[SHA256.hexdigest] hash_chain:   A list of hash values for each chunk</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">key</span><span class="p">:</span>          <span class="nb">bytes</span>         <span class="c1">#: :meta private:</span>
     <span class="n">vector</span><span class="p">:</span>       <span class="nb">bytes</span>         <span class="c1">#: :meta private:</span>
-    <span class="n">response</span><span class="p">:</span>     <span class="n">Queue</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
     <span class="n">hash_chain</span><span class="p">:</span>   <span class="nb">dict</span>  <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private:</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -206,17 +205,13 @@
 <span class="sd">        :param raw_data:    The data chunk to write</span>
 <span class="sd">        :param sequence_nr: Sequence of the data chunk in the stream</span>
 <span class="sd">        :param mode:        The mode used to en- or decrypt the data or pass through</span>
-<span class="sd">        :return:            The hash value of the data after encryption/before decryption</span>
-<span class="sd">        :rtype:             SHA256.hexdigest</span>
+<span class="sd">        :return: The hash value of the data after encryption/before decryption</span>
+<span class="sd">        :rtype:  SHA256.hexdigest</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">TFileMode</span><span class="o">.</span><span class="n">ENCRYPT</span><span class="p">:</span>
             <span class="n">x_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">sequence_nr</span><span class="o">=</span><span class="n">sequence_nr</span><span class="p">)</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transferred</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">response</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">TFileMode</span><span class="o">.</span><span class="n">DECRYPT</span><span class="p">:</span>
             <span class="n">x_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">sequence_nr</span><span class="o">=</span><span class="n">sequence_nr</span><span class="p">)</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transferred</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">response</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">destination</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">sequence_nr</span><span class="p">)</span>
             <span class="n">x_hash</span> <span class="o">=</span> <span class="n">SHA256</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
@@ -228,15 +223,16 @@
     <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">BufferedReader</span><span class="p">,</span> <span class="n">hash_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Read an encrypted file from source input stream and create an decrypted version</span>
 
-<span class="sd">        :param source:      Input stream</span>
-<span class="sd">        :param hash_list:   A hash list to check the stream</span>
-<span class="sd">        :type  hash_list:   List[SHA256.hexdigest]</span>
+<span class="sd">        :param BufferedReader           source:     Input stream</span>
+<span class="sd">        :param List[SHA256.hexdigest]   hash_list:  A hash list to check the stream</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_sequence_nr</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="n">x_raw_data</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">)</span>
             <span class="n">x_hash</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">x_raw_data</span><span class="p">,</span> <span class="n">x_sequence_nr</span><span class="p">,</span> <span class="n">TFileMode</span><span class="o">.</span><span class="n">DECRYPT</span><span class="p">)</span>
             <span class="c1"># todo check x_hash and hash_list[x_sequence_nr] raise FileCypherError</span>
+            <span class="k">if</span> <span class="n">x_hash</span> <span class="o">!=</span> <span class="n">hash_list</span><span class="p">[</span><span class="n">x_sequence_nr</span><span class="p">]:</span>
+                <span class="k">pass</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transferred</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
                 <span class="k">break</span>
             <span class="n">x_sequence_nr</span> <span class="o">+=</span> <span class="mi">1</span></div>
@@ -247,10 +243,10 @@
     <span class="k">def</span> <span class="nf">encrypt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">sequence_nr</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Encrypt the incoming data stream</span>
 
-<span class="sd">        :param raw_data:    Data chunk of the stream</span>
-<span class="sd">        :param sequence_nr: Sequence number in the stream</span>
-<span class="sd">        :return:            Hash value of the chunk</span>
-<span class="sd">        :rtype:             SHA256.hexdigest</span>
+<span class="sd">        :param Any raw_data:    Data chunk of the stream</span>
+<span class="sd">        :param int sequence_nr: Sequence number in the stream</span>
+<span class="sd">        :return: Hash value of the chunk</span>
+<span class="sd">        :rtype:  SHA256.hexdigest</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_stream</span> <span class="o">=</span> <span class="n">raw_data</span>
         <span class="c1"># for encryption all chunks have to be extended to 16-byte mod length</span>
@@ -271,10 +267,10 @@
     <span class="k">def</span> <span class="nf">decrypt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">sequence_nr</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Decrypt the incoming stream</span>
 
-<span class="sd">        :param raw_data:    Data chunk of the steam</span>
-<span class="sd">        :param sequence_nr: Sequence number in the stream</span>
-<span class="sd">        :return:            Hash value of the chunk</span>
-<span class="sd">        :rtype:             SHA256.hexdigest</span>
+<span class="sd">        :param Any raw_data:    Data chunk of the steam</span>
+<span class="sd">        :param int sequence_nr: Sequence number in the stream</span>
+<span class="sd">        :return: Hash value of the chunk</span>
+<span class="sd">        :rtype:  SHA256.hexdigest</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_stream</span> <span class="o">=</span> <span class="n">raw_data</span>
         <span class="n">x_hash</span>   <span class="o">=</span> <span class="n">SHA256</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
@@ -329,7 +325,6 @@
     <span class="n">x_source</span>    <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">root_path</span><span class="p">)</span> <span class="o">/</span> <span class="s1">&#39;testdata/bird.jpg&#39;</span>
     <span class="n">x_stat</span>      <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">x_source</span><span class="p">)</span>
     <span class="n">x_size</span>      <span class="o">=</span> <span class="n">x_stat</span><span class="o">.</span><span class="n">st_size</span>
-    <span class="n">x_queue</span>     <span class="o">=</span> <span class="n">Queue</span><span class="p">()</span>
     <span class="n">x_dest</span>      <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="n">x_source</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s1">&#39;.crypt&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
     <span class="n">x_decr</span>      <span class="o">=</span> <span class="n">TService</span><span class="p">()</span><span class="o">.</span><span class="n">document_path</span> <span class="o">/</span> <span class="n">x_source</span><span class="o">.</span><span class="n">name</span>
     <span class="n">x_key</span>       <span class="o">=</span> <span class="n">Random</span><span class="o">.</span><span class="n">new</span><span class="p">()</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">AES</span><span class="o">.</span><span class="n">block_size</span><span class="p">)</span>
@@ -341,7 +336,7 @@
         <span class="k">pass</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--- Test TEezzFile: </span><span class="si">{</span><span class="n">x_source</span><span class="si">}</span><span class="s1"> --&gt; </span><span class="si">{</span><span class="n">x_dest</span><span class="si">}</span><span class="s1">, file-type=main&#39;</span><span class="p">)</span>
-    <span class="n">x_file</span> <span class="o">=</span> <span class="n">TEezzFile</span><span class="p">(</span><span class="n">destination</span><span class="o">=</span><span class="n">x_dest</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">x_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">file_type</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="n">response</span><span class="o">=</span><span class="n">x_queue</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">vector</span><span class="o">=</span><span class="n">x_vector</span><span class="p">)</span>
+    <span class="n">x_file</span> <span class="o">=</span> <span class="n">TEezzFile</span><span class="p">(</span><span class="n">destination</span><span class="o">=</span><span class="n">x_dest</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">x_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">file_type</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">vector</span><span class="o">=</span><span class="n">x_vector</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">x_source</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;rb+&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_input</span><span class="p">:</span>
         <span class="n">x_sequence</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
@@ -353,22 +348,20 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;hash-list = </span><span class="si">{</span><span class="n">x_file</span><span class="o">.</span><span class="n">hash_chain</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--- Test TEezzFile: </span><span class="si">{</span><span class="n">x_dest</span><span class="si">}</span><span class="s1"> --&gt; </span><span class="si">{</span><span class="n">x_decr</span><span class="si">}</span><span class="s1">, file-type=main&#39;</span><span class="p">)</span>
-    <span class="n">x_file</span> <span class="o">=</span> <span class="n">TEezzFile</span><span class="p">(</span><span class="n">destination</span><span class="o">=</span><span class="n">x_decr</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">x_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">file_type</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="n">response</span><span class="o">=</span><span class="n">x_queue</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">vector</span><span class="o">=</span><span class="n">x_vector</span><span class="p">)</span>
+    <span class="n">x_file</span> <span class="o">=</span> <span class="n">TEezzFile</span><span class="p">(</span><span class="n">destination</span><span class="o">=</span><span class="n">x_decr</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">x_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">file_type</span><span class="o">=</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">vector</span><span class="o">=</span><span class="n">x_vector</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">x_dest</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;rb+&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">x_input</span><span class="p">:</span>
         <span class="n">x_sequence</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">while</span> <span class="n">x_chunk</span> <span class="o">:=</span> <span class="n">x_input</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1024</span><span class="p">):</span>
             <span class="n">x_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">raw_data</span><span class="o">=</span><span class="n">x_chunk</span><span class="p">,</span> <span class="n">sequence_nr</span><span class="o">=</span><span class="n">x_sequence</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">TFileMode</span><span class="o">.</span><span class="n">DECRYPT</span><span class="p">)</span>
             <span class="n">x_sequence</span> <span class="o">+=</span> <span class="mi">1</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;hash-list = </span><span class="si">{</span><span class="n">x_file</span><span class="o">.</span><span class="n">hash_chain</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s1">&#39;test TFile&#39;</span><span class="p">)</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; :meta private:  &quot;&quot;&quot;</span>
-    <span class="n">x_service</span>  <span class="o">=</span> <span class="n">TService</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;C:\Users\alzer\Projects\github\eezz_full\webroot&#39;</span><span class="p">))</span>
+    <span class="n">x_service</span>  <span class="o">=</span> <span class="n">TService</span><span class="o">.</span><span class="n">set_environment</span><span class="p">(</span><span class="n">root_path</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;C:\Users\alzer\Projects\github\eezz_full\webroot&#39;</span><span class="p">)</span>
     <span class="n">x_log_path</span> <span class="o">=</span> <span class="n">x_service</span><span class="o">.</span><span class="n">logging_path</span> <span class="o">/</span> <span class="s1">&#39;app.log&#39;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">x_log_path</span><span class="p">,</span> <span class="n">filemode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;{&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">{name}</span><span class="s1"> - </span><span class="si">{levelname}</span><span class="s1"> - </span><span class="si">{message}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
 
     <span class="n">test_file_reader</span><span class="p">()</span>
     <span class="n">test_eezzfile_reader</span><span class="p">()</span>

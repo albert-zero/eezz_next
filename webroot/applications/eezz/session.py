@@ -45,7 +45,6 @@ class TSession(TTable):
     of the EEZZ Windows installation.
 
     :ivar bool                  desktop_connected:   Connected to the desktop user
-    :ivar bool                  device_connected:    Connected device and desktop user
     :ivar TTableRow             paired_device:       Data of connected device
     :ivar TBluetoothService     bt_service:          Bluetooth communication protocol
     :ivar TBluetooth            bt_devices:          Table listing bluetooth devices in range
@@ -56,10 +55,11 @@ class TSession(TTable):
     address:            str     = None                      #: :meta private:
     desktop_connected:  bool    = False                     #: :meta private:
     device_connected:   bool    = False                     #: :meta private:
-    paired_device:      TTableRow          | None = None    #: :meta private:
-    bt_service:         TBluetoothService  | None = None    #: :meta private:
-    bt_devices:         TBluetooth         = None           #: :meta private:
-    mb_devices:         TMobileDevices     = None           #: :meta private:
+    paired_device:      TTableRow           | None = None   #: :meta private:
+    bt_service:         TBluetoothService   | None = None   #: :meta private:
+    bt_devices:         TBluetooth          = None          #: :meta private:
+    mb_devices:         TMobileDevices      = None          #: :meta private:
+    column_names:       list                = None          #: :meta private:
 
     def __post_init__(self):
         """ Create the table header """
@@ -89,7 +89,7 @@ class TSession(TTable):
                 self.bt_devices.async_condition.wait()
                 x_bt_devices_in_range = self.bt_devices.get_visible_rows()
 
-            x_my_paired_devices   = self.mb_devices.do_select({'CSid': self.sid})
+            x_my_paired_devices   = list(self.mb_devices.do_select(filter_descr=[['CSid', '=', self.sid]]))
             x_my_paired_addresses = [x['CAddress'] for x in x_my_paired_devices]
             x_bt_device_addresses = [x['Address']  for x in x_bt_devices_in_range]
             x_pairs  = [x for x in x_bt_device_addresses if x in x_my_paired_addresses]
@@ -104,7 +104,7 @@ class TSession(TTable):
             if not self.device_connected and x_pairs:
                 self.address          = x_pairs[0]
                 self.bt_service       = TBluetoothService(address=self.address)
-                self.paired_device    = self.mb_devices.do_select({'Address': self.address})[0]
+                self.paired_device    = self.mb_devices.do_select(filter_descr=[['Address', '=', self.address]])[0]
                 self.device_connected = True
 
     def connect(self, local_user: dict):
@@ -173,13 +173,13 @@ class TSession(TTable):
         - The user has to be connected to eezz, which is automatically done using the TaskBar tool
         - The address has to be selected via user interface
 
-        :param   address:
-        :param   password: Password will be encrypted and stored on device for unlock workstation
+        :param   str address:   Mobile address
+        :param   str password:  Password will be encrypted and stored on device for unlock workstation
         :return: EEZZ Confirmation message as dict
         """
         with self.bt_devices.async_lock:
-            x_devices_to_pair  = self.bt_devices.do_select({'CAddress': address})[0]
-            x_my_devices       = self.mb_devices.do_select({'CSid': self.sid, 'CAddress': address})[0]
+            x_devices_to_pair  = list(self.bt_devices.do_select(filter_descr=[['CAddress', '=', address]]))[0]
+            x_my_devices       = list(self.mb_devices.do_select(filter_descr=[['CSid', '=', self.sid], ['CAddress', '=', address]]))[0]
 
         # Prepare update of password for existing pairing or create new
         if x_my_devices:
@@ -219,13 +219,13 @@ class TSession(TTable):
         """ Register user on EEZZ server. The request is send to the mobile device, which enriches the data and then
         forwards it to the eezz server page.
 
-        :param alias:    Display name of the user
-        :param fname:    First name
-        :param lname:    Last name
-        :param email:    E-Mail address
-        :param iban:     Payment account
-        :param password: Password for the service. Only the hash value is stored, not the password itself
-        :return:         Status message
+        :param str alias:    Display name of the user
+        :param str fname:    First name
+        :param str lname:    Last name
+        :param str email:    E-Mail address
+        :param str iban:     Payment account
+        :param str password: Password for the service. Only the hash value is stored, not the password itself
+        :return: Status message
         """
         # get coupled user for a given address:
         if not email or not iban or not password or not alias:

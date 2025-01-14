@@ -118,7 +118,6 @@
 <span class="sd">    of the EEZZ Windows installation.</span>
 
 <span class="sd">    :ivar bool                  desktop_connected:   Connected to the desktop user</span>
-<span class="sd">    :ivar bool                  device_connected:    Connected device and desktop user</span>
 <span class="sd">    :ivar TTableRow             paired_device:       Data of connected device</span>
 <span class="sd">    :ivar TBluetoothService     bt_service:          Bluetooth communication protocol</span>
 <span class="sd">    :ivar TBluetooth            bt_devices:          Table listing bluetooth devices in range</span>
@@ -129,10 +128,11 @@
     <span class="n">address</span><span class="p">:</span>            <span class="nb">str</span>     <span class="o">=</span> <span class="kc">None</span>                      <span class="c1">#: :meta private:</span>
     <span class="n">desktop_connected</span><span class="p">:</span>  <span class="nb">bool</span>    <span class="o">=</span> <span class="kc">False</span>                     <span class="c1">#: :meta private:</span>
     <span class="n">device_connected</span><span class="p">:</span>   <span class="nb">bool</span>    <span class="o">=</span> <span class="kc">False</span>                     <span class="c1">#: :meta private:</span>
-    <span class="n">paired_device</span><span class="p">:</span>      <span class="n">TTableRow</span>          <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private:</span>
-    <span class="n">bt_service</span><span class="p">:</span>         <span class="n">TBluetoothService</span>  <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private:</span>
-    <span class="n">bt_devices</span><span class="p">:</span>         <span class="n">TBluetooth</span>         <span class="o">=</span> <span class="kc">None</span>           <span class="c1">#: :meta private:</span>
-    <span class="n">mb_devices</span><span class="p">:</span>         <span class="n">TMobileDevices</span>     <span class="o">=</span> <span class="kc">None</span>           <span class="c1">#: :meta private:</span>
+    <span class="n">paired_device</span><span class="p">:</span>      <span class="n">TTableRow</span>           <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>   <span class="c1">#: :meta private:</span>
+    <span class="n">bt_service</span><span class="p">:</span>         <span class="n">TBluetoothService</span>   <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>   <span class="c1">#: :meta private:</span>
+    <span class="n">bt_devices</span><span class="p">:</span>         <span class="n">TBluetooth</span>          <span class="o">=</span> <span class="kc">None</span>          <span class="c1">#: :meta private:</span>
+    <span class="n">mb_devices</span><span class="p">:</span>         <span class="n">TMobileDevices</span>      <span class="o">=</span> <span class="kc">None</span>          <span class="c1">#: :meta private:</span>
+    <span class="n">column_names</span><span class="p">:</span>       <span class="nb">list</span>                <span class="o">=</span> <span class="kc">None</span>          <span class="c1">#: :meta private:</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Create the table header &quot;&quot;&quot;</span>
@@ -167,7 +167,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">async_condition</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
                 <span class="n">x_bt_devices_in_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">get_visible_rows</span><span class="p">()</span>
 
-            <span class="n">x_my_paired_devices</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">({</span><span class="s1">&#39;CSid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">})</span>
+            <span class="n">x_my_paired_devices</span>   <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">(</span><span class="n">filter_descr</span><span class="o">=</span><span class="p">[[</span><span class="s1">&#39;CSid&#39;</span><span class="p">,</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">]]))</span>
             <span class="n">x_my_paired_addresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;CAddress&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_my_paired_devices</span><span class="p">]</span>
             <span class="n">x_bt_device_addresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;Address&#39;</span><span class="p">]</span>  <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_bt_devices_in_range</span><span class="p">]</span>
             <span class="n">x_pairs</span>  <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_bt_device_addresses</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_my_paired_addresses</span><span class="p">]</span>
@@ -182,7 +182,7 @@
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_connected</span> <span class="ow">and</span> <span class="n">x_pairs</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">address</span>          <span class="o">=</span> <span class="n">x_pairs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">bt_service</span>       <span class="o">=</span> <span class="n">TBluetoothService</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">paired_device</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">({</span><span class="s1">&#39;Address&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">paired_device</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">(</span><span class="n">filter_descr</span><span class="o">=</span><span class="p">[[</span><span class="s1">&#39;Address&#39;</span><span class="p">,</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">]])[</span><span class="mi">0</span><span class="p">]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">device_connected</span> <span class="o">=</span> <span class="kc">True</span></div>
 
 
@@ -260,13 +260,13 @@
 <span class="sd">        - The user has to be connected to eezz, which is automatically done using the TaskBar tool</span>
 <span class="sd">        - The address has to be selected via user interface</span>
 
-<span class="sd">        :param   address:</span>
-<span class="sd">        :param   password: Password will be encrypted and stored on device for unlock workstation</span>
+<span class="sd">        :param   str address:   Mobile address</span>
+<span class="sd">        :param   str password:  Password will be encrypted and stored on device for unlock workstation</span>
 <span class="sd">        :return: EEZZ Confirmation message as dict</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">async_lock</span><span class="p">:</span>
-            <span class="n">x_devices_to_pair</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">({</span><span class="s1">&#39;CAddress&#39;</span><span class="p">:</span> <span class="n">address</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">x_my_devices</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">({</span><span class="s1">&#39;CSid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span> <span class="s1">&#39;CAddress&#39;</span><span class="p">:</span> <span class="n">address</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">x_devices_to_pair</span>  <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bt_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">(</span><span class="n">filter_descr</span><span class="o">=</span><span class="p">[[</span><span class="s1">&#39;CAddress&#39;</span><span class="p">,</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="n">address</span><span class="p">]]))[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">x_my_devices</span>       <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mb_devices</span><span class="o">.</span><span class="n">do_select</span><span class="p">(</span><span class="n">filter_descr</span><span class="o">=</span><span class="p">[[</span><span class="s1">&#39;CSid&#39;</span><span class="p">,</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;CAddress&#39;</span><span class="p">,</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="n">address</span><span class="p">]]))[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="c1"># Prepare update of password for existing pairing or create new</span>
         <span class="k">if</span> <span class="n">x_my_devices</span><span class="p">:</span>
@@ -309,13 +309,13 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Register user on EEZZ server. The request is send to the mobile device, which enriches the data and then</span>
 <span class="sd">        forwards it to the eezz server page.</span>
 
-<span class="sd">        :param alias:    Display name of the user</span>
-<span class="sd">        :param fname:    First name</span>
-<span class="sd">        :param lname:    Last name</span>
-<span class="sd">        :param email:    E-Mail address</span>
-<span class="sd">        :param iban:     Payment account</span>
-<span class="sd">        :param password: Password for the service. Only the hash value is stored, not the password itself</span>
-<span class="sd">        :return:         Status message</span>
+<span class="sd">        :param str alias:    Display name of the user</span>
+<span class="sd">        :param str fname:    First name</span>
+<span class="sd">        :param str lname:    Last name</span>
+<span class="sd">        :param str email:    E-Mail address</span>
+<span class="sd">        :param str iban:     Payment account</span>
+<span class="sd">        :param str password: Password for the service. Only the hash value is stored, not the password itself</span>
+<span class="sd">        :return: Status message</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># get coupled user for a given address:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">email</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">iban</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">password</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">alias</span><span class="p">:</span>

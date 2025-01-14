@@ -53,7 +53,7 @@
     <title>Title</title>
     <h1>Simple table</h1>
 
-    <table id="Directory" data-eezz='assign: examples.directory.TDirTree(title="Simple Tree", path="/Users/alzer/Projects/github/eezz_full/webroot")'>
+    <table id="Directory" data-eezz='assign: examples.directory.TDirTree(title="Simple Tree", path="/Users/alzer/Projects/github/eezz_full/webroot", visible_items="5")'>
         <thead>
             <tr data-eezz="template: row, match: header">
                 <th></th><th class="clzz_th" data-eezz="template: cell, event: do_sort(column={cell.index}), update: this.tbody">{cell.value}</th></tr>
@@ -65,7 +65,7 @@
                 <td><img src="file.png"></td><td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
             <tr data-eezz='template: row, match: is_dir,
                             event  : open_dir(path={row.row_id}),
-                            update : this.subtree=restricted, path_label.innerHTML={row.row_id}'>
+                            update : this.subtree=this.tbody, path_label.innerHTML={row.row_id}'>
                 <td><img src="dir.png"></td><td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
         </tbody>
     </table>

@@ -26,16 +26,8 @@ class TMobileDevices(TDatabaseTable):
     column_names: List[str] = None    #: :meta private:
 
     def __post_init__(self):
-        """
-        TUser class manages the setup and initialization of user-related database
+        """ TUser class manages the setup and initialization of user-related database
         table configurations including column names, types, and primary key.
-
-        :ivar title:        The title of the table.
-        :ivar column_names: The list of column names in the table.
-        :ivar column_descr: A list of column descriptions containing metadata for
-                            each column.
-
-        :return: None
         """
         # Set the title and the columns before initializing the TDatabaseTable
         self.title              = 'TUser'

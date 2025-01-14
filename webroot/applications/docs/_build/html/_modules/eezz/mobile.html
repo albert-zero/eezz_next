@@ -99,16 +99,8 @@
     <span class="n">column_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1">#: :meta private:</span>
 
     <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        TUser class manages the setup and initialization of user-related database</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; TUser class manages the setup and initialization of user-related database</span>
 <span class="sd">        table configurations including column names, types, and primary key.</span>
-
-<span class="sd">        :ivar title:        The title of the table.</span>
-<span class="sd">        :ivar column_names: The list of column names in the table.</span>
-<span class="sd">        :ivar column_descr: A list of column descriptions containing metadata for</span>
-<span class="sd">                            each column.</span>
-
-<span class="sd">        :return: None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Set the title and the columns before initializing the TDatabaseTable</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">title</span>              <span class="o">=</span> <span class="s1">&#39;TUser&#39;</span>

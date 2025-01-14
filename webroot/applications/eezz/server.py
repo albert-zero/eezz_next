@@ -15,7 +15,6 @@ from   urllib.parse   import urlparse
 from   urllib.parse   import parse_qs
 from   optparse       import OptionParser
 from   websocket      import TWebSocket
-from   pathlib        import Path
 from   http_agent     import THttpAgent
 from   service        import TService
 from   session        import TSession
@@ -27,7 +26,7 @@ import json
 class TWebServer(http.server.HTTPServer):
     """ WEB Server encapsulate the WEB socket implementation
 
-    :param a_server_address: The WEB address of this server
+    :param Tuple[str,socket] a_server_address: The WEB address of this server
     :param a_http_handler:   The HTTP handler
     :param a_web_socket:     The socket address waiting for WEB-Socket interface
     """
@@ -65,6 +64,7 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
         self.handle_request()
 
     def shutdown(self, args: int = 0):
+        """ Shutdown handler """
         self.m_server.shutdown()
 
     def handle_request(self):
@@ -134,7 +134,6 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
 def shutdown_function(handler: THttpHandler):
     handler.shutdown(0)
     time.sleep(2)
-    # os._exit(0)
 
 
 if __name__ == "__main__":

@@ -147,8 +147,8 @@ class TDocument:
 
         :param dict      file:   File descriptor with details on file and byte stream
         :param bytearray stream: File stream, usually a chunk of
-        :return:                 The percentage of transferred document size as bytearray, terminated with the percent sign
-        :rtype:                  bytearray
+        :return: The percentage of transferred document size as bytearray, terminated with the percent sign
+        :rtype:  bytearray
 
         """
         if file['opcode'] == 'finished':
@@ -193,7 +193,7 @@ class TDocument:
         """ Abstract method which is called after all files are in place """
         pass
 
-    def create_archive(self, document_title: str):
+    def create_archive(self, document_title: str) -> None:
         """ ZIP the given files and the manifest to a document.
         The TFile class keeps track on the location of the file content and their properties.
 
@@ -231,8 +231,8 @@ class TDocument:
     def read_file(self, document_title: str, file_name: str) -> bytes:
         """ Returns the bytestream of the specified file in the archive
 
-        :param document_title:  The title of the document is the name of the archive
-        :param str file_name:   The file content to return
+        :param str document_title:  The title of the document is the name of the archive
+        :param str file_name:       The file content to return
         """
         x_source = self.path / f'{self.shelf_name}/{document_title}.tar'
         with tarfile.TarFile(x_source, "r") as x_zip_file:

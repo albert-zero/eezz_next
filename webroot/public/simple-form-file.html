@@ -112,9 +112,9 @@
             <div class = "clzz_sub_grid_item" style="display: grid; grid-template-row: auto auto; row-gap: 4px;">
                 <input  type = "file"
                         data-eezz="
-                            template: cell (detail),                                                        
+                            template: cell (detail),
                             update: 
-                                progress_detail.style.width = download_file(file = this.file, stream = this.bytestream),
+                                progress_detail.style.width = download_file(file = file, stream = bytestream),
                                 progress_detail.innerHTML   = progress_detail.style.width"/>
 
                 <div class = "clzz_progress_background" style="width:200px; background-color:red">

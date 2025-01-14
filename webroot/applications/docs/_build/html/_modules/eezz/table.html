@@ -115,6 +115,10 @@
 <span class="kn">import</span>  <span class="nn">sqlite3</span>
 <span class="kn">from</span>    <span class="nn">loguru</span>      <span class="kn">import</span> <span class="n">logger</span>
 
+<span class="c1"># forward declaration</span>
+<span class="n">TTable</span>      <span class="o">=</span> <span class="n">NewType</span><span class="p">(</span><span class="s1">&#39;TTable&#39;</span><span class="p">,</span>     <span class="kc">None</span><span class="p">)</span>
+<span class="n">TTableCell</span>  <span class="o">=</span> <span class="n">NewType</span><span class="p">(</span><span class="s1">&#39;TTableCell&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
 
 <span class="k">class</span> <span class="nc">TTableException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; The table exception: trying to insert a double row-id &quot;&quot;&quot;</span>
@@ -151,8 +155,14 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span> <span class="nc">TTableCellDetail</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; Container for TTableCell details &quot;&quot;&quot;</span>
-    <span class="n">value</span><span class="p">:</span>  <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
-    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private:</span>
+    <span class="n">parent</span><span class="p">:</span> <span class="n">TTableCell</span>          <span class="c1">#: :meta private:</span>
+    <span class="n">value</span><span class="p">:</span>  <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>          <span class="c1">#: :meta private:</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>          <span class="c1">#: :meta private:</span>
+    <span class="n">index</span><span class="p">:</span>  <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">id</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
 
 
 <div class="viewcode-block" id="TTableCell">
@@ -171,10 +181,11 @@
 <span class="sd">    :ivar int index:    Calculated index of a cell.</span>
 <span class="sd">    :ivar str type:     Calculated type (could also be user defined).</span>
 <span class="sd">    :ivar dict attrs:   User attributes.</span>
-<span class="sd">    :ivar details:  List of values, which could be used to address objects of the same kind.</span>
+<span class="sd">    :ivar list details: List of values, which could be used to address objects of the same kind.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span><span class="p">:</span>   <span class="nb">str</span>                     <span class="c1">#: :meta private: Name of the column</span>
     <span class="n">value</span><span class="p">:</span>  <span class="n">Any</span>                     <span class="c1">#: :meta private: Value of the cell</span>
+    <span class="nb">id</span><span class="p">:</span>     <span class="nb">str</span>         <span class="o">=</span> <span class="s1">&#39;&#39;</span>        <span class="c1">#: :meta private: Unique ID evaluated in process</span>
     <span class="n">width</span><span class="p">:</span>  <span class="nb">int</span>         <span class="o">=</span> <span class="mi">10</span>        <span class="c1">#: :meta private: calculated width of a cell</span>
     <span class="n">index</span><span class="p">:</span>  <span class="nb">int</span>         <span class="o">=</span> <span class="mi">0</span>         <span class="c1">#: :meta private: calculated index of a cell</span>
     <span class="nb">type</span><span class="p">:</span>   <span class="nb">str</span>         <span class="o">=</span> <span class="s1">&#39;str&#39;</span>     <span class="c1">#: :meta private: calculated type (could also be user defined)</span>
@@ -191,7 +202,7 @@
     <span class="nd">@detail</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">detail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; :meta private: &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">details</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">detail_class</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">details</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">detail_class</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span></div>
 
 
 
@@ -207,22 +218,14 @@
 <span class="sd">    criteria. It is typically used in table structures where columns may need</span>
 <span class="sd">    specific customization for display or processing.</span>
 
-<span class="sd">    :ivar header:   Name of the column.</span>
-<span class="sd">    :type header:   str</span>
-<span class="sd">    :ivar attrs:    Customizable attributes of the column.</span>
-<span class="sd">    :type attrs:    dict</span>
-<span class="sd">    :ivar index:    Calculated index of the column.</span>
-<span class="sd">    :type index:    int</span>
-<span class="sd">    :ivar width:    Calculated width of the column.</span>
-<span class="sd">    :type width:    int</span>
-<span class="sd">    :ivar alias:    Alias name for output.</span>
-<span class="sd">    :type alias:    str</span>
-<span class="sd">    :ivar sort:     Sort direction of the column.</span>
-<span class="sd">    :type sort:     bool</span>
-<span class="sd">    :ivar type:     Type of the column.</span>
-<span class="sd">    :type type:     str</span>
-<span class="sd">    :ivar filter:   Filter string.</span>
-<span class="sd">    :type filter:   str</span>
+<span class="sd">    :ivar str   header:   Name of the column.</span>
+<span class="sd">    :ivar doct  attrs:    Customizable attributes of the column.</span>
+<span class="sd">    :ivar int   index:    Calculated index of the column.</span>
+<span class="sd">    :ivar int   width:    Calculated width of the column.</span>
+<span class="sd">    :ivar str   alias:    Alias name for output.</span>
+<span class="sd">    :ivar bool  sort:     Sort direction of the column.</span>
+<span class="sd">    :ivar str   type:     Type of the column.</span>
+<span class="sd">    :ivar str   filter:   Filter string.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">header</span><span class="p">:</span>     <span class="nb">str</span>                 <span class="c1">#: :meta private: Name of the column</span>
     <span class="n">attrs</span><span class="p">:</span>      <span class="nb">dict</span>    <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: Customizable attributes of the column</span>
@@ -233,10 +236,6 @@
     <span class="nb">type</span><span class="p">:</span>       <span class="nb">str</span>     <span class="o">=</span> <span class="s1">&#39;str&#39;</span>     <span class="c1">#: :meta private: Type of the column</span>
     <span class="nb">filter</span><span class="p">:</span>     <span class="nb">str</span>     <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: Filter string</span></div>
 
-
-
-<span class="c1"># forward declaration</span>
-<span class="n">TTable</span> <span class="o">=</span> <span class="n">NewType</span><span class="p">(</span><span class="s1">&#39;TTable&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="TTableRow">
@@ -252,26 +251,15 @@
 <span class="sd">    string lists into cells and provides properties for interacting with row elements by column</span>
 <span class="sd">    name or index.</span>
 
-<span class="sd">    :ivar cells:        A list of TTableCell objects or strings. Strings are automatically converted</span>
-<span class="sd">                        into TTableCell objects during initialization.</span>
-<span class="sd">    :ivar cells_filter: Filtered cells used for re-ordering and alias names, intended for</span>
-<span class="sd">                        internal use only.</span>
-<span class="sd">    :ivar column_descr: The column descriptor holds the attributes of the columns.</span>
-<span class="sd">    :ivar index:        Unique address for the columns, intended for internal use only.</span>
-<span class="sd">    :ivar row_id:       Unique row id of the row, valid for the entire table, intended for internal</span>
-<span class="sd">                        use only.</span>
-<span class="sd">    :ivar child:        A row could handle recursive data structures, intended for internal use only.</span>
-<span class="sd">    :ivar type:         Customizable type used for triggering template output, intended for internal</span>
-<span class="sd">                        use only.</span>
-<span class="sd">    :ivar attrs:        Customizable row attributes, intended for internal use only.</span>
-<span class="sd">    :type cells:        List[TTableCell] | List[str]</span>
-<span class="sd">    :type cells_filter: List[TTableCell]</span>
-<span class="sd">    :type column_descr: List[str]</span>
-<span class="sd">    :type index:        int</span>
-<span class="sd">    :type row_id:       str</span>
-<span class="sd">    :type child:        TTable</span>
-<span class="sd">    :type type:         str</span>
-<span class="sd">    :type attrs:        dict</span>
+<span class="sd">    :ivar List[TTableCell] | List[str] cells: A list of TTableCell objects or strings. Strings are automatically</span>
+<span class="sd">                            converted into TTableCell objects during initialization.</span>
+<span class="sd">    :ivar List[TTableCell] cells_filter: Filtered cells used for re-ordering and alias names, intended for internal use only.</span>
+<span class="sd">    :ivar List[str] column_descr: The column descriptor holds the attributes of the columns.</span>
+<span class="sd">    :ivar int       index:  Unique address for the columns, intended for internal use only.</span>
+<span class="sd">    :ivar str       row_id: Unique row id of the row, valid for the entire table, intended for internal use only.</span>
+<span class="sd">    :ivar TTable    child:  A row could handle recursive data structures, intended for internal use only.</span>
+<span class="sd">    :ivar str       type:   Customizable type used for triggering template output, intended for internal use only.</span>
+<span class="sd">    :ivar dict      attrs:  Customizable row attributes, intended for internal use only.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">cells</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableCell</span><span class="p">]</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1">#: :meta private: A list of strings are converted to a list of TTableCells</span>
     <span class="n">cells_filter</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TTableCell</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1">#: :meta private: Filtered cells used for re-ordering and alias names.</span>
@@ -283,12 +271,11 @@
     <span class="n">attrs</span><span class="p">:</span>      <span class="nb">dict</span>        <span class="o">=</span> <span class="kc">None</span>      <span class="c1">#: :meta private: Customizable row attributes</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Computes the SHA1 hash of the `row_id` attribute encoded in UTF-8.</span>
 
-<span class="sd">        This property provides a unique string identifier for an object by</span>
-<span class="sd">        hashing its `row_id` attribute. This can be particularly useful for</span>
-<span class="sd">        ensuring consistent, non-collision identifiers across distributed systems</span>
+<span class="sd">        This property provides a unique string identifier for an object by hashing its `row_id` attribute.</span>
+<span class="sd">        This can be particularly useful for ensuring consistent, non-collision identifiers across distributed systems</span>
 <span class="sd">        or unique object tracking.</span>
 
 <span class="sd">        :return: The SHA1 hash of the `row_id` as a hexadecimal string.</span>
@@ -310,13 +297,12 @@
 <div class="viewcode-block" id="TTableRow.get_values_list">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTableRow.get_values_list">[docs]</a>
     <span class="k">def</span> <span class="nf">get_values_list</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Retrieves a list of values from the cells.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Retrieves a list of values from the cells.</span>
 
 <span class="sd">        This method iterates over the cells and extracts their values into a list.</span>
 
 <span class="sd">        :return: A list containing values of the cells.</span>
-<span class="sd">        :rtype: list</span>
+<span class="sd">        :rtype:  list</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cells</span><span class="p">]</span></div>
 
@@ -342,13 +328,11 @@
 
 <span class="sd">    .. _ttable_parameter_list:</span>
 
-<span class="sd">    :param column_names:    List of names for each column</span>
-<span class="sd">    :type  column_names:    List[str]</span>
-<span class="sd">    :param title:           Table name and title</span>
-<span class="sd">    :type  title:           str</span>
+<span class="sd">    :param List[str] column_names:  List of names for each column</span>
+<span class="sd">    :param str      title:          Table name and title</span>
 
-<span class="sd">    :ivar Dict[str, Callable[size, value]] format_types: A map for types and format rules.</span>
-<span class="sd">        The callable takes two variables, the width and the value.</span>
+<span class="sd">    :ivar Dict[str, Callable[size, value]] format_types: A map for types and format rules. The callable takes two</span>
+<span class="sd">                variables, the width and the value.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Table instance:</span>
@@ -418,6 +402,7 @@
         <span class="n">x_cells</span>               <span class="o">=</span> <span class="p">[</span><span class="n">TTableCell</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">x_str</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">x_str</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">x_inx</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">x_str</span><span class="p">))</span> <span class="k">for</span> <span class="n">x_inx</span><span class="p">,</span> <span class="n">x_str</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_names</span><span class="p">)]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">header_row</span>       <span class="o">=</span> <span class="n">TTableRow</span><span class="p">(</span><span class="n">cells</span><span class="o">=</span><span class="n">x_cells</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;header&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">column_names_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">x_cell</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">x_cell</span> <span class="k">for</span> <span class="n">x_cell</span> <span class="ow">in</span> <span class="n">x_cells</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span>               <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">format_types</span> <span class="o">=</span> <span class="p">{</span>
@@ -447,12 +432,10 @@
     <span class="k">def</span> <span class="nf">filter_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">column_names</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; The column_names is a dictionary with a set of keys as subset of TTable.column_names.</span>
 <span class="sd">        The values are translated names to display in output. The order of the keys represents the order in the</span>
-<span class="sd">        output.</span>
-<span class="sd">        The filter is used to generate customized output. This function could also be used to reduce the number of</span>
+<span class="sd">        output. The filter is used to generate customized output. This function could also be used to reduce the number of</span>
 <span class="sd">        visible columns</span>
 
-<span class="sd">        :param column_names:    Map new names to a column, e.g. after translation</span>
-<span class="sd">        :type  column_names:    Dict[str: str]</span>
+<span class="sd">        :param Dict[str, str] column_names: Map new names to a column, e.g. after translation</span>
 
 <span class="sd">        Example:</span>
 
@@ -496,18 +479,13 @@
 <span class="sd">        Appropriate cell types, widths, and descriptors are determined and updated</span>
 <span class="sd">        accordingly. The added row is indexed and stored within the table structure.</span>
 
-<span class="sd">        :param  table_row:  List of values representing a single row in the table.</span>
-<span class="sd">        :type   table_row:  list</span>
-<span class="sd">        :param  attrs:      Optional dictionary of attributes for the table row.</span>
-<span class="sd">        :type   attrs:      dict, optional</span>
-<span class="sd">        :param  row_type:   Type of the row, default is &#39;body&#39;.</span>
-<span class="sd">        :type   row_type:   str</span>
-<span class="sd">        :param  row_id:     Unique identifier for the row. If not provided, defaults to the row index.</span>
-<span class="sd">        :type   row_id:     str</span>
-<span class="sd">        :param  exists_ok:  If True, allows appending of a row with an existing row_id without raising an exception.</span>
-<span class="sd">        :type   exists_ok:  bool</span>
-<span class="sd">        :return:            The newly created table row object.</span>
-<span class="sd">        :rtype:             TTableRow</span>
+<span class="sd">        :param  list    table_row:  List of values representing a single row in the table.</span>
+<span class="sd">        :param  dict    attrs:      Optional dictionary of attributes for the table row.</span>
+<span class="sd">        :param  str     row_type:   Type of the row, default is &#39;body&#39;.</span>
+<span class="sd">        :param  str     row_id:     Unique identifier for the row. If not provided, defaults to the row index.</span>
+<span class="sd">        :param  bool    exists_ok:  If True, allows appending of a row with an existing row_id without raising an exception.</span>
+<span class="sd">        :return: The newly created table row object.</span>
+<span class="sd">        :rtype:  TTableRow</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># define the type with the first line inserted</span>
         <span class="n">x_inx</span>        <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
@@ -576,8 +554,8 @@
 <span class="sd">        that should return a boolean indicating whether a particular row matches</span>
 <span class="sd">        the criteria.</span>
 
-<span class="sd">        :param search_filter: A callable function that takes a TTableRow object</span>
-<span class="sd">                        and returns a boolean indicating whether the row matches the criteria.</span>
+<span class="sd">        :param Callable[[TTableRow, bool]] search_filter: A callable function that takes a TTableRow object and</span>
+<span class="sd">            returns a boolean indicating whether the row matches the criteria.</span>
 <span class="sd">        :return: Tuple of values from each matched row.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_row</span><span class="p">:</span> <span class="n">TTableRow</span>
@@ -588,15 +566,14 @@
 
 <div class="viewcode-block" id="TTable.on_select">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.on_select">[docs]</a>
-    <span class="k">def</span> <span class="nf">on_select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; Updates the selected row in the table if a row with the given index</span>
-<span class="sd">        exists. If the row exists, it sets the selected row to it and</span>
-<span class="sd">        returns the row. If the row does not exist, it returns None.</span>
+    <span class="k">def</span> <span class="nf">on_select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TTableRow</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Updates the pointer to the selected row in the table if a row with the given index</span>
+<span class="sd">        exists and returns this row. If the row does not exist, it returns None.</span>
 
-<span class="sd">        :param index:   The unique identifier for the table row that is to be selected.</span>
-<span class="sd">        :return:        The selected table row if it exists, otherwise None.</span>
+<span class="sd">        :param str row:   The unique identifier for the table row that is to be selected.</span>
+<span class="sd">        :return:  The selected table row if it exists, otherwise None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">selected_row</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_index</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">selected_row</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_index</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">selected_row</span> <span class="o">=</span> <span class="n">selected_row</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_row</span>
         <span class="k">else</span><span class="p">:</span>
@@ -617,11 +594,11 @@
 <span class="sd">        custom filtering through the `filter_descr` argument, which works with</span>
 <span class="sd">        predefined column descriptions to create conditional where clauses.</span>
 
-<span class="sd">        :param get_all: A boolean flag indicating whether to retrieve all records</span>
+<span class="sd">        :param bool get_all: A boolean flag indicating whether to retrieve all records</span>
 <span class="sd">                        from the database. If set to True, the method retrieves all available</span>
 <span class="sd">                        data. If set to False, the method retrieves a limited number of records</span>
 <span class="sd">                        based on the current pagination settings.</span>
-<span class="sd">        :param filter_descr: A list of filters to be applied during the data selection.</span>
+<span class="sd">        :param List[List[]] filter_descr: A list of filters to be applied during the data selection.</span>
 <span class="sd">                        These filters guide the construction of the SQL WHERE clause and determine</span>
 <span class="sd">                        which records are included in the result set.</span>
 <span class="sd">        :return:        A list containing the fetched records from the database. The records</span>
@@ -674,13 +651,11 @@
 <span class="sd">        The filter description consists of nested lists representing conditions connected by logical &quot;and&quot; and &quot;or&quot;</span>
 <span class="sd">        operators. Each condition within &quot;and&quot; is specified as a string with a column name, an operator, and a value.</span>
 
-<span class="sd">        :param filter_descr: A list of lists where each inner list contains strings representing individual</span>
+<span class="sd">        :param List[List[]] filter_descr: A list of lists where each inner list contains strings representing individual</span>
 <span class="sd">                        conditions in the format &quot;&lt;column_name&gt; &lt;operator&gt; &lt;value&gt;&quot;.</span>
-<span class="sd">        :type filter_descr: List[List[str]]</span>
-<span class="sd">        :return:        A tuple containing the constructed SQL filter query as</span>
-<span class="sd">                        a string and a list of arguments corresponding to the</span>
+<span class="sd">        :return: A tuple containing the constructed SQL filter query as a string and a list of arguments corresponding to the</span>
 <span class="sd">                        placeholders in the SQL query.</span>
-<span class="sd">        :rtype:         tuple</span>
+<span class="sd">        :rtype:  tuple</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_where</span>     <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
         <span class="n">x_args</span>      <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
@@ -703,11 +678,10 @@
 <span class="sd">        on column descriptions and filter expressions, and can be further controlled</span>
 <span class="sd">        by whether all rows should be retrieved or just a limited visible set.</span>
 
-<span class="sd">        :param get_all: Determines whether to retrieve all rows without counting against the visible items limit.</span>
+<span class="sd">        :param bool get_all: Determines whether to retrieve all rows without counting against the visible items limit.</span>
 <span class="sd">                        Defaults to False.</span>
-<span class="sd">        :type get_all:  bool</span>
-<span class="sd">        :return:        A generator yielding visible rows that match the filter criteria.</span>
-<span class="sd">        :rtype:         List[TTableRow]</span>
+<span class="sd">        :return: A generator yielding visible rows that match the filter criteria.</span>
+<span class="sd">        :rtype:  List[TTableRow]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># in case the filters is a string, we could also handle tree access</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">row_filter_descr</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_synchron</span><span class="p">:</span>
@@ -752,11 +726,11 @@
 <span class="sd">        adjusted using different navigation strategies such as moving to the</span>
 <span class="sd">        next, previous, absolute position, top, or last items in the structure.</span>
 
-<span class="sd">        :param where_togo: Determines the navigation strategy. The navigation can be to the</span>
+<span class="sd">        :param int where_togo: Determines the navigation strategy. The navigation can be to the</span>
 <span class="sd">                        &#39;NEXT&#39; item, &#39;PREV&#39; item, an &#39;ABS&#39;olute position, &#39;TOP&#39; of the data, or the &#39;LAST&#39; item.</span>
-<span class="sd">        :param position: Used when the &#39;ABS&#39; navigation strategy is selected. Determines the target position for</span>
+<span class="sd">        :param int position: Used when the &#39;ABS&#39; navigation strategy is selected. Determines the target position for</span>
 <span class="sd">                        the offset in the data structure.</span>
-<span class="sd">        :return:        None</span>
+<span class="sd">        :return: None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">match</span> <span class="nb">int</span><span class="p">(</span><span class="n">where_togo</span><span class="p">):</span>
             <span class="k">case</span> <span class="n">TNavigation</span><span class="o">.</span><span class="n">NEXT</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
@@ -779,15 +753,13 @@
 <span class="sd">        ascending or descending order based on the `reverse` flag. The column to</span>
 <span class="sd">        be sorted can be specified using either its index or name.</span>
 
-<span class="sd">        :param column:  The column by which the table should be sorted. It can be</span>
-<span class="sd">                        specified as an integer (index) or a string (name).</span>
-<span class="sd">        :type column:   int | str</span>
-<span class="sd">        :param reverse: Determines the order of sorting. If True, the table is</span>
-<span class="sd">                        sorted in descending order; otherwise, it is sorted in</span>
-<span class="sd">                        ascending order. Default is False.</span>
-<span class="sd">        :type reverse:  bool</span>
-<span class="sd">        :return:        The sorted table object.</span>
-<span class="sd">        :rtype:         TTable</span>
+<span class="sd">        :param int|str  column:  The column by which the table should be sorted. It can be</span>
+<span class="sd">                            specified as an integer (index) or a string (name).</span>
+<span class="sd">        :param bool     reverse: Determines the order of sorting. If True, the table is</span>
+<span class="sd">                            sorted in descending order; otherwise, it is sorted in</span>
+<span class="sd">                            ascending order. Default is False.</span>
+<span class="sd">        :return: The sorted table object.</span>
+<span class="sd">        :rtype:  TTable</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x_row</span><span class="p">:</span> <span class="n">x_row</span><span class="p">[</span><span class="n">column</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div>
@@ -795,20 +767,19 @@
 
 <div class="viewcode-block" id="TTable.print">
 <a class="viewcode-back" href="../../eezz.html#eezz.table.TTable.print">[docs]</a>
-    <span class="k">def</span> <span class="nf">print</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">print</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">file</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Prints the table with the specified formatting and indentation level. The table</span>
 <span class="sd">        headers are determined based on the column descriptions, and the rows are</span>
 <span class="sd">        printed with respect to the visibility and formatting criteria applied. Each row</span>
 <span class="sd">        can have a hierarchy with child rows being printed recursively at increasing</span>
 <span class="sd">        indentation levels.</span>
 
-<span class="sd">        :param level:   The indentation level to be applied to the printed table. Default is 0.</span>
-<span class="sd">                        This affects the amount of whitespace before the table data, enhancing</span>
-<span class="sd">                        readability for nested (child) tables.</span>
-<span class="sd">        :param file:    An optional output stream to which the table will be printed. Default is</span>
-<span class="sd">                        `sys.stdout`, which represents standard output.</span>
-<span class="sd">        :return:        This function does not return any value. It directly prints the formatted</span>
-<span class="sd">                        table to the specified output.</span>
+<span class="sd">        :param int    level: The indentation level to be applied to the printed table. Default is 0.</span>
+<span class="sd">                            This affects the amount of whitespace before the table data, enhancing</span>
+<span class="sd">                            readability for nested (child) tables.</span>
+<span class="sd">        :param TextIO file: An optional output stream to which the table will be printed. Default is</span>
+<span class="sd">                            `sys.stdout`, which represents standard output.</span>
+<span class="sd">        :return: This function does not return any value. It directly prints the formatted table to the specified output.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">x_offset</span>        <span class="o">=</span> <span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">level</span>
         <span class="n">x_column_descr</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_names_filter</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filter_column</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_descr</span>

@@ -27,8 +27,7 @@ _ = gettext.gettext
 
 @dataclass(kw_only=True)
 class TBluetoothService:
-    """
-    This class is responsible for managing Bluetooth connections and communication with the EEZZ service.
+    """ This class is responsible for managing Bluetooth connections and communication with the EEZZ service.
 
     The TBluetoothService class encapsulates the functionality for establishing, maintaining, and terminating
     Bluetooth connections. It uses the EEZZ service for communication, indicated by a specific GUID. Apart from

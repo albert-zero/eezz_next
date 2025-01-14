@@ -54,9 +54,9 @@ class TDirAsync(TTable):
 
 
 class TDirTree(TTableTree):
-    def __init__(self, title: str, path: str):
+    def __init__(self, title: str, path: str, visible_items=20):
         # noinspection PyArgumentList
-        super().__init__(column_names=['File', 'Size', 'Access Time'], title=title, path=path)
+        super().__init__(column_names=['File', 'Size', 'Access Time'], title=title, path=path, visible_items=visible_items)
         self.path = Path(path)
         if not self.path.is_dir():
             logger.error(f'{self.path.as_posix()} not a directory')

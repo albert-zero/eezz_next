@@ -83,7 +83,7 @@
 <span class="kn">import</span> <span class="nn">urllib.request</span>
 <span class="kn">import</span> <span class="nn">base64</span>
 <span class="kn">import</span> <span class="nn">struct</span>
-<span class="kn">from</span>   <span class="nn">Crypto.Cipher</span>     <span class="kn">import</span> <span class="n">AES</span>
+<span class="kn">from</span>   <span class="nn">Crypto.Cipher</span>     <span class="kn">import</span> <span class="n">AES</span><span class="p">,</span> <span class="n">PKCS1_v1_5</span>
 <span class="kn">from</span>   <span class="nn">Crypto</span>            <span class="kn">import</span> <span class="n">Random</span>
 <span class="kn">import</span> <span class="nn">service</span>
 
@@ -97,9 +97,6 @@
 <span class="sd">    This class provides mechanisms to send requests securely by encrypting the request data with</span>
 <span class="sd">    AES encryption and then using RSA encryption to secure the AES key and initialization vector.</span>
 <span class="sd">    The response is then decrypted and parsed.</span>
-
-<span class="sd">    :ivar service: Service instance to fetch the RSA private key.</span>
-<span class="sd">    :type service: TService</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">pass</span>

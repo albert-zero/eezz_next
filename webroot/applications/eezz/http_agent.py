@@ -28,7 +28,6 @@ from loguru    import logger
 
 class THttpAgent(TWebSocketAgent):
     """ Agent handles WEB socket events """
-
     def __init__(self):
         super().__init__()
         self.soup = None
@@ -40,8 +39,8 @@ class THttpAgent(TWebSocketAgent):
         * **initialize**: The browser sends the complete HTML for analysis.
         * **call**: The request issues a method call and the result is sent back to the browser
 
-        :param request_data:    The request send by the browser
-        :return:                Response in JSON stream, containing valid HTML parts for the browser
+        :param dict request_data:   The request send by the browser
+        :return: Response in JSON stream, containing valid HTML parts for the browser
         """
         x_updates = list()
         x_tasks   = list()
@@ -63,7 +62,7 @@ class THttpAgent(TWebSocketAgent):
                 x_updates.append({'target': f'{x_id}.tbody.innerHTML',   'value': x_html['tbody']})
                 x_updates.append({'target': f'{x_id}.tfoot.innerHTML',   'value': x_html['tfoot']})
 
-            for x in  self.soup.css.select('select[data-eezz-compiled], .clzz_grid[data-eezz-compiled]'):
+            for x in  self.soup.css.select('.clzz_grid[data-eezz-compiled]'):
                 x_html = self.generate_html_grid(x)
                 x_id   = x['id']
                 x_updates.append({'target': f'{x_id}.innerHTML', 'value': x_html['tbody']})
@@ -104,6 +103,10 @@ class THttpAgent(TWebSocketAgent):
                     if x_key.startswith('this') and 'tbody' in x_sub_keys:
                         x_html = self.generate_html_table(x_tag, x_event_id)
                         x_updates.append({'target': f'{x_event_id}.tbody.innerHTML', 'value': x_html['tbody']})
+                    elif 'tbody' in x_sub_keys:
+                        x_table_tag = self.soup.find(id=x_sub_keys[0])
+                        x_html = self.generate_html_table(x_table_tag, x_sub_keys[0])
+                        x_updates.append({'target': f'{x_sub_keys[0]}.tbody.innerHTML', 'value': x_html['tbody']})
                     elif x_key == 'this.subtree':
                         x_id            = x_row.id
                         x_table: TTable = x_row.child
@@ -111,6 +114,9 @@ class THttpAgent(TWebSocketAgent):
 
                         if x_target[0] != 'this':
                             x_tag: Tag  = self.soup.find(id=x_target[0])
+                            if not x_tag:
+                                logger.error(f'target for subtree not found (ignored): {x_target[0]}')
+                                continue
 
                         if x_tag.name.lower() == 'table':
                             if x_table is None:
@@ -150,8 +156,8 @@ class THttpAgent(TWebSocketAgent):
         It returns the enriched document
 
         :param pathlib.Path a_resource: The path to the HTML document, containing EEZZ extensions
-        :param dict a_query:            The query string of the URL
-        :return:                        The compiled version of the HTML file
+        :param dict         a_query:    The query string of the URL
+        :return: The compiled version of the HTML file
         """
         x_html    = a_resource
         x_service = TService()
@@ -198,9 +204,8 @@ class THttpAgent(TWebSocketAgent):
 
         :param Lark a_parser:   The Lark parser to compile EEZZ to json
         :param list a_tag_list: HTML-Tag to compile
-        :param str a_id:        The ID of the tag to be identified for update
+        :param str  a_id:       The ID of the tag to be identified for update
         :param dict a_query:    The query of the HTML request
-        :return:                None
         """
         # logger.debug(f'compile data \n{a_tag_list[0].prettify()}')
         x_service = TService()
@@ -251,9 +256,8 @@ class THttpAgent(TWebSocketAgent):
         :param str a_id:        The ID which replaces the placeholder 'this'
         :param str a_key:       Thw key string to pick the items in an HTML tag
         :param str a_value:     The dictionary in string format to be formatted
-        :param Callable a_fmt_funct:
-                                The function to be called to format the values
-        :return:                The formatted string
+        :param Callable a_fmt_funct: The function to be called to format the values
+        :return: The formatted string
         """
         if a_key == 'data-eezz-json':
             x_json = json.loads(a_value)
@@ -273,7 +277,7 @@ class THttpAgent(TWebSocketAgent):
 
         :param Callable formatter:  Format function for values in curly brackets
         :param str json_str:        An eezz generated json string
-        :return:                    formatted function arguments
+        :return: formatted function arguments
         """
         x_json_obj = json.loads(json_str)
         x_update   = x_json_obj.get('update', x_json_obj.get('onload'))
@@ -292,10 +296,10 @@ class THttpAgent(TWebSocketAgent):
     def generate_html_cells(self, a_tag: Tag, a_cell: TTableCell) -> Tag:
         """ Generate HTML cells
 
-        :param  bs4.Tag a_tag:      The template tag to generate a table cell
-        :param  TTableCell a_cell:  The cell providing the data for the HTML tag element
-        :return:                    A new tag, based on the template and the cell data
-        :rtype:                     bs4.Tag
+        :param   bs4.Tag a_tag:     The template tag to generate a table cell
+        :param   TTableCell a_cell: The cell providing the data for the HTML tag element
+        :return: A new tag, based on the template and the cell data
+        :rtype:  bs4.Tag
         """
         x_fmt_attrs = {x: self.format_attributes(x, y, lambda z: z.format(cell=a_cell)) for x, y in a_tag.attrs.items()}
         x_new_tag   = copy.deepcopy(a_tag)
@@ -315,10 +319,10 @@ class THttpAgent(TWebSocketAgent):
         """ This operation add fixed cells to the table.
         Cells which are not included as template for table data are used to add a constant info to the row
 
-        :param list a_html_cells:   A list of cells to build up a row
-        :param bs4.Tag a_tag:       The parent containing the templates for the row
-        :param TTableRow a_row:     The table row values to insert
-        :return:                    The row with values rendered to HTML
+        :param list      a_html_cells:  A list of cells to build up a row
+        :param bs4.Tag   a_tag:         The parent containing the templates for the row
+        :param TTableRow a_row:         The table row values to insert
+        :return: The row with values rendered to HTML
         """
         x_fmt_attrs  = {x: self.format_attributes(x, y, lambda z: z.format(row=a_row)) for x, y in a_tag.attrs.items()}
         x_html_cells = [[copy.deepcopy(x)] if not x.has_attr('data-eezz-compiled') else a_html_cells for x in a_tag.css.select('th,td')]
@@ -344,24 +348,24 @@ class THttpAgent(TWebSocketAgent):
         """ Generate the table footer.
         Methods in this section have to be redirected to the correct table.
 
-        :param bs4.Tag a_table_tag: The HTML table template
-        :param TTable a_table:      The TTable object, parent for the footer to create
-        :param str a_id:            The new ID for method calls and references
-        :return:                    The footer inner HTML
-        :rtype:                     bs4 footer TAG or None
+        :param bs4.Tag  a_table_tag: The HTML table template
+        :param TTable   a_table:     The TTable object, parent for the footer to create
+        :param str      a_id:        The new ID for method calls and references
+        :return: The footer inner HTML
+        :rtype:  bs4 footer TAG or None
         """
         x_foot_templ = a_table_tag.select_one('tfoot')
         if not x_foot_templ:
             return None
         x_foot = deepcopy(x_foot_templ)
+        for x_tag in x_foot.css.select('[data-eezz-reference]'):
+            if x_tag.attrs['data-eezz-reference'] == 'table':
+                x_tag.attrs = {x_key: x_val.format(table=a_table) for x_key, x_val in x_tag.attrs.items()}
 
         for x_tag in x_foot.css.select('[data-eezz-json]'):
             x_json_str = x_tag.get('data-eezz-json')
             x_json_str = self.format_attributes_update(x_json_str, lambda x: x.replace('this', a_id))
             x_tag.attrs['data-eezz-json'] = self.format_attributes('data-eezz-json', x_json_str, lambda x: x, a_id)
-        for x_tag in x_foot.css.select('[data-eezz-reference=table]'):
-            x_tag.attrs = {x: y.format(table=a_table) for x, y in x_tag.attrs.items()}
-            pass
         return x_foot
 
     def generate_html_table(self, a_table_tag: Tag, a_id: str) -> dict:
@@ -372,10 +376,10 @@ class THttpAgent(TWebSocketAgent):
         3. Evaluate the table cells
         4. Send the result separated by table main elements
 
-        :param  bs4.Tag a_table_tag:    The parent table tag to produce the output
-        :param  str a_id:               Unique table ID
-        :return:                        The generated table separated in sections as dictionary
-        :rtype:                         dict
+        :param  bs4.Tag a_table_tag: The parent table tag to produce the output
+        :param  str     a_id:        Unique table ID
+        :return: The generated table separated in sections as dictionary
+        :rtype:  dict
         """
         x_table_obj: TTable = TService().get_object(a_id)
         x_row_template = a_table_tag.css.select('tr[data-eezz-compiled]')
@@ -412,10 +416,9 @@ class THttpAgent(TWebSocketAgent):
     def generate_html_grid(self, a_tag: Tag) -> dict:
         """ Besides the table, supported display is grid via class clzz_grid or select
 
-        :param a_tag:   The HTML tag, which is assigned to a TTable object
-        :type  a_tag:   bs4.Tag
-        :return:        The DOM of the generated grid as dictionary with key "tbody"
-        :rtype:         dict
+        :param bs4.Tag a_tag:   The HTML tag, which is assigned to a TTable object
+        :return: The DOM of the generated grid as dictionary with key "tbody"
+        :rtype:  dict
         """
         x_row_template  = a_tag.css.select('[data-eezz-template=row]')
         x_table         = TService().get_object(a_tag.attrs['id'])
@@ -428,10 +431,10 @@ class THttpAgent(TWebSocketAgent):
         """ Generates elements of the same kind, derived from a template and update content
         according the row values
 
-        :param bs4.Tag tag_template:    Template for the entire tile
-        :param TTableRow a_row:         Row with data for the specific tile
-        :param TTable a_table:          Parent table
-        :return:                        Generated HTML tag
+        :param bs4.Tag      tag_template:  Template for the entire tile
+        :param TTableRow    a_row:         Row with data for the specific tile
+        :param TTable       a_table:       Parent table
+        :return: Generated HTML tag
         """
         # Generate name-value pairs for this row:
         x_format_cell    = {x: y for x, y in zip(a_row.column_descr, a_row.cells)}
@@ -453,6 +456,7 @@ class THttpAgent(TWebSocketAgent):
                     x_templates = [(deepcopy(x_tag), detail) for detail in x_cell.details]
                     for x_cnt, x_item in enumerate(x_templates):
                         x_template, x_detail = x_item
+                        x_detail.index = x_cnt
                         x_template.attrs['id'] = f'{a_table.id}-{a_row.row_id}-{x_cell.index}-{x_cnt}'
 
                         x_attrs = {x_key: x_val.format(detail=x_detail) for x_key, x_val in x_template.attrs.items() if not x_key.startswith('data-eezz')}
@@ -485,7 +489,7 @@ class THttpAgent(TWebSocketAgent):
                         x_html  = f'<p>{x_format.join(x_tag.string.split('\n\n'))}</p>'
                         x_soup  = BeautifulSoup(x_html, 'html.parser')
                         x_tag.string = ''
-                        x_tag.append(x_soup.span)
+                        x_tag.append(x_soup.p)
 
         return x_new_element
 

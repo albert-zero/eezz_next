@@ -81,6 +81,7 @@ class TTableCellDetail:
     parent: TTableCell          #: :meta private:
     value:  str = None          #: :meta private:
     source: str = None          #: :meta private:
+    index:  int = 0
 
     @property
     def id(self) -> str:
@@ -101,7 +102,7 @@ class TTableCell:
     :ivar int index:    Calculated index of a cell.
     :ivar str type:     Calculated type (could also be user defined).
     :ivar dict attrs:   User attributes.
-    :ivar details:  List of values, which could be used to address objects of the same kind.
+    :ivar list details: List of values, which could be used to address objects of the same kind.
     """
     name:   str                     #: :meta private: Name of the column
     value:  Any                     #: :meta private: Value of the cell
@@ -135,22 +136,14 @@ class TTableColumn:
     criteria. It is typically used in table structures where columns may need
     specific customization for display or processing.
 
-    :ivar header:   Name of the column.
-    :type header:   str
-    :ivar attrs:    Customizable attributes of the column.
-    :type attrs:    dict
-    :ivar index:    Calculated index of the column.
-    :type index:    int
-    :ivar width:    Calculated width of the column.
-    :type width:    int
-    :ivar alias:    Alias name for output.
-    :type alias:    str
-    :ivar sort:     Sort direction of the column.
-    :type sort:     bool
-    :ivar type:     Type of the column.
-    :type type:     str
-    :ivar filter:   Filter string.
-    :type filter:   str
+    :ivar str   header:   Name of the column.
+    :ivar doct  attrs:    Customizable attributes of the column.
+    :ivar int   index:    Calculated index of the column.
+    :ivar int   width:    Calculated width of the column.
+    :ivar str   alias:    Alias name for output.
+    :ivar bool  sort:     Sort direction of the column.
+    :ivar str   type:     Type of the column.
+    :ivar str   filter:   Filter string.
     """
     header:     str                 #: :meta private: Name of the column
     attrs:      dict    = None      #: :meta private: Customizable attributes of the column
@@ -173,26 +166,15 @@ class TTableRow:
     string lists into cells and provides properties for interacting with row elements by column
     name or index.
 
-    :ivar cells:        A list of TTableCell objects or strings. Strings are automatically converted
-                        into TTableCell objects during initialization.
-    :ivar cells_filter: Filtered cells used for re-ordering and alias names, intended for
-                        internal use only.
-    :ivar column_descr: The column descriptor holds the attributes of the columns.
-    :ivar index:        Unique address for the columns, intended for internal use only.
-    :ivar row_id:       Unique row id of the row, valid for the entire table, intended for internal
-                        use only.
-    :ivar child:        A row could handle recursive data structures, intended for internal use only.
-    :ivar type:         Customizable type used for triggering template output, intended for internal
-                        use only.
-    :ivar attrs:        Customizable row attributes, intended for internal use only.
-    :type cells:        List[TTableCell] | List[str]
-    :type cells_filter: List[TTableCell]
-    :type column_descr: List[str]
-    :type index:        int
-    :type row_id:       str
-    :type child:        TTable
-    :type type:         str
-    :type attrs:        dict
+    :ivar List[TTableCell] | List[str] cells: A list of TTableCell objects or strings. Strings are automatically
+                            converted into TTableCell objects during initialization.
+    :ivar List[TTableCell] cells_filter: Filtered cells used for re-ordering and alias names, intended for internal use only.
+    :ivar List[str] column_descr: The column descriptor holds the attributes of the columns.
+    :ivar int       index:  Unique address for the columns, intended for internal use only.
+    :ivar str       row_id: Unique row id of the row, valid for the entire table, intended for internal use only.
+    :ivar TTable    child:  A row could handle recursive data structures, intended for internal use only.
+    :ivar str       type:   Customizable type used for triggering template output, intended for internal use only.
+    :ivar dict      attrs:  Customizable row attributes, intended for internal use only.
     """
     cells: List[TTableCell] | List[str]  #: :meta private: A list of strings are converted to a list of TTableCells
     cells_filter: List[TTableCell] = None  #: :meta private: Filtered cells used for re-ordering and alias names.
@@ -204,12 +186,11 @@ class TTableRow:
     attrs:      dict        = None      #: :meta private: Customizable row attributes
 
     @property
-    def id(self):
+    def id(self) -> str:
         """ Computes the SHA1 hash of the `row_id` attribute encoded in UTF-8.
 
-        This property provides a unique string identifier for an object by
-        hashing its `row_id` attribute. This can be particularly useful for
-        ensuring consistent, non-collision identifiers across distributed systems
+        This property provides a unique string identifier for an object by hashing its `row_id` attribute.
+        This can be particularly useful for ensuring consistent, non-collision identifiers across distributed systems
         or unique object tracking.
 
         :return: The SHA1 hash of the `row_id` as a hexadecimal string.
@@ -229,13 +210,12 @@ class TTableRow:
                 setattr(self, x, y)
 
     def get_values_list(self) -> list:
-        """
-        Retrieves a list of values from the cells.
+        """ Retrieves a list of values from the cells.
 
         This method iterates over the cells and extracts their values into a list.
 
         :return: A list containing values of the cells.
-        :rtype: list
+        :rtype:  list
         """
         return [x.value for x in self.cells]
 
@@ -257,13 +237,11 @@ class TTable(UserList):
 
     .. _ttable_parameter_list:
 
-    :param column_names:    List of names for each column
-    :type  column_names:    List[str]
-    :param title:           Table name and title
-    :type  title:           str
+    :param List[str] column_names:  List of names for each column
+    :param str      title:          Table name and title
 
-    :ivar Dict[str, Callable[size, value]] format_types: A map for types and format rules.
-        The callable takes two variables, the width and the value.
+    :ivar Dict[str, Callable[size, value]] format_types: A map for types and format rules. The callable takes two
+                variables, the width and the value.
 
     Examples:
         Table instance:
@@ -333,6 +311,7 @@ class TTable(UserList):
         x_cells               = [TTableCell(name=x_str, value=x_str, index=x_inx, width=len(x_str)) for x_inx, x_str in enumerate(self.column_names)]
         self.header_row       = TTableRow(cells=x_cells, type='header')
         self.column_names_map = {x_cell.value: x_cell for x_cell in x_cells}
+        self.id               = self.title
 
         if not self.format_types:
             self.format_types = {
@@ -360,12 +339,10 @@ class TTable(UserList):
     def filter_columns(self, column_names: Dict[str, str]) -> None:
         """ The column_names is a dictionary with a set of keys as subset of TTable.column_names.
         The values are translated names to display in output. The order of the keys represents the order in the
-        output.
-        The filter is used to generate customized output. This function could also be used to reduce the number of
+        output. The filter is used to generate customized output. This function could also be used to reduce the number of
         visible columns
 
-        :param column_names:    Map new names to a column, e.g. after translation
-        :type  column_names:    Dict[str: str]
+        :param Dict[str, str] column_names: Map new names to a column, e.g. after translation
 
         Example:
 
@@ -406,18 +383,13 @@ class TTable(UserList):
         Appropriate cell types, widths, and descriptors are determined and updated
         accordingly. The added row is indexed and stored within the table structure.
 
-        :param  table_row:  List of values representing a single row in the table.
-        :type   table_row:  list
-        :param  attrs:      Optional dictionary of attributes for the table row.
-        :type   attrs:      dict, optional
-        :param  row_type:   Type of the row, default is 'body'.
-        :type   row_type:   str
-        :param  row_id:     Unique identifier for the row. If not provided, defaults to the row index.
-        :type   row_id:     str
-        :param  exists_ok:  If True, allows appending of a row with an existing row_id without raising an exception.
-        :type   exists_ok:  bool
-        :return:            The newly created table row object.
-        :rtype:             TTableRow
+        :param  list    table_row:  List of values representing a single row in the table.
+        :param  dict    attrs:      Optional dictionary of attributes for the table row.
+        :param  str     row_type:   Type of the row, default is 'body'.
+        :param  str     row_id:     Unique identifier for the row. If not provided, defaults to the row index.
+        :param  bool    exists_ok:  If True, allows appending of a row with an existing row_id without raising an exception.
+        :return: The newly created table row object.
+        :rtype:  TTableRow
         """
         # define the type with the first line inserted
         x_inx        = len(self.data)
@@ -480,8 +452,8 @@ class TTable(UserList):
         that should return a boolean indicating whether a particular row matches
         the criteria.
 
-        :param search_filter: A callable function that takes a TTableRow object
-                        and returns a boolean indicating whether the row matches the criteria.
+        :param Callable[[TTableRow, bool]] search_filter: A callable function that takes a TTableRow object and
+            returns a boolean indicating whether the row matches the criteria.
         :return: Tuple of values from each matched row.
         """
         x_row: TTableRow
@@ -490,14 +462,13 @@ class TTable(UserList):
                 yield tuple(x_value for x_value in x_row.get_values_list())
 
     def on_select(self, row: str) -> TTableRow | None:
-        """ Updates the selected row in the table if a row with the given index
-        exists. If the row exists, it sets the selected row to it and
-        returns the row. If the row does not exist, it returns None.
+        """ Updates the pointer to the selected row in the table if a row with the given index
+        exists and returns this row. If the row does not exist, it returns None.
 
-        :param row_id:   The unique identifier for the table row that is to be selected.
-        :return:        The selected table row if it exists, otherwise None.
+        :param str row:   The unique identifier for the table row that is to be selected.
+        :return:  The selected table row if it exists, otherwise None.
         """
-        if selected_row := self.table_index.get(row_id):
+        if selected_row := self.table_index.get(row):
             self.selected_row = selected_row
             return self.selected_row
         else:
@@ -515,11 +486,11 @@ class TTable(UserList):
         custom filtering through the `filter_descr` argument, which works with
         predefined column descriptions to create conditional where clauses.
 
-        :param get_all: A boolean flag indicating whether to retrieve all records
+        :param bool get_all: A boolean flag indicating whether to retrieve all records
                         from the database. If set to True, the method retrieves all available
                         data. If set to False, the method retrieves a limited number of records
                         based on the current pagination settings.
-        :param filter_descr: A list of filters to be applied during the data selection.
+        :param List[List[]] filter_descr: A list of filters to be applied during the data selection.
                         These filters guide the construction of the SQL WHERE clause and determine
                         which records are included in the result set.
         :return:        A list containing the fetched records from the database. The records
@@ -569,13 +540,11 @@ class TTable(UserList):
         The filter description consists of nested lists representing conditions connected by logical "and" and "or"
         operators. Each condition within "and" is specified as a string with a column name, an operator, and a value.
 
-        :param filter_descr: A list of lists where each inner list contains strings representing individual
+        :param List[List[]] filter_descr: A list of lists where each inner list contains strings representing individual
                         conditions in the format "<column_name> <operator> <value>".
-        :type filter_descr: List[List[str]]
-        :return:        A tuple containing the constructed SQL filter query as
-                        a string and a list of arguments corresponding to the
+        :return: A tuple containing the constructed SQL filter query as a string and a list of arguments corresponding to the
                         placeholders in the SQL query.
-        :rtype:         tuple
+        :rtype:  tuple
         """
         x_where     = list()
         x_args      = list()
@@ -595,11 +564,10 @@ class TTable(UserList):
         on column descriptions and filter expressions, and can be further controlled
         by whether all rows should be retrieved or just a limited visible set.
 
-        :param get_all: Determines whether to retrieve all rows without counting against the visible items limit.
+        :param bool get_all: Determines whether to retrieve all rows without counting against the visible items limit.
                         Defaults to False.
-        :type get_all:  bool
-        :return:        A generator yielding visible rows that match the filter criteria.
-        :rtype:         List[TTableRow]
+        :return: A generator yielding visible rows that match the filter criteria.
+        :rtype:  List[TTableRow]
         """
         # in case the filters is a string, we could also handle tree access
         if self.row_filter_descr and not self.is_synchron:
@@ -641,11 +609,11 @@ class TTable(UserList):
         adjusted using different navigation strategies such as moving to the
         next, previous, absolute position, top, or last items in the structure.
 
-        :param where_togo: Determines the navigation strategy. The navigation can be to the
+        :param int where_togo: Determines the navigation strategy. The navigation can be to the
                         'NEXT' item, 'PREV' item, an 'ABS'olute position, 'TOP' of the data, or the 'LAST' item.
-        :param position: Used when the 'ABS' navigation strategy is selected. Determines the target position for
+        :param int position: Used when the 'ABS' navigation strategy is selected. Determines the target position for
                         the offset in the data structure.
-        :return:        None
+        :return: None
         """
         match int(where_togo):
             case TNavigation.NEXT.value:
@@ -665,33 +633,30 @@ class TTable(UserList):
         ascending or descending order based on the `reverse` flag. The column to
         be sorted can be specified using either its index or name.
 
-        :param column:  The column by which the table should be sorted. It can be
-                        specified as an integer (index) or a string (name).
-        :type column:   int | str
-        :param reverse: Determines the order of sorting. If True, the table is
-                        sorted in descending order; otherwise, it is sorted in
-                        ascending order. Default is False.
-        :type reverse:  bool
-        :return:        The sorted table object.
-        :rtype:         TTable
+        :param int|str  column:  The column by which the table should be sorted. It can be
+                            specified as an integer (index) or a string (name).
+        :param bool     reverse: Determines the order of sorting. If True, the table is
+                            sorted in descending order; otherwise, it is sorted in
+                            ascending order. Default is False.
+        :return: The sorted table object.
+        :rtype:  TTable
         """
         super().sort(key=lambda x_row: x_row[column], reverse=reverse)
         return self
 
-    def print(self, level: int = 0, file=sys.stdout) -> None:
+    def print(self, level: int = 0, file = sys.stdout) -> None:
         """ Prints the table with the specified formatting and indentation level. The table
         headers are determined based on the column descriptions, and the rows are
         printed with respect to the visibility and formatting criteria applied. Each row
         can have a hierarchy with child rows being printed recursively at increasing
         indentation levels.
 
-        :param level:   The indentation level to be applied to the printed table. Default is 0.
-                        This affects the amount of whitespace before the table data, enhancing
-                        readability for nested (child) tables.
-        :param file:    An optional output stream to which the table will be printed. Default is
-                        `sys.stdout`, which represents standard output.
-        :return:        This function does not return any value. It directly prints the formatted
-                        table to the specified output.
+        :param int    level: The indentation level to be applied to the printed table. Default is 0.
+                            This affects the amount of whitespace before the table data, enhancing
+                            readability for nested (child) tables.
+        :param TextIO file: An optional output stream to which the table will be printed. Default is
+                            `sys.stdout`, which represents standard output.
+        :return: This function does not return any value. It directly prints the formatted table to the specified output.
         """
         x_offset        = ' ' * 6 * level
         x_column_descr  = [self.column_descr[x] for x in self.column_names_filter] if self.apply_filter_column else self.column_descr

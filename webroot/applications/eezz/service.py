@@ -2,17 +2,14 @@
 """
     This module implements the following classes:
 
-    * **TGlobalService**: Container for global environment
     * **TService**: A singleton for TGlobalService
     * **TServiceCompiler**: A Lark compiler for HTML EEZZ extensions
     * **TTranslate**: Extract translation info from HTML to create a POT file
     * **TQuery**: Class representing the query of an HTML request
 
 """
-from dataclasses import dataclass
-from operator import itemgetter
-
-from   loguru import logger
+from    dataclasses import dataclass
+from    loguru      import logger
 
 import re
 import itertools
@@ -38,14 +35,14 @@ class TService:
     """
     _mod = int("C5F23FA172317A1F6930C0F9AF79FF044D34BFD1336E5A174155953487A4FF0C744A093CA7044F39842AC685AB37C55F1F01F0055561BAD9C3EEA22B28D09F061875ED5BDB2F1F2B797B1BEF6534C0D4FCEFAFFA8F3A91396961165241564BD6E3CA08023F2A760A0B54A4A6A996CDF7DE3491468C199566EE5993FCFD03A2B285AD6FBBC014A20C801618EE19F88EB8E6359624A35FDD7976F316D6AB225CF85DA5E63AB30248D38297A835CF16B9799973C2F9F05F5F850B3152B3A05F06FEC0FBDA95C70911F59F6A11A1451822ABFE4FE5A021F7EA983BDE9F442302891DCF51B7322EAFB88950F2617B7120F9B87534719DCA27E87D82A183CB37BC7045", 16)
     _exp = int("10001", 16)
-    _private_key:       RSA.RsaKey  = None     #: :meta private:
-    _public_key:        RSA.RsaKey  = None     #: :meta private:
-    _root_path:         Path        = None     #: :meta private: Root path for the HTTP server
-    _resource_path:     Path        = None     #: :meta private:
-    _global_objects:    dict        = None     #: :meta private:
-    _host:              str         = 'localhost' #: :meta private:
-    _websocket_addr:    str         = '8100'   #: :meta private:
-    _translate:         bool        = False
+    _private_key:       RSA.RsaKey  = None          #: :meta private:
+    _public_key:        RSA.RsaKey  = None          #: :meta private:
+    _root_path:         Path        = None          #: :meta private: Root path for the HTTP server
+    _resource_path:     Path        = None          #: :meta private:
+    _global_objects:    dict        = None          #: :meta private:
+    _host:              str         = 'localhost'   #: :meta private:
+    _websocket_addr:    str         = '8100'        #: :meta private:
+    _translate:         bool        = False         #: :meta private:
 
     @property
     def private_key(self) -> RSA.RsaKey:
@@ -135,12 +132,10 @@ class TService:
     def get_method(self, obj_id: str, a_method_name: str) -> tuple:
         """ Get a method by name for a given object
 
-        :param obj_id:          Unique hash-ID for object as stored in :py:meth:`eezz.service.TService.assign_object`
-        :type  obj_id:          str
-        :param a_method_name:   Name of the method
-        :type  a_method_name:   str
-        :return: tuple(object, method, parent-tag)
-        :raise AttributeError: Class has no method with the given name
+        :param str obj_id:          Unique hash-ID for object as stored in :py:meth:`eezz.service.TService.assign_object`
+        :param str a_method_name:   Name of the method
+        :return:    tuple(object, method, parent-tag)
+        :raise      AttributeError: Class has no method with the given name
         """
         try:
             x_object, x_tag, x_descr = self.objects[obj_id]
@@ -153,12 +148,12 @@ class TService:
     def assign_object(self, obj_id: str, description: str, attrs: dict, a_tag: Tag = None) -> None:
         """ _`assign_object` Assigns an object to an HTML tag
 
-        :raise IndexError:      description systax does not match
+        :param str      obj_id:         Unique object-id
+        :param str      description:    Path to the class: <directory>.<module>.<class>
+        :param dict     attrs:          Attributes for the constructor
+        :param bs4.Tag  a_tag:          Parent tag which handles an instance of this object
         :raise AttributeError:  Class not found
-        :param obj_id:      Unique object-id
-        :param description: Path to the class: <directory>.<module>.<class>
-        :param attrs:       Attributes for the constructor
-        :param a_tag:       Parent tag which handles an instance of this object
+        :raise IndexError:      description systax does not match
         """
         try:
             x_list  = description.split('.')
@@ -184,13 +179,19 @@ class TService:
     def get_object(self, obj_id: str) -> Any:
         """ Get the object for a given ID
 
-        :param obj_id: Unique hash-ID for object as stored in :func:`eezz.service.TGlobalService.assign_object`
+        :param str obj_id: Unique hash-ID for object as stored in :func:`eezz.service.TGlobalService.assign_object`
         :return: The assigned object
         """
         x_object, x_tag, x_descr = self.objects[obj_id]
         return x_object
 
     def get_tag_ref(self, obj_id: str) -> Any:
+        """ Get Tag and descriptor for a given object ID
+
+        :param str  obj_id:  Object ID
+        :return:    Tag and descriptor
+        :rtype:     dict
+        """
         x_object, x_tag, x_descr = self.objects[obj_id]
         return x_tag, x_descr
 
@@ -199,10 +200,9 @@ class TServiceCompiler(Transformer):
     """ Transforms the parser tree into a list of dictionaries
     The transformer output is in json format
 
-    :param a_tag:   The parent tag
-    :type a_tag:    BeautifulSoup4.Tag
-    :param a_id:    A unique object id
-    :param a_query: The URL query part
+    :param bs4.Tag  a_tag:      The parent tag
+    :param str      a_id:       A unique object id
+    :param dict     a_query:    The URL query part
     """
     def __init__(self, a_tag: Tag, a_id: str = '', a_query: dict = None):
         super().__init__()
@@ -237,6 +237,7 @@ class TServiceCompiler(Transformer):
         return item
 
     def set_style(self, item):
+        """ :meta private: """
         x_style_dict = dict()
 
         if x_style := self.m_tag.attrs.get('style'):
@@ -318,7 +319,7 @@ class TServiceCompiler(Transformer):
         if item[0] in 'format' and item[1] in ('br', 'p'):
             self.m_tag[f'data-eezz-{item[0]}'] = '<br>' if item[1] == 'br' else '</p><p>'
             return {item[0]: item[1]}
-        if item[0] in 'process' and item[1] in ('sync'):
+        if item[0] in 'process' and item[1] in 'sync':
             return {item[0]: item[1]}
         raise UnexpectedInput(f'parameter section: {item[0]} = {item[1]}')
         # return {item[0]: item[1]}
@@ -334,7 +335,7 @@ class TServiceCompiler(Transformer):
         x_method_name, x_method_args = item[0].children
         x_obj, x_method, x_tag, x_descr = TService().get_method(self.m_id, x_method_name)
         x_method(**x_method_args) if x_method_args else x_method()
-        return {'oninit':'done'}
+        return {'oninit': 'done'}
 
     def table_assignment(self, item):
         """ :meta private: Parse 'assign' section, assigning a Python object to an HTML-Tag
@@ -344,14 +345,15 @@ class TServiceCompiler(Transformer):
 
         try:
             x_query = TQuery(self.m_query)
-            x_args  = {x_key: x_val.format(query=x_query) for x_key, x_val in x_args.items()}
+            x_args  = {x_key: x_val.format(query=x_query) for x_key, x_val in x_args.items()} if x_args else {}
         except AttributeError as x_except:
-            logger.debug(f'table_assignment: {x_function}, {x_args}')
+            logger.error(f'table_assignment {x_except}: {x_function}, {x_args}')
         TService().assign_object(self.m_id, x_function, x_args, self.m_tag)
         return {'assign': {'function': x_function, 'args': x_args, 'id': self.m_id}}
 
 
 class TTranslate:
+    """ The class TTranslate executes the EEZZ grammar and translates the input to a JSON object """
     @staticmethod
     def generate_pot(a_soup, a_title):
         """ :meta private: Generate a POT file from HTML file
@@ -418,7 +420,7 @@ def test_parser(source: str) -> json:
             for x_key, x_val in x_list_json.items():
                 x_result = x_val
                 # if type(x_val) is Tree:
-                    # x_result = list(itertools.accumulate(x_val.children, lambda a, b: a | b))[-1]
+                #  x_result = list(itertools.accumulate(x_val.children, lambda a, b: a | b))[-1]
                 # x_res[x_key] = x_result
             logger.debug(x_list_json)
             return x_list_json
@@ -429,11 +431,13 @@ def test_parser(source: str) -> json:
 
 @dataclass
 class TestRow:
+    """:meta private:"""
     path:   str = 'test/path/file'
     row_id: int = 100
 
 
 def test_parser_area():
+    """:meta private:"""
     source = """ format: p,  event:  navigate(where_togo = 3), update: this.tbody  """
     test_parser(source=source)
 
@@ -448,7 +452,6 @@ if __name__ == '__main__':
 
     test_parser_area()
 
-
     logger.debug("assign statement")
     x_source = """assign: examples.directory.TDirView(title="", path="/Users/alzer/Projects/github/eezz_full/webroot")"""
     test_parser(source=x_source)
@@ -460,6 +463,7 @@ if __name__ == '__main__':
     logger.debug("update statement 2")
     x_source = """ event: on_select(index={row.row_id}), update: elem1.innerHTML = {object.path}, elem2.innerHTML = {object.row_id}  """
     x_result = test_parser(source=x_source)
+    logger.debug(x_result)
 
     x_source = 'name: directory, assign: examples.directory.TDirView(path=".", title="dir"), process:sync'
     x_result = test_parser(source=x_source)
@@ -487,5 +491,3 @@ if __name__ == '__main__':
     except UnexpectedCharacters as xx_except:
         logger.error(msg='Test parser exception successful', stack_info=True)
 """
-
-
