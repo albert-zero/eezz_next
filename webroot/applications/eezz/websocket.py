@@ -148,12 +148,15 @@ class TWebSocketClient:
         x_json_str, x_binary = self.read_websocket()
         x_json_obj = json.loads(x_json_str.decode('utf-8'))
 
-        x_log_table = TService().get_object('eezz_log_table')
-        if x_log_table is not None and self.log_table is None:
-            self.log_table = x_log_table
-            logger.add(self.log_table.add_message)
-        if self.log_table is not None:
-            self.log_table.clear()
+        try:
+            x_log_table = TService().get_object('eezz_log_table')
+            if self.log_table is None:
+                self.log_table = x_log_table
+                logger.add(self.log_table.add_message)
+            if self.log_table is not None:
+                self.log_table.clear()
+        except KeyError:
+            pass
 
         logger.debug(f'handle request {x_json_obj}')
         if 'initialize' in x_json_obj:

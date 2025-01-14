@@ -10,12 +10,11 @@ This module implements the following classes
     A document has always a reference to a shelf, which contains documents with the same Manifest layout
 
 """
-import os.path
-import re
-import time
-import tarfile
-import json
-from   loguru       import logger
+import  re
+import  time
+import  tarfile
+import  json
+from    loguru      import logger
 
 from    abc         import abstractmethod
 from    io          import BytesIO
@@ -166,7 +165,7 @@ class TDocument:
             self.map_source[file['source']] = list()
 
         if not self.map_files.get(file['name']):
-            x_path  = TService().document_path / self.title
+            x_path  = TService().public_path / self.title
             x_path.mkdir(exist_ok=True)
             x_path /= file['name']
 
