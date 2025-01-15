@@ -2,9 +2,9 @@
 """
     This module implements the following classes:
 
-    * **TFile**:        Takes a chunk of data and merges it to a file
-    * **TEezzFile**:    Extends TFile and implements encryption and decryption for transmitted data
-    * **TFileMode**:    Enum file-mode for TEezzFiles
+    * :py:class:`eezz.filesrv.TFile`:        Takes a chunk of data and merges it to a file
+    * :py:class:`eezz.filesrv.TEezzFile`:    Extends TFile and implements encryption and decryption for transmitted data
+    * :py:class:`eezz.filesrv.TFileMode`:    Enum file-mode for TEezzFiles
 
     This module supports a download of big files in chunks and ensures, that the incoming fragments are
     put together in the correct order again. Furthermore, a hash is calculated for each chunk, so that the
@@ -64,7 +64,7 @@ class TFile:
 
     @property
     def name(self) -> str:
-        """ :return: Returns the file path """
+        """ Returns the file name including extension """
         return self.destination.name
 
     def write(self, raw_data: Any, sequence_nr: int, mode: TFileMode = TFileMode.NORMAL) -> str:

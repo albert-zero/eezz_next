@@ -101,12 +101,11 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-eezz.websocket">module eezz.websocket</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TAsyncHandler"><code class="docutils literal notranslate"><span class="pre">TAsyncHandler</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TLogger"><code class="docutils literal notranslate"><span class="pre">TLogger</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TWebSocket"><code class="docutils literal notranslate"><span class="pre">TWebSocket</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TWebSocketAgent"><code class="docutils literal notranslate"><span class="pre">TWebSocketAgent</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TWebSocketClient"><code class="docutils literal notranslate"><span class="pre">TWebSocketClient</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TWebSocketException"><code class="docutils literal notranslate"><span class="pre">TWebSocketException</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TWebSocket"><code class="docutils literal notranslate"><span class="pre">TWebSocket</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#eezz.websocket.TAsyncHandler"><code class="docutils literal notranslate"><span class="pre">TAsyncHandler</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-eezz.mobile">module eezz.mobile</a><ul>
@@ -1036,9 +1035,9 @@ For each final acknowledge a 100% is returned.</p>
 <span id="module-eezz-filesrv"></span><h2>module eezz.filesrv<a class="headerlink" href="#module-eezz.filesrv" title="Link to this heading"></a></h2>
 <p>This module implements the following classes:</p>
 <ul class="simple">
-<li><p><strong>TFile</strong>:        Takes a chunk of data and merges it to a file</p></li>
-<li><p><strong>TEezzFile</strong>:    Extends TFile and implements encryption and decryption for transmitted data</p></li>
-<li><p><strong>TFileMode</strong>:    Enum file-mode for TEezzFiles</p></li>
+<li><p><a class="reference internal" href="#eezz.filesrv.TFile" title="eezz.filesrv.TFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.filesrv.TFile</span></code></a>:        Takes a chunk of data and merges it to a file</p></li>
+<li><p><a class="reference internal" href="#eezz.filesrv.TEezzFile" title="eezz.filesrv.TEezzFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.filesrv.TEezzFile</span></code></a>:    Extends TFile and implements encryption and decryption for transmitted data</p></li>
+<li><p><a class="reference internal" href="#eezz.filesrv.TFileMode" title="eezz.filesrv.TFileMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.filesrv.TFileMode</span></code></a>:    Enum file-mode for TEezzFiles</p></li>
 </ul>
 <p>This module supports a download of big files in chunks and ensures, that the incoming fragments are
 put together in the correct order again. Furthermore, a hash is calculated for each chunk, so that the
@@ -1154,12 +1153,7 @@ supervisor thread, which blocks on the queue reading</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="eezz.filesrv.TFile.name">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#eezz.filesrv.TFile.name" title="Link to this definition"></a></dt>
-<dd><p>Returns the file path</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>return</p>
-</dd>
-</dl>
+<dd><p>Returns the file name including extension</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1820,109 +1814,30 @@ forwards it to the eezz server page.</p>
 <p>This module implements the following classes</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.websocket.TWebSocketAgent</span></code></a>:       The abstract class has to be implemented by the user to     drive the TWebSocketClient</p></li>
-<li><p><a class="reference internal" href="#eezz.websocket.TWebSocketException" title="eezz.websocket.TWebSocketException"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.websocket.TWebSocketException</span></code></a>:   The exception for errors on low level interface</p></li>
+<li><p><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.websocket.TWebSocketAgent</span></code></a>:       The abstract class has to be implemented by the user to                                                         drive the TWebSocketClient</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.websocket.TWebSocketException</span></code>:   The exception for errors on low level interface</p></li>
 <li><p><a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.websocket.TWebSocketClient</span></code></a>:      This class interacts with the TWebSocketAgent and HTML frontend</p></li>
 <li><p><a class="reference internal" href="#eezz.websocket.TWebSocket" title="eezz.websocket.TWebSocket"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.websocket.TWebSocket</span></code></a>:            Low level access to the socket interface</p></li>
 <li><p><a class="reference internal" href="#eezz.websocket.TAsyncHandler" title="eezz.websocket.TAsyncHandler"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.websocket.TAsyncHandler</span></code></a>:         This class is used to interact with user defined methods</p></li>
+<li><p><a class="reference internal" href="#eezz.websocket.TLogger" title="eezz.websocket.TLogger"><code class="xref py py-class docutils literal notranslate"><span class="pre">eezz.websocket.TLogger</span></code></a>:               A TTable object, which collects logger output for the browser</p></li>
 </ul>
 </div></blockquote>
 <p>The TWebSocket implements the protocol according to
 <a class="reference external" href="https://tools.ietf.org/html/rfc6455">rfc 6455</a></p>
 <dl class="py class">
-<dt class="sig sig-object py" id="eezz.websocket.TAsyncHandler">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TAsyncHandler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket_server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><span class="pre">TWebSocketClient</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_loop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TAsyncHandler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TAsyncHandler" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Thread</span></code></p>
-<p>Execute method in background task.
-This class is designed to be put into an async thread to execute a user method, without blocking the websocket.
-After the method returns, the AsyncHandler creates the websocket response.
-It’s also possible to specify dp_loop to allow successive calls to the same method.
-This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>socket_server</strong> (<a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><em>TWebSocketClient</em></a>) – The server to send the result. None for test and validation only</p></li>
-<li><p><strong>request</strong> (<em>dict</em>) – The browser JavaScript request, containing the method to call.
-The request takes the result of the method call and returns it to the rendering
-machine to return it to JavaScript.</p></li>
-<li><p><strong>do_loop</strong> (<em>bool</em>) – If True the thread does not return, but allows the method to trigger any number of
-update events for the browser.</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.websocket.TAsyncHandler.handle_update">
-<span class="sig-name descname"><span class="pre">handle_update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TAsyncHandler.handle_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TAsyncHandler.handle_update" title="Link to this definition"></a></dt>
-<dd><p>Executes the request in either asynchronous or synchronous mode based on
-the request parameters. Continuously handles asynchronous requests while
-the ‘running’ attribute is True. In synchronous mode, processes the
-request once and returns the result.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dict with target and values for update</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
 <dt class="sig sig-object py" id="eezz.websocket.TLogger">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TLogger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_names:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'Logging'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_names_map:</span> <span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table.TTableCell]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_names_alias:</span> <span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">str]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_names_filter:</span> <span class="pre">List[int]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_descr:</span> <span class="pre">List[table.TTableColumn]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_index:</span> <span class="pre">Dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table.TTableRow]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attrs:</span> <span class="pre">dict</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visible_items:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_row:</span> <span class="pre">table.TTableRow</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header_row:</span> <span class="pre">table.TTableRow</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_filter_column:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format_types:</span> <span class="pre">dict</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">async_condition:</span> <span class="pre">threading.Condition</span> <span class="pre">=</span> <span class="pre">&lt;Condition(&lt;unlocked</span> <span class="pre">_thread.RLock</span> <span class="pre">object</span> <span class="pre">owner=0</span> <span class="pre">count=0</span> <span class="pre">at</span> <span class="pre">0x00000277AF92BB80&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">0)&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">async_lock:</span> <span class="pre">_thread.lock</span> <span class="pre">=</span> <span class="pre">&lt;unlocked</span> <span class="pre">_thread.lock</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x00000277AF92AF00&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database_path:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">':memory:'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_filter_descr:</span> <span class="pre">List[List]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_synchron:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">navigation:</span> <span class="pre">table.TNavigation</span> <span class="pre">=</span> <span class="pre">&lt;enum</span> <span class="pre">'TNavigation'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visible_navigation:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'collapse'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TLogger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TLogger" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TLogger</span></span><a class="reference internal" href="_modules/eezz/websocket.html#TLogger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TLogger" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TTable</span></code></p>
+<p>Log Table for requests to display in browser</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="eezz.websocket.TLogger.add_message">
 <span class="sig-name descname"><span class="pre">add_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TLogger.add_message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TLogger.add_message" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.websocket.TLogger.start_request">
-<span class="sig-name descname"><span class="pre">start_request</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TLogger.start_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TLogger.start_request" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="eezz.websocket.TWebSocket">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TWebSocket</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_web_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_agent_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><span class="pre">TWebSocketAgent</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocket"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocket" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Thread</span></code></p>
-<p>TWebSocket is a thread-based server for handling WebSocket connections.</p>
-<p>This class provides the implementation for a WebSocket server that
-listens for incoming WebSocket requests on a specified address and port.
-It uses a separate client handler class to manage the communication with
-each connected client and supports gracefully shutting down all sockets
-when required. The server runs as a daemon thread, allowing it to operate
-independently of the main application flow.</p>
+<dd><p>Compile a message to a table row</p>
 <dl class="field-list simple">
-<dt class="field-odd">Variables<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>m_web_socket</strong> (<em>socket.socket</em>) – The main server socket for accepting client connections.</p></li>
-<li><p><strong>m_web_addr</strong> (<em>tuple</em>) – The tuple containing the IP address and port where the server listens.</p></li>
-<li><p><strong>m_clients</strong> (<em>dict</em>) – A dictionary mapping client sockets to their handler instances.</p></li>
-<li><p><strong>m_agent_class</strong> (<em>type</em><em>[</em><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><em>TWebSocketAgent</em></a><em>]</em>) – The class type used for creating client agent instances.</p></li>
-<li><p><strong>m_running</strong> (<em>bool</em>) – A boolean flag indicating if the server is currently active and accepting connections.</p></li>
-</ul>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>msg</strong> – Log message</p>
 </dd>
 </dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.websocket.TWebSocket.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocket.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocket.run" title="Link to this definition"></a></dt>
-<dd><p>Establishes a WebSocket server that listens for incoming connections and
-handles client requests. The server operates in a loop where it waits for
-socket events, manages client connections, and processes incoming WebSocket
-messages. It handles errors by shutting down faulty connections and cleaning
-up resources appropriately.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Exception if the server socket encounters an error</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="eezz.websocket.TWebSocket.shutdown">
-<span class="sig-name descname"><span class="pre">shutdown</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocket.shutdown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocket.shutdown" title="Link to this definition"></a></dt>
-<dd><p>Shutdown closes all sockets</p>
 </dd></dl>
 
 </dd></dl>
@@ -2095,7 +2010,7 @@ in a compliant manner.</p>
 <dd class="field-even"><p>tuple</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#eezz.websocket.TWebSocketException" title="eezz.websocket.TWebSocketException"><strong>TWebSocketException</strong></a> – If no data is received from the socket.</p>
+<dd class="field-odd"><p><strong>TWebSocketException</strong> – If no data is received from the socket.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2112,7 +2027,7 @@ during the reading process, logging them and shutting down the client connection
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference internal" href="#eezz.websocket.TWebSocketException" title="eezz.websocket.TWebSocketException"><strong>TWebSocketException</strong></a> – If a close frame is received or an unknown opcode is encountered.</p></li>
+<li><p><strong>TWebSocketException</strong> – If a close frame is received or an unknown opcode is encountered.</p></li>
 <li><p><strong>Exception</strong> – For any other unexpected exceptions during the reading process.</p></li>
 </ul>
 </dd>
@@ -2128,7 +2043,7 @@ a handshake response, and sending this response back to establish a connection.
 It also initializes a buffer used for further communications.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="#eezz.websocket.TWebSocketException" title="eezz.websocket.TWebSocketException"><strong>TWebSocketException</strong></a> – if no data is received during the handshake process</p>
+<dd class="field-odd"><p><strong>TWebSocketException</strong> – if no data is received during the handshake process</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2154,11 +2069,86 @@ If None, no masking is applied. Must be exactly 4 bytes if provided.</p></li>
 
 </dd></dl>
 
-<dl class="py exception">
-<dt class="sig sig-object py" id="eezz.websocket.TWebSocketException">
-<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TWebSocketException</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocketException"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocketException" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
-<p>Exception class for this module</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.websocket.TWebSocket">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TWebSocket</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a_web_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_agent_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><span class="pre">TWebSocketAgent</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocket"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocket" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Thread</span></code></p>
+<p>TWebSocket is a thread-based server for handling WebSocket connections.</p>
+<p>This class provides the implementation for a WebSocket server that
+listens for incoming WebSocket requests on a specified address and port.
+It uses a separate client handler class to manage the communication with
+each connected client and supports gracefully shutting down all sockets
+when required. The server runs as a daemon thread, allowing it to operate
+independently of the main application flow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>m_web_socket</strong> (<em>socket.socket</em>) – The main server socket for accepting client connections.</p></li>
+<li><p><strong>m_web_addr</strong> (<em>tuple</em>) – The tuple containing the IP address and port where the server listens.</p></li>
+<li><p><strong>m_clients</strong> (<em>dict</em>) – A dictionary mapping client sockets to their handler instances.</p></li>
+<li><p><strong>m_agent_class</strong> (<em>type</em><em>[</em><a class="reference internal" href="#eezz.websocket.TWebSocketAgent" title="eezz.websocket.TWebSocketAgent"><em>TWebSocketAgent</em></a><em>]</em>) – The class type used for creating client agent instances.</p></li>
+<li><p><strong>m_running</strong> (<em>bool</em>) – A boolean flag indicating if the server is currently active and accepting connections.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.websocket.TWebSocket.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocket.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocket.run" title="Link to this definition"></a></dt>
+<dd><p>Establishes a WebSocket server that listens for incoming connections and
+handles client requests. The server operates in a loop where it waits for
+socket events, manages client connections, and processes incoming WebSocket
+messages. It handles errors by shutting down faulty connections and cleaning
+up resources appropriately.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Exception if the server socket encounters an error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.websocket.TWebSocket.shutdown">
+<span class="sig-name descname"><span class="pre">shutdown</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TWebSocket.shutdown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TWebSocket.shutdown" title="Link to this definition"></a></dt>
+<dd><p>Shutdown closes all sockets</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="eezz.websocket.TAsyncHandler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">eezz.websocket.</span></span><span class="sig-name descname"><span class="pre">TAsyncHandler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket_server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><span class="pre">TWebSocketClient</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_loop</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/eezz/websocket.html#TAsyncHandler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TAsyncHandler" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Thread</span></code></p>
+<p>The AsyncHandler is able to execute request method in background task.
+This class is designed to be put a method into an async thread to execute a user method, without blocking the websocket.
+After the method returns, the AsyncHandler creates the websocket response.
+It’s also possible to specify do_loop to allow successive calls to the same method.
+This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>socket_server</strong> (<a class="reference internal" href="#eezz.websocket.TWebSocketClient" title="eezz.websocket.TWebSocketClient"><em>TWebSocketClient</em></a>) – The server to send the result. None for test and validation only</p></li>
+<li><p><strong>request</strong> (<em>dict</em>) – The request, containing the method to call.
+The request takes the result of the method call and returns it to the rendering
+machine to return it to the browser.</p></li>
+<li><p><strong>do_loop</strong> (<em>bool</em>) – If True the thread does not return, but allows the method to trigger any number of
+update events for the browser.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="eezz.websocket.TAsyncHandler.handle_update">
+<span class="sig-name descname"><span class="pre">handle_update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/eezz/websocket.html#TAsyncHandler.handle_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#eezz.websocket.TAsyncHandler.handle_update" title="Link to this definition"></a></dt>
+<dd><p>Executes the request in either asynchronous or synchronous mode based on
+the request parameters. Continuously handles asynchronous requests while
+the ‘running’ attribute is True. In synchronous mode, processes the
+request once and returns the result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict with target and values for update</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </section>

@@ -2,11 +2,12 @@
 This module implements the following classes
 
     * :py:class:`eezz.websocket.TWebSocketAgent`:       The abstract class has to be implemented by the user to \
-    drive the TWebSocketClient
+                                                        drive the TWebSocketClient
     * :py:class:`eezz.websocket.TWebSocketException`:   The exception for errors on low level interface
     * :py:class:`eezz.websocket.TWebSocketClient`:      This class interacts with the TWebSocketAgent and HTML frontend
     * :py:class:`eezz.websocket.TWebSocket`:            Low level access to the socket interface
     * :py:class:`eezz.websocket.TAsyncHandler`:         This class is used to interact with user defined methods
+    * :py:class:`eezz.websocket.TLogger`:               A TTable object, which collects logger output for the browser
 
 The TWebSocket implements the protocol according to
 `rfc 6455 <https://tools.ietf.org/html/rfc6455>`_
@@ -32,8 +33,9 @@ from   service     import test_parser
 from   table       import TTable
 
 
-@dataclass
+@dataclass()
 class TLogger(TTable):
+    """ Log Table for requests to display in browser """
     title: str          = 'Logging'
     column_names: list  = None
 
@@ -41,10 +43,11 @@ class TLogger(TTable):
         self.column_names = ['date', 'level', 'function', 'message']
         super().__post_init__()
 
-    def start_request(self):
-        self.clear()
-
     def add_message(self, msg):
+        """ Compile a message to a table row
+
+        :param msg: Log message
+        """
         prepare = msg.split('|')
         result = [x.strip() for x in prepare[:-1]] + [x.strip() for x in prepare[-1].split('-')]
         self.append(result, row_type='body')
@@ -107,7 +110,7 @@ class TWebSocketClient:
         self.m_threads: Dict[Callable, Thread] = {}
         self.store_resp:    bytes   = bytes()
         self.running:       bool    = True
-        self.log_table: TLogger     = None
+        self.log_table: TLogger | None = None
 
     def shutdown(self):
         """:meta private: Handles connection loss """
@@ -529,16 +532,16 @@ class TWebSocket(Thread):
 
 
 class TAsyncHandler(Thread):
-    """ Execute method in background task.
-    This class is designed to be put into an async thread to execute a user method, without blocking the websocket.
+    """ The AsyncHandler is able to execute request method in background task.
+    This class is designed to be put a method into an async thread to execute a user method, without blocking the websocket.
     After the method returns, the AsyncHandler creates the websocket response.
-    It's also possible to specify dp_loop to allow successive calls to the same method.
+    It's also possible to specify do_loop to allow successive calls to the same method.
     This way you could implement a monitor measurement, sending actual data in some time intervals to the user interface.
 
     :param TWebSocketClient socket_server: The server to send the result. None for test and validation only
-    :param dict request:    The browser JavaScript request, containing the method to call.
+    :param dict request:    The request, containing the method to call.
                             The request takes the result of the method call and returns it to the rendering
-                            machine to return it to JavaScript.
+                            machine to return it to the browser.
     :param bool do_loop:    If True the thread does not return, but allows the method to trigger any number of
                             update events for the browser.
     """
@@ -567,7 +570,7 @@ class TAsyncHandler(Thread):
         :return: Dict with target and values for update
         """
         x_id:  str  = ''
-        x_row: TTable|None = None
+        x_row: TTable | None = None
 
         if x_json_call := self.request.get('call'):
             x_method_name   = x_json_call.get('function')
@@ -616,7 +619,7 @@ class TAsyncHandler(Thread):
         return self.socket_server.handle_async_request(self.request) if self.socket_server else None
 
 
-class TTestAsync(TTable):
+class TTest(TTable):
     """ :meta private: for test only """
     def ___init__(self, column_names):
         self.column_names = column_names
@@ -651,7 +654,7 @@ def test_async_hadler():
     logger.debug(x_result)
 
     x_req    = {'call': {'function': 'test_tcm', 'args': {}}, 'id': 'Directory'}
-    x_thread = TAsyncHandler(socket_server=None, fkt_id='Directory', request=x_req)
+    x_thread = TAsyncHandler(socket_server=None, request=x_req)
     x_thread.start()
     logger.success('Main thread waiting for the method to return')
     x_thread.join()
