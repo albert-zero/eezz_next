@@ -146,9 +146,27 @@ module eezz.websocket
 ---------------------
 
 .. automodule:: eezz.websocket
-   :members:
-   :undoc-members:
-   :show-inheritance:
+
+   .. autoclass:: TLogger()
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+   .. autoclass:: TWebSocketAgent
+      :members:
+      :show-inheritance:
+
+   .. autoclass:: TWebSocketClient
+      :members:
+      :show-inheritance:
+
+   .. autoclass:: TWebSocket
+      :members:
+      :show-inheritance:
+
+   .. autoclass:: TAsyncHandler
+      :members:
+      :show-inheritance:
 
 
 module eezz.mobile

@@ -73,9 +73,9 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This module implements the following classes:</span>
 
-<span class="sd">    * **TFile**:        Takes a chunk of data and merges it to a file</span>
-<span class="sd">    * **TEezzFile**:    Extends TFile and implements encryption and decryption for transmitted data</span>
-<span class="sd">    * **TFileMode**:    Enum file-mode for TEezzFiles</span>
+<span class="sd">    * :py:class:`eezz.filesrv.TFile`:        Takes a chunk of data and merges it to a file</span>
+<span class="sd">    * :py:class:`eezz.filesrv.TEezzFile`:    Extends TFile and implements encryption and decryption for transmitted data</span>
+<span class="sd">    * :py:class:`eezz.filesrv.TFileMode`:    Enum file-mode for TEezzFiles</span>
 
 <span class="sd">    This module supports a download of big files in chunks and ensures, that the incoming fragments are</span>
 <span class="sd">    put together in the correct order again. Furthermore, a hash is calculated for each chunk, so that the</span>
@@ -140,7 +140,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot; :return: Returns the file path &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Returns the file name including extension &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">destination</span><span class="o">.</span><span class="n">name</span>
 
 <div class="viewcode-block" id="TFile.write">
