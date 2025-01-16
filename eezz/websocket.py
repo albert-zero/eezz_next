@@ -40,17 +40,16 @@ class TLogger(TTable):
     column_names: list  = None
 
     def __post_init__(self):
-        self.column_names = ['date', 'level', 'function', 'message']
+        self.column_names = ['date', 'level', 'message']
         super().__post_init__()
 
     def add_message(self, msg):
         """ Compile a message to a table row
-
-        :param msg: Log message
         """
-        prepare = msg.split('|')
-        result = [x.strip() for x in prepare[:-1]] + [x.strip() for x in prepare[-1].split('-')]
-        self.append(result, row_type='body')
+        prepare = msg.split('|', 3)
+        x_msg1  = [x.strip() for x in prepare[:]]
+        # x_msg2  = [x.strip() for x in prepare[-1].split('-')]
+        self.append(x_msg1, row_type='body')
 
 
 class TWebSocketAgent:

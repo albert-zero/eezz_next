@@ -1,0 +1,32 @@
+Metadata-Version: 2.2
+Name: eezz
+Version: 0.0.1
+Summary: A HTML Graphical User Interface for Python
+Author-email: Albert Zedlitz <albert.zedlitz@eezz.biz>
+Project-URL: Homepage, https://github.com/albert-zero/eezz_next
+Keywords: HTML,UserInterface
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENCE
+Requires-Dist: beautifulsoup4>=4.12.3
+Requires-Dist: pycryptodome>=3.21.0
+Requires-Dist: loguru>=0.7.2
+
+Graphical User Interface for Python
+===================================
+
+The package uses python integrated HTML server as default. 
+After installation you could start the server to activate the framework.
+
+**python server.py --webroot "eezz/webroot" --host localhost --port 8000**
+
+Read the documentation 
+
+- https://github.com/albert-zero/eezz_next/blob/main/webroot/applications/docs/eezz.pdf
+- https://github.com/albert-zero/eezz_next/blob/main/webroot/applications/docs/_build/html/eezz.html
+
+
+	
+

@@ -33,6 +33,13 @@ class TEezz {
 // Global user interface instance
 eezz = new TEezz();
 
+function eezz_status(msg) {
+    var x_element = document.getElementById('eezz-status');
+    if (x_element) {
+        x_element.innerHTML = msg;
+    }
+}
+
 // Open and controlling the WEB socket
 // ------------------------------------------------------------------------------------------
 function eezz_connect() {
@@ -48,12 +55,14 @@ function eezz_connect() {
         var x_body    = document.body;
         var x_json    = {"initialize": x_body.innerHTML, "args": g_eezz_arguments, 'title': x_title};
         g_eezz_web_socket.send(JSON.stringify(x_json));
+        eezz_status('connected');
     }
     
     /* Error handling: Reopen connection */
     g_eezz_web_socket.onerror = function(a_error) {
         console.log('error on websocket ...');
         window.console.error(a_error);
+        eezz_status(a_error);
     }
 
     /* Wait for the application and update the document          */
@@ -86,6 +95,7 @@ function eezz_connect() {
                     dynamic_update(x_update_json);
                 } catch(err) {
                     console.log("error " + err);
+                    eezz_status("error " + err);
                 }
             }
 

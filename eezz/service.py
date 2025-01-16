@@ -129,6 +129,9 @@ class TService:
         cls._host           = host
         cls._websocket_addr = address
 
+        #  application_path    = cls._root_path / 'applications'
+        #  sys.path.append(application_path.as_posix())
+
     def get_method(self, obj_id: str, a_method_name: str) -> tuple:
         """ Get a method by name for a given object
 

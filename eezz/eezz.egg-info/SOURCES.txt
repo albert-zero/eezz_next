@@ -1,0 +1,15 @@
+LICENCE
+MANIFEST.in
+README.md
+pyproject.toml
+docs/Makefile
+docs/conf.py
+docs/eezz.rst
+docs/index.rst
+docs/make.bat
+docs/modules.rst
+eezz/eezz.egg-info/PKG-INFO
+eezz/eezz.egg-info/SOURCES.txt
+eezz/eezz.egg-info/dependency_links.txt
+eezz/eezz.egg-info/requires.txt
+eezz/eezz.egg-info/top_level.txt

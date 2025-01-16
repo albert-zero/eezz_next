@@ -20,12 +20,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-[tools.poetry]
-include = ["webroot/public/*"]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build] 
+include = ["eezz", "eezz/webroot"]
 
 [project.urls]
 Homepage = "https://github.com/albert-zero/eezz_next"
