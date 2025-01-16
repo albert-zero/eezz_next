@@ -138,6 +138,7 @@ class TTestTree(TTableTree):
 
     def read_dir(self) -> TTable:
         """ :meta private: read a directory
+
         """
         self.data.clear()
         for x in self.path.iterdir():
