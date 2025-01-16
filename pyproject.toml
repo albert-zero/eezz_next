@@ -4,12 +4,15 @@ version 	= "0.0.1"
 authors 	= [
   { name="Albert Zedlitz", email="albert.zedlitz@eezz.biz" }
 ]
-dependencies = [ 
+keywords        = ["HTML", "UserInterface"]
+dependencies    = [
 	"beautifulsoup4 >= 4.12.3",
     "pycryptodome   >= 3.21.0",
-	"loguru         >= 0.7.2"
+	"loguru         >= 0.7.2",
+     "lark          >= 1.2.2"
 ]
-description = "A HTML Graphical User Interface for Python"
+
+description = "HTML User Interface for Python"
 readme      = "README.md"
 requires-python = ">=3.10"
 classifiers = [
@@ -17,9 +20,14 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[tools.poetry]
+include = ["webroot/public/*"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.urls]
 Homepage = "https://github.com/albert-zero/eezz_next"
+
+
