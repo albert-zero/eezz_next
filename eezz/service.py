@@ -460,11 +460,11 @@ if __name__ == '__main__':
     test_parser(source=x_source)
 
     logger.debug("update statement 1")
-    x_source = """ event: on_select(index={row.row_id}), update: elem1.innerHTML = {object.path} """
+    x_source = """ event: on_select(row={row.row_id}), update: elem1.innerHTML = {object.path} """
     test_parser(source=x_source)
 
     logger.debug("update statement 2")
-    x_source = """ event: on_select(index={row.row_id}), update: elem1.innerHTML = {object.path}, elem2.innerHTML = {object.row_id}  """
+    x_source = """ event: on_select(row={row.row_id}), update: elem1.innerHTML = {object.path}, elem2.innerHTML = {object.row_id}  """
     x_result = test_parser(source=x_source)
     logger.debug(x_result)
 

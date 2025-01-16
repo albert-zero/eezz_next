@@ -48,6 +48,7 @@ class TLogger(TTable):
         """
         prepare = msg.split('|', 3)
         x_msg1  = [x.strip() for x in prepare[:]]
+        x_msg1[-1].replace('\n', '<br>')
         # x_msg2  = [x.strip() for x in prepare[-1].split('-')]
         self.append(x_msg1, row_type='body')
 
@@ -175,7 +176,7 @@ class TWebSocketClient:
         if 'call' in x_json_obj or 'update' in x_json_obj:
             # Put declaration and bytestream together.
             # JavaScript attribute is "this.bytestream": Step through all update function args and check for replacement
-            if x_dict_update := x_json_obj['update']:
+            if x_dict_update := x_json_obj.get('update'):
                 for x_target, x_function in x_dict_update.items():
                     if isinstance(x_function, dict) and x_function.get('args'):
                         x_args = x_function.get('args')
