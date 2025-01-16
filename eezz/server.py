@@ -15,7 +15,7 @@ from   urllib.parse     import urlparse
 from   urllib.parse     import parse_qs
 from   optparse         import OptionParser
 from   eezz.websocket   import TWebSocket
-from   http_agent       import THttpAgent
+from   eezz.http_agent  import THttpAgent
 from   eezz.service     import TService
 import time
 from   loguru           import logger
