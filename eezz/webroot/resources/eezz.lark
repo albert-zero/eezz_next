@@ -1,0 +1,63 @@
+?start            : list_statements
+
+?list_statements  : [ statement  ("," statement  )* ]
+?statement        : "event"     ":" function_call               -> funct_assignment
+                  | "assign"    ":" function_call               -> table_assignment
+                  | "update"    ":" list_updates                -> update_section
+                  | "onload"    ":" list_updates                -> onload_section
+                  | "oninit"    ":" function_call               -> post_init
+                  | "template"  ":" string ( "(" value_string ")" )?  -> template_section
+                  | "style"     ":" string "=" format_string    -> set_style
+                  | string      ":" string                      -> parameter_section
+                  | qualified_string ":" value_string           -> setenv
+
+document          : "document"  "(" list_arguments ")"
+files             : "files"     "(" list_arguments ")"
+
+list_updates      : [ update_item  ("," update_item  )* ]
+
+update_item       : qualified_string "=" function_call        -> update_function
+                  | qualified_string "=" update_string
+                  | function_call                             -> update_task
+                  | qualified_string
+
+?update_string    : string
+                  | format_string
+                  | qualified_string
+
+update_function   : qualified_string "(" list_update_strings ")"
+
+?list_update_strings : [ update_string ("," update_string)* ]
+
+?list_arguments   : [ assignment  ("," assignment  )* ]
+?assignment       : string "=" value_string
+
+?value_string     : string
+                  | format_string
+                  | qualified_string
+                  | quoted_string
+                  | selector_string
+                  | number
+                  | array_element
+
+array_element     : "[" string (","  string)* "]"
+
+?function_call    : qualified_string "(" list_arguments ")"
+
+string            : CNAME                                   -> simple_str
+number            : /[0-9]+/                                -> simple_str
+?quoted_string    : ESCAPED_STRING                          -> escaped_str
+?qualified_string : [ string ("." string  )* ]
+format_string     : "{" [ string ("." string  )* ] "}"
+
+xxxformat_string  : "{" string ( "." string )? ( "[" string "]" )?  "}"
+
+selector_string   : "[" [ string ("." string  )* ] "]"
+
+%import common.ESCAPED_STRING
+%import common.CNAME
+%import common.SIGNED_NUMBER
+%import common.WS
+%ignore WS
+
+
