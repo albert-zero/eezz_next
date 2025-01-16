@@ -40,17 +40,19 @@ class TLogger(TTable):
     column_names: list  = None
 
     def __post_init__(self):
-        self.column_names = ['date', 'level', 'message']
+        self.column_names = ['date', 'level', 'function', 'message']
         super().__post_init__()
 
     def add_message(self, msg):
         """ Compile a message to a table row
         """
-        prepare = msg.split('|', 3)
-        x_msg1  = [x.strip() for x in prepare[:]]
-        x_msg1[-1].replace('\n', '<br>')
-        # x_msg2  = [x.strip() for x in prepare[-1].split('-')]
-        self.append(x_msg1, row_type='body')
+        prepare    = msg.split('|', 3)
+        x_msg1     = [x.strip() for x in prepare[:]]
+        x_msg1[-1] = x_msg1[-1].replace('\\n', '\n').replace('\\t', '    ')
+
+        x_msg2     = x_msg1[-1].split('-', 1)
+        result     = x_msg1[:-1] + x_msg2
+        self.append(result, row_type='body')
 
 
 class TWebSocketAgent:

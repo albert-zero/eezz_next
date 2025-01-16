@@ -7,19 +7,23 @@ This module implements the following classes
     access on local services.
  
 """
-import os
-import http.server
-import http.cookies
-from   threading        import Thread
-from   urllib.parse     import urlparse
-from   urllib.parse     import parse_qs
-from   optparse         import OptionParser
-from   eezz.websocket   import TWebSocket
-from   eezz.http_agent  import THttpAgent
-from   eezz.service     import TService
-import time
-from   loguru           import logger
-import json
+import  os
+import  importlib.resources
+import  shutil
+from    pathlib         import Path
+
+import  http.server
+import  http.cookies
+from    threading       import Thread
+from    urllib.parse    import urlparse
+from    urllib.parse    import parse_qs
+from    optparse        import OptionParser
+from    eezz.websocket  import TWebSocket
+from    eezz.http_agent import THttpAgent
+from    eezz.service    import TService
+import  time
+from    loguru          import logger
+import  json
 
 
 class TWebServer(http.server.HTTPServer):
@@ -157,6 +161,12 @@ if __name__ == "__main__":
     if TService().public_path.is_dir():
         os.chdir(TService().public_path)
     else:
+        src_dir = importlib.resources.files('eezz') / 'webroot'
+        dest_dir = Path('eezz/webroot')
+        if not dest_dir.exists():
+            dest_dir.mkdir()
+            shutil.copytree(str(src_dir), dest_dir)
+
         x_opt_parser.print_help()
         logger.critical(f'webroot not found. Specify path using option "--webroot <path>"')
         exit(0)

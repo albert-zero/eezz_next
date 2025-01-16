@@ -16,3 +16,15 @@
 .clzz_datetime {
     text-align: right;
 }
+
+table {
+    border: 0px solid orange;
+    position: relative;
+    display: inline-block;
+    background-color: white;
+    left: 30px;
+}
+
+table[data-eezz-subtree-id] {
+    border-left: 1px solid black;
+}
