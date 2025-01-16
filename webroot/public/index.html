@@ -1,44 +1,13 @@
 <!DOCTYPE html>
 <head>
     <script data-eezz="template:websocket"></script>
-    <link rel="stylesheet" href="/css/eezz.css">
+    <link   rel="stylesheet" href="/css/eezz.css">
 </head>
 <html lang="en">
 <body>
     <h2 id="eezz-status"></h2>
-    <meta charset="UTF-8">
     <title>Title</title>
-    <h1>Simple table</h1>
-
-    <table id="Directory"
-           data-eezz='
-                assign: examples.directory.TDirView(
-                    path  ="/Users/alzer/Projects/github/eezz_full/webroot", 
-                    title ="Directory")'>
-            <tfoot style="visibility: hidden"><tr><td colspan=4 style="text-align:center">
-                <img src ="navbar.png" style="height:20px; width:160px" usemap="#navigation"/>
-                <map name="navigation">
-                    <area shape="rect" coords="  0px, 0px,  40px, 20px" 
-                        data-eezz = "
-                            event:  navigate(where_togo = 3), 
-                            update: this.tbody"/>
-                    <area shape="rect" coords=" 40px, 0px,  80px, 20px" 
-                        data-eezz = "
-                            event:  navigate(where_togo = 2), 
-                            update: this.tbody"/>
-                    <area shape="rect" coords=" 80px, 0px, 120px, 20px"
-                        data-eezz = "
-                            event:  navigate(where_togo = 1), 
-                            update: this.tbody"/>
-                    <area shape="rect" coords="120px, 0px, 160px, 20px"
-                        data-eezz = "
-                            event:  navigate(where_togo = 4), 
-                            update: this.tbody"/>
-                </map>
-            </td></tr>
-            </tfoot>
-    </table>
-
-
+    <h1>Hello EEZZ</h1>
+	<table id = "eezz_log_table" data-eezz="assign: eezz.websocket.TLogger ()"></table >
 </body>
 </html>
