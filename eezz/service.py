@@ -125,7 +125,7 @@ class TService:
     @classmethod
     def set_environment(cls, root_path: str, host: str = 'localhost', address: str = '8000'):
         """ :meta private: """
-        cls._root_path      = Path(root_path)
+        cls._root_path      = Path(root_path).absolute()
         cls._host           = host
         cls._websocket_addr = address
 

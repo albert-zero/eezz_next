@@ -259,7 +259,7 @@ class TWebSocketClient:
 
         except Exception as xEx:
             if self.m_agent_client:
-                logger.info(f'{str(xEx)} : shutdown')
+                logger.info(f'shutdown: {str(xEx)}')
                 self.shutdown()
             raise
 

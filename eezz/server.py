@@ -89,8 +89,6 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
                 return
             if x_query_path == '/system/eezzyfree':
                 # Polling request for an existing connection
-                x_session = TSession()
-                x_result  = x_session.get_user_pwd()
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.end_headers()
@@ -98,7 +96,7 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
                 return
             if x_query_path == '/eezzyfree':
                 # Assign a user to the administration page
-                TSession().connect(x_query)
+                pass
 
         if x_resource.is_dir():
             x_resource = TService().root_path / 'public/index.html'
