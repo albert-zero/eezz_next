@@ -17,7 +17,7 @@ import  json
 import  sys
 from    bs4                 import Tag, BeautifulSoup
 from    pathlib             import Path
-from    importlib           import import_module
+from    importlib           import import_module, reload
 from    lark                import Lark, Transformer, Tree, UnexpectedInput
 from    lark.exceptions     import UnexpectedCharacters
 from    typing              import Any, TypeVar
@@ -148,13 +148,14 @@ class TService:
             logger.exception(x_except)
             raise x_except
 
-    def assign_object(self, obj_id: str, description: str, attrs: dict, a_tag: Tag = None) -> None:
+    def assign_object(self, obj_id: str, description: str, attrs: dict, a_tag: Tag = None, force_reload: bool = False) -> None:
         """ _`assign_object` Assigns an object to an HTML tag
 
         :param str      obj_id:         Unique object-id
         :param str      description:    Path to the class: <directory>.<module>.<class>
         :param dict     attrs:          Attributes for the constructor
         :param bs4.Tag  a_tag:          Parent tag which handles an instance of this object
+        :param bool     force_reload:   Force reloading
         :raise AttributeError:  Class not found
         :raise IndexError:      description systax does not match
         """
@@ -172,6 +173,9 @@ class TService:
 
         try:
             x_module    = import_module(y)
+            if force_reload:
+                x_module = reload(x_module)
+
             x_class     = getattr(x_module, z)
             x_object    = x_class(**attrs) if attrs else x_class()
             self.objects.update({obj_id: (x_object, a_tag, description)})

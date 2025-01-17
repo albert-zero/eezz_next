@@ -40,19 +40,21 @@ class TLogger(TTable):
     column_names: list  = None
 
     def __post_init__(self):
-        self.column_names = ['date', 'level', 'function', 'message']
+        self.column_names = ['Time', 'Level', 'Function', 'Message']
         super().__post_init__()
 
     def add_message(self, msg):
         """ Compile a message to a table row
-        """
-        prepare    = msg.split('|', 3)
-        x_msg1     = [x.strip() for x in prepare[:]]
-        x_msg1[-1] = x_msg1[-1].replace('\\n', '\n').replace('\\t', '    ')
+        dict_keys(['elapsed', 'exception', 'extra', 'file', 'function', 'level', 'line', 'message', 'module', 'name', 'process', 'thread', 'time'])
 
-        x_msg2     = x_msg1[-1].split('-', 1)
-        result     = x_msg1[:-1] + x_msg2
-        self.append(result, row_type='body')
+        """
+        log_json   = json.loads(msg)
+        log_record = log_json['record']
+
+        log_entry = [log_record['time']['timestamp'], log_record['level']['icon'],
+                     f'{log_record['module']}:{log_record['function']}-{log_record['line']}',
+                     log_record['message'][:150]]
+        self.append(log_entry, row_type='body')
 
 
 class TWebSocketAgent:
@@ -157,7 +159,7 @@ class TWebSocketClient:
             x_log_table = TService().get_object('eezz_log_table')
             if self.log_table is None:
                 self.log_table = x_log_table
-                logger.add(self.log_table.add_message)
+                logger.add(self.log_table.add_message, serialize=True)
             if self.log_table is not None:
                 self.log_table.clear()
         except KeyError:
@@ -496,7 +498,7 @@ class TWebSocket(Thread):
         self.m_web_socket.listen(15)
 
         x_read_list  = [self.m_web_socket]
-        print(f'websocket {self.m_web_addr[0]} at {self.m_web_addr[1]}')
+        logger.info(f'Starting WebSocket Server on {self.m_web_addr[0]} at Port {self.m_web_addr[1]}')
 
         while self.m_running:
             x_rd, x_wr, x_err = select.select(x_read_list, [], x_read_list, 1)

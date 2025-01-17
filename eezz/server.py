@@ -141,38 +141,40 @@ def shutdown_function(handler: THttpHandler):
 
 if __name__ == "__main__":
     print(""" 
-        EezzServer  Copyright (C) 2015  Albert Zedlitz
-        This program comes with ABSOLUTELY NO WARRANTY;'.
+        EezzServer  Copyright (C) 2025  Albert Zedlitz
+        This program comes with ABSOLUTELY NO WARRANTY
         This is free software, and you are welcome to redistribute it
-        under certain conditions;.
+        under certain conditions
     """)
 
     # Parse command line options
     x_opt_parser = OptionParser()
     x_opt_parser.add_option("-d", "--host",      dest="http_host",  default="localhost", help="HTTP Hostname (for example localhost)")
     x_opt_parser.add_option("-p", "--port",      dest="http_port",  default="8000",      help="HTTP Port (default 8000")
-    x_opt_parser.add_option("-w", "--webroot",   dest="web_root",   default="webroot",   help="Web-Root (path to webroot directory)")
+    x_opt_parser.add_option("-w", "--webroot",   dest="web_root",   default="eezz/webroot",   help="Web-Root (path to webroot directory)")
     x_opt_parser.add_option("-x", "--websocket", dest="web_socket", default="8100",      help="Web-Socket Port (default 8100)",  type="int")
     x_opt_parser.add_option("-t", "--translate", dest="translate",  action="store_true", help="Optional creation of POT file")
 
     (x_options, x_args) = x_opt_parser.parse_args()
-    TService.set_environment(x_options.web_root, x_options.http_host, x_options.web_socket)
+
+    dest_dir = Path(x_options.web_root)
+    if not dest_dir.exists() and x_options.web_root == 'eezz/webroot':
+        logger.warning(f'Continue with bootstrap: creating ./eezz/webroot')
+        src_dir = importlib.resources.files('eezz') / 'webroot'
+        dest_dir = Path('eezz/webroot')
+        shutil.copytree(str(src_dir), dest_dir)
+
+    TService.set_environment(x_options.web_root,  x_options.http_host, x_options.web_socket)
 
     if TService().public_path.is_dir():
         os.chdir(TService().public_path)
     else:
-        src_dir = importlib.resources.files('eezz') / 'webroot'
-        dest_dir = Path('eezz/webroot')
-        if not dest_dir.exists():
-            dest_dir.mkdir()
-            shutil.copytree(str(src_dir), dest_dir)
-
         x_opt_parser.print_help()
         logger.critical(f'webroot not found. Specify path using option "--webroot <path>"')
         exit(0)
 
     x_httpd   = TWebServer((x_options.http_host, int(x_options.http_port)), THttpHandler, x_options.web_socket)
-    logger.info(f"serving {x_options.http_host} at port {x_options.http_port} ...")
+    logger.info(f"Starting HTTP Server on {x_options.http_host} at Port {x_options.http_port} ...")
 
     x_httpd.serve_forever()
     logger.info('shutdown')
