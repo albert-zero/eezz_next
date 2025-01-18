@@ -99,11 +99,12 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
                 pass
 
         if x_resource.is_dir():
-            x_resource = TService().root_path / 'public/index.html'
+            x_resource = TService().root_path / 'index.html'
 
         if not x_resource.exists():
             self.send_response(404)
             self.end_headers()
+            logger.info(f'Cannot load resource {x_resource}')
             return
 
         if x_resource.suffix in '.html':
@@ -130,6 +131,14 @@ class THttpHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             with x_resource.open('rb') as f:
                 self.wfile.write(f.read())
+        elif x_resource.suffix in '.js':
+            self.send_response(200)
+            self.send_header('content-type', 'text/javascript')
+            self.end_headers()
+            with x_resource.open('rb') as f:
+                self.wfile.write(f.read())
+        else:
+            logger.error(f'Extension not registered: {x_resource}')
 
 
 def shutdown_function(handler: THttpHandler):
