@@ -46,11 +46,11 @@ class TTableTree(TTable):
         :param bool exists_ok:  If True, supress exception, trying to insert the same row-ID
         :return: An instance of TTableRow representing the appended row.
         """
-        if not row_id:
-            row_id = '/'.join([str(x) for x in table_row if isinstance(x, str)])
-        x_path = self.root_path / row_id
-        x_hash = x_path.as_posix()
-        return super().append(table_row, row_id=x_hash, row_type=row_type)
+        # if not row_id:
+        #    row_id = '/'.join([str(x) for x in table_row if isinstance(x, str)])
+        # x_path = self.root_path / row_id
+        # x_hash = x_path.as_posix()
+        return super().append(table_row, row_id=row_id, row_type=row_type)
 
     @abstractmethod
     def read_dir(self):

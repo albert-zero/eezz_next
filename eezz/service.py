@@ -73,7 +73,7 @@ class TService:
     @property
     def public_path(self) -> Path:
         """ :meta private: """
-        return self.root_path / 'public'
+        return self.root_path
 
     @property
     def application_path(self) -> Path:

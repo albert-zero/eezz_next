@@ -13,6 +13,7 @@ import  io
 import  json
 import  uuid
 import  copy
+import  re
 from    copy import deepcopy
 
 from    pathlib         import Path
@@ -239,11 +240,13 @@ class THttpAgent(TWebSocketAgent):
 
                 # logger.debug(f'{x_data} ==> {x_list_items}')
                 if x_tag.has_attr('data-eezz-template') and x_tag['data-eezz-template'] == 'websocket':
-                    x_path      = Path(x_service.resource_path / 'websocket.js')
-                    x_ws_descr  = """var g_eezz_socket_addr = "ws://{host}:{port}";\n """.format(host=TService().host, port=TService().websocket_addr, args='')
-                    x_ws_descr += """var g_eezz_arguments   = "{args}";\n """.format(args='')
+                    x_path = Path(x_service.resource_path / 'websocket.js')
                     with x_path.open('r') as f:
-                        x_ws_descr += f.read()
+                        x_ws_descr = f.read()
+
+                    x_ws_connect  = """ws://{host}:{port}""".format(host=TService().host, port=TService().websocket_addr)
+                    x_ws_descr    = re.sub(r"""(g_eezz_socket_addr\s*=\s*)("\S+")""", rf"""\1 "{x_ws_connect}" """, x_ws_descr)
+
                     x_tag.string = x_ws_descr
             except (UnexpectedCharacters,  UnexpectedEOF) as ex:
                 logger.error(f'{repr(ex)}  position = {ex.pos_in_stream} in {x_data=}')
