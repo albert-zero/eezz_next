@@ -1,6 +1,6 @@
 [project]
 name 		= "eezz"
-version 	= "0.0.7"
+version 	= "0.0.9"
 authors 	= [
   { name="Albert Zedlitz", email="albert.zedlitz@eezz.biz" }
 ]
@@ -9,12 +9,12 @@ dependencies    = [
 	"beautifulsoup4",
     "pycryptodome",
 	"loguru",
-    "lark>=1.2.0"
+    "lark>=1.0"
 ]
 
 description = "HTML User Interface for Python"
 readme      = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
