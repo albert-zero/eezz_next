@@ -163,16 +163,15 @@ class TService:
             x_list  = description.split('.')
             x, y, z = x_list[0], x_list[1], x_list[2]
         except IndexError as x_except:
-            logger.exception(x_except)
+            logger.exception(f'Check assign specification: package.module.class versus {description}')
             raise x_except
 
-        x_path = self.application_path / x
-
+        x_path = self.application_path
         if not str(x_path) in sys.path:
             sys.path.append(str(x_path))
 
         try:
-            x_module    = import_module(y)
+            x_module    = import_module(f'{x}.{y}')
             if force_reload:
                 x_module = reload(x_module)
 
@@ -182,6 +181,9 @@ class TService:
             logger.debug(f'assign {obj_id} {x}/{y}/{z}')
         except AttributeError as x_except:
             logger.exception(x_except)
+        except ModuleNotFoundError as x_except:
+            logger.critical(x_except)
+            exit(0)
 
     def get_object(self, obj_id: str) -> Any:
         """ Get the object for a given ID
@@ -236,7 +238,7 @@ class TServiceCompiler(Transformer):
     @staticmethod
     def selector_string(item):
         """ :meta private: """
-        return f'[{'.'.join(item)}]'
+        return f"[{'.'.join(item)}]"
 
     @staticmethod
     def array_element(item):

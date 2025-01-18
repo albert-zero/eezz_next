@@ -193,7 +193,7 @@ class THttpAgent(TWebSocketAgent):
                 x_chrom['id'] = str(uuid.uuid1())[:8]
             self.compile_data(x_parser, x_chrom.css.select('[data-eezz]'), x_chrom['id'])
 
-        # Compiling the reset of the document
+        # Compiling the rest of the document
         self.compile_data(x_parser, x_soup.css.select('[data-eezz]'), '', a_query)
         return x_soup.prettify()
 
@@ -486,7 +486,8 @@ class THttpAgent(TWebSocketAgent):
                 if x_tag.string:
                     x_tag.string = x_tag.string.format(cell=x_cell)
                     if x_format := x_tag.attrs.get('data-eezz-format'):
-                        x_html  = f'<p>{x_format.join(x_tag.string.split('\n\n'))}</p>'
+                        x_text  = x_tag.string.split('\n\n')
+                        x_html  = f'<p>{x_format.join(x_text)}</p>'
                         x_soup  = BeautifulSoup(x_html, 'html.parser')
                         x_tag.string = ''
                         x_tag.append(x_soup.p)

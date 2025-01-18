@@ -52,7 +52,7 @@ class TLogger(TTable):
         log_record = log_json['record']
 
         log_entry = [log_record['time']['timestamp'], log_record['level']['icon'],
-                     f'{log_record['module']}:{log_record['function']}-{log_record['line']}',
+                     f"{log_record['module']}:{log_record['function']}-{log_record['line']}",
                      log_record['message'][:150]]
         self.append(log_entry, row_type='body')
 

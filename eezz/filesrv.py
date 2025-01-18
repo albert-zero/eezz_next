@@ -5,6 +5,7 @@
     * :py:class:`eezz.filesrv.TFile`:        Takes a chunk of data and merges it to a file
     * :py:class:`eezz.filesrv.TEezzFile`:    Extends TFile and implements encryption and decryption for transmitted data
     * :py:class:`eezz.filesrv.TFileMode`:    Enum file-mode for TEezzFiles
+    * :py:class:`eezz.filesrv.TFileEncryptionError`:  Detect an error during reading an encrypted file
 
     This module supports a download of big files in chunks and ensures, that the incoming fragments are
     put together in the correct order again. Furthermore, a hash is calculated for each chunk, so that the
@@ -27,6 +28,7 @@ from    enum           import Enum
 
 
 class TFileEncryptionError(Exception):
+    """ Exception handling for encrypted files """
     def __init__(self, message):
         super().__init__(message)
         self.message = message
@@ -46,7 +48,7 @@ class TFileMode(Enum):
 
 @dataclass(kw_only=True)
 class TFile:
-    """ Class to be used as file download handler. It accepts chunks of data in separate calls
+    """ TFile supports chunked file transfer.
 
     :param file_type:   User defined file type
     :param destination: Path to store the file
@@ -105,8 +107,7 @@ class TFile:
 @dataclass(kw_only=True)
 class TEezzFile(TFile):
     """ Derived from TFile, this class allows encryption and decryption using AES key.
-    After finishing the transfer, the instance is pushed into the response queue, which allows to implement a
-    supervisor thread, which blocks on the queue reading
+    Each chunk generates a hash, which could be collected and saved to validate the encrypted data stream.
 
     :param Crypto.Random.new(16)  key:          AES key for cypher
     :param Crypto.Random.new(16)  vector:       AES vector for cypher

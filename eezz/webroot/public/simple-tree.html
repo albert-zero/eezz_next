@@ -26,7 +26,7 @@
 			<!-- template for files with update on logger -->
             <tr data-eezz = "
 				template: 	row, match: is_file,
-                event: 		on_select(index={row.row_id}),
+                event: 		on_select(row={row.row_id}),
                 update: 	path_label.innerHTML={row.row_id},
 								eezz_log_table.tbody">
 				

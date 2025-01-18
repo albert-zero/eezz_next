@@ -1,15 +1,15 @@
 [project]
 name 		= "eezz"
-version 	= "0.0.1"
+version 	= "0.0.6"
 authors 	= [
   { name="Albert Zedlitz", email="albert.zedlitz@eezz.biz" }
 ]
 keywords        = ["HTML", "UserInterface"]
 dependencies    = [
-	"beautifulsoup4 >= 4.12.3",
-    "pycryptodome   >= 3.21.0",
-	"loguru         >= 0.7.2",
-     "lark          >= 1.2.2"
+	"beautifulsoup4",
+    "pycryptodome",
+	"loguru",
+    "lark>=1.2.0"
 ]
 
 description = "HTML User Interface for Python"

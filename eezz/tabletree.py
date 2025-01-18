@@ -60,20 +60,20 @@ class TTableTree(TTable):
         pass
 
     @override
-    def on_select(self, index: str) -> TTableRow:
+    def on_select(self, row: str) -> TTableRow | None:
         """ Handles the selection of a table row by a given index within a tree.
 
         This method iterates through the nodes and checks if a row is selected by
         calling the parent class's on_select method. If a row is found, it returns
         the selected table row.
 
-        :param  index:  The index of the table row to select.
-        :type   index:  str
+        :param  row:  The index of the table row to select.
+        :type   row:  str
         :return:        The selected table row if found.
         :rtype:         TTableRow
         """
         for x_table in self.nodes:
-            if x_row := super(TTableTree, x_table).on_select(index):
+            if x_row := super(TTableTree, x_table).on_select(row):
                 return x_row
 
     def open_dir(self, path: str) -> TTableRow | None:
