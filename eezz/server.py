@@ -8,6 +8,7 @@ This module implements the following classes
  
 """
 import  os
+import  re
 import  importlib.resources
 import  shutil
 from    pathlib         import Path
@@ -182,6 +183,15 @@ if __name__ == "__main__":
 
     x_httpd   = TWebServer((x_options.http_host, int(x_options.http_port)), THttpHandler, x_options.web_socket)
     logger.info(f"Starting HTTP Server on {x_options.http_host} at Port {x_options.http_port} ...")
+
+    x_path = Path(TService().resource_path / 'websocket.js')
+    if x_path.exists():
+        with x_path.open('r') as f:
+            x_ws_descr = f.read()
+        x_ws_connect = """ws://{host}:{port}""".format(host=x_options.http_host, port=x_options.web_socket)
+        x_ws_descr = re.sub(r"""(g_eezz_socket_addr\s*=\s*)("\S+")""", fr"""\1 "{x_ws_connect}" """, x_ws_descr)
+        with x_path.open('w') as f:
+            f.write(x_ws_descr)
 
     x_httpd.serve_forever()
     logger.info('shutdown')
