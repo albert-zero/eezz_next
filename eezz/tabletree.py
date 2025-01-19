@@ -10,7 +10,7 @@
 import os
 from    datetime    import datetime, timezone
 from    eezz.table  import TTable, TTableRow
-from    typing      import override, List
+from    typing      import List
 from    abc         import abstractmethod
 from    pathlib     import Path
 from    loguru      import logger
@@ -35,7 +35,7 @@ class TTableTree(TTable):
         self.expanded: bool       = False
         self.selected: TTableTree | None = None
 
-    @override
+    # @override
     def append(self, table_row: list, attrs: dict = None, row_type: str = 'body', row_id: str = '', exists_ok=False) -> TTableRow:
         """ Append a new row to the table with optional attributes and a specific row type.
 
@@ -59,7 +59,7 @@ class TTableTree(TTable):
         """
         pass
 
-    @override
+    # @override
     def on_select(self, row: str) -> TTableRow | None:
         """ Handles the selection of a table row by a given index within a tree.
 

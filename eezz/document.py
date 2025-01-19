@@ -23,7 +23,7 @@ from    service         import TService
 from    pathlib         import Path
 from    dataclasses     import dataclass
 from    math            import floor
-from    typing          import List, Dict, override
+from    typing          import List, Dict
 
 
 @dataclass(kw_only=True)
@@ -74,7 +74,7 @@ class TManifest:
         """:meta private:"""
         return self.keys_section_header
 
-    @override
+    # @override
     def __str__(self):
         for x, y in self.map_files.items():
             self.structure_document['document'][x] = y

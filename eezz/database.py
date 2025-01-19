@@ -16,7 +16,7 @@ import itertools
 import os
 from   datetime         import datetime, timezone
 
-from   typing_extensions import override
+# from   typing_extensions import override
 
 from   service           import TService
 from   dataclasses       import dataclass
@@ -223,7 +223,7 @@ class TDatabaseTable(TTable):
         if position == 0:
             self.is_synchron = False
 
-    @override
+    # @override
     def get_visible_rows(self, get_all=False) -> list:
         """ Retrieves a list of visible rows from the data source. By default, it
         synchronizes the data if not already synchronized, clears any existing data

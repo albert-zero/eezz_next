@@ -246,7 +246,7 @@ class TTable(UserList):
     Examples:
         Table instance:
 
-        >>> from table import TTable
+        >>> from eezz.table import TTable
         >>> my_table = TTable(column_names=['FileName', 'Size'], title='Directory')
         >>> # for file in Path('.').iterdir():
         >>> #    my_table.append(table_row=[file, file.stat().st_size])
