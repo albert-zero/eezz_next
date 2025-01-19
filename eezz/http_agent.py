@@ -48,8 +48,14 @@ class THttpAgent(TWebSocketAgent):
         x_result  = dict()
 
         if 'initialize' in request_data:
-            self.soup   = BeautifulSoup(request_data['initialize'], 'html.parser', multi_valued_attributes=None)
-            for x in self.soup.css.select('table[data-eezz-compiled]'):
+            # In environments of external HTTP server the compilation is not yet finished
+            self.soup           = BeautifulSoup(request_data['initialize'], 'html.parser', multi_valued_attributes=None)
+            x_compiled_elements = self.soup.css.select('table[data-eezz-compiled]')
+            if not x_compiled_elements:
+                self.soup           = self.prepare_page(self.soup, dict())
+                x_compiled_elements = self.soup.css.select('table[data-eezz-compiled]')
+
+            for x in x_compiled_elements:
                 x_html = self.generate_html_table(x, x['id'])
                 x_id   = x['id']
 
@@ -150,6 +156,38 @@ class THttpAgent(TWebSocketAgent):
             x_result = {'update': x_updates}
             return x_result
 
+    def prepare_page(self, a_soup, a_query) -> BeautifulSoup:
+        x_parser = Lark.open(str(Path(TService().resource_path) / 'eezz.lark'))
+
+        # The template table is used to add missing structures as default
+        x_templ_path = TService().resource_path / 'template.html'
+        with x_templ_path.open('r') as f:
+            x_template = BeautifulSoup(f.read(), 'html.parser', multi_valued_attributes=None)
+
+        x_templ_table = x_template.body.table
+        for x_chrom in a_soup.css.select('table[data-eezz]'):
+            if not x_chrom.css.select('caption'):
+                x_chrom.append(copy.deepcopy(x_templ_table.caption))
+            if not x_chrom.css.select('thead'):
+                x_chrom.append(copy.deepcopy(x_templ_table.thead))
+            if not x_chrom.css.select('tbody'):
+                x_chrom.append(copy.deepcopy(x_templ_table.tbody))
+            if not x_chrom.css.select('tfoot'):
+                x_chrom.append(copy.deepcopy(x_templ_table.tfoot))
+            if not x_chrom.has_attr('id'):
+                x_chrom['id'] = str(uuid.uuid1())[:8]
+            # Compile subtree using the current table id for events
+            self.compile_data(x_parser, x_chrom.css.select('[data-eezz]'), x_chrom['id'])
+
+        for x_chrom in a_soup.css.select('select[data-eezz], .clzz_grid[data-eezz]'):
+            if not x_chrom.has_attr('id'):
+                x_chrom['id'] = str(uuid.uuid1())[:8]
+            self.compile_data(x_parser, x_chrom.css.select('[data-eezz]'), x_chrom['id'])
+
+        # Compiling the rest of the document
+        self.compile_data(x_parser, a_soup.css.select('[data-eezz]'), '', a_query)
+        return a_soup
+
     def do_get(self, a_resource: Path | str, a_query: dict) -> str:
         """ Response to an HTML GET command
 
@@ -165,38 +203,8 @@ class THttpAgent(TWebSocketAgent):
         if isinstance(a_resource, Path):
             with a_resource.open('r', encoding="utf-8") as f:
                 x_html = f.read()
-
-        x_parser     = Lark.open(str(Path(x_service.resource_path) / 'eezz.lark'))
-        x_soup       = BeautifulSoup(x_html, 'html.parser', multi_valued_attributes=None)
-
-        # The template table is used to add missing structures as default
-        x_templ_path = x_service.resource_path / 'template.html'
-        with x_templ_path.open('r') as f:
-            x_template = BeautifulSoup(f.read(), 'html.parser', multi_valued_attributes=None)
-
-        x_templ_table = x_template.body.table
-        for x_chrom in x_soup.css.select('table[data-eezz]'):
-            if not x_chrom.css.select('caption'):
-                x_chrom.append(copy.deepcopy(x_templ_table.caption))
-            if not x_chrom.css.select('thead'):
-                x_chrom.append(copy.deepcopy(x_templ_table.thead))
-            if not x_chrom.css.select('tbody'):
-                x_chrom.append(copy.deepcopy(x_templ_table.tbody))
-            if not x_chrom.css.select('tfoot'):
-                x_chrom.append(copy.deepcopy(x_templ_table.tfoot))
-            if not x_chrom.has_attr('id'):
-                x_chrom['id'] = str(uuid.uuid1())[:8]
-            # Compile subtree using the current table id for events
-            self.compile_data(x_parser, x_chrom.css.select('[data-eezz]'), x_chrom['id'])
-
-        for x_chrom in x_soup.css.select('select[data-eezz], .clzz_grid[data-eezz]'):
-            if not x_chrom.has_attr('id'):
-                x_chrom['id'] = str(uuid.uuid1())[:8]
-            self.compile_data(x_parser, x_chrom.css.select('[data-eezz]'), x_chrom['id'])
-
-        # Compiling the rest of the document
-        self.compile_data(x_parser, x_soup.css.select('[data-eezz]'), '', a_query)
-        return x_soup.prettify()
+        x_soup = BeautifulSoup(x_html, 'html.parser', multi_valued_attributes=None)
+        return self.prepare_page(x_soup, a_query).prettify()
 
     @staticmethod
     def compile_data(a_parser: Lark, a_tag_list: list, a_id: str, a_query: dict = None) -> None:
@@ -245,7 +253,7 @@ class THttpAgent(TWebSocketAgent):
                         x_ws_descr = f.read()
 
                     x_ws_connect  = """ws://{host}:{port}""".format(host=TService().host, port=TService().websocket_addr)
-                    x_ws_descr    = re.sub(r"""(g_eezz_socket_addr\s*=\s*)("\S+")""", rf"""\1 "{x_ws_connect}" """, x_ws_descr)
+                    x_ws_descr    = re.sub(r"""(g_eezz_socket_addr\s*=\s*)("\S+")""", fr"""\1 "{x_ws_connect}" """, x_ws_descr)
 
                     x_tag.string = x_ws_descr
             except (UnexpectedCharacters,  UnexpectedEOF) as ex:

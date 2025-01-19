@@ -397,10 +397,19 @@ class TQuery:
 
     :param query: The query string in dictionary format
     """
+    m_query: dict = None
+
     def __init__(self, query: dict):
+        if not TQuery.m_query:
+            TQuery.m_query = query
+
         if query:
             for x_key, x_val in query.items():
                 setattr(self, x_key, ','.join(x_val))
+
+    @property
+    def query(self) -> dict:
+        return TQuery.m_query
 
 
 # --- Section for module tests
