@@ -60,7 +60,7 @@ function eezz_connect() {
     g_eezz_web_socket.onerror = function(a_error) {
         console.log('error on websocket ...');
         window.console.error(a_error);
-        eezz_status(a_error);
+        //eezz_status(a_error);
     }
 
     /* Error handling: Reopen connection */
