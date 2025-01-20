@@ -1,6 +1,6 @@
 [project]
 name 		= "eezz"
-version 	= "0.0.14"
+version 	= "1.0.0"
 authors 	= [
   { name="Albert Zedlitz", email="albert.zedlitz@eezz.biz" }
 ]
@@ -29,6 +29,6 @@ include = ["eezz", "eezz/webroot"]
 
 [project.urls]
 Homepage     = "https://eezz.biz"
+Repository   = "https://github.com/albert-zero/eezz_next"
 Introduction = "https://eezz.biz/eezz.pdf"
-Sources      = "https://github.com/albert-zero/eezz_next"
 
