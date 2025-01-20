@@ -319,8 +319,8 @@ class TTable(UserList):
         x_column_types = ['str'] * len(self.column_names)
 
         if not self.auto_eval_type:
-            x_column_types    = [str(x[1]) for x in self.column_names]
-            self.column_names = [str(x[0]) for x in self.column_names]
+            x_column_types = [str(x[1]) for x in self.column_names]
+        self.column_names = [str(x[0]) if isinstance(x, tuple) else x for x in self.column_names]
 
         if not self.column_descr:
             self.column_descr = [TTableColumn(index=x_inx, header=x_str, alias=x_str, width=len(x_str), type=x_column_types[x_inx], sort=False)
