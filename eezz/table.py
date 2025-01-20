@@ -32,7 +32,7 @@ from    collections.abc  import Callable
 from    collections import UserList
 from    dataclasses import dataclass
 from    itertools   import filterfalse
-from    typing      import List, Dict, NewType, Any
+from    typing      import List, Dict, NewType, Any, Tuple
 from    enum        import Enum
 from    pathlib     import Path
 from    datetime    import datetime, timezone
@@ -73,6 +73,16 @@ class TSort(Enum):
     NONE    = 0             #: :meta private:
     ASC     = 1             #: :meta private:
     DESC    = 2             #: :meta private:
+
+
+class TOperator(Enum):
+    """ sorting order for a table column. """
+    GT      = '>'             #: :meta private:
+    GE      = '>='            #: :meta private:
+    LT      = '<'             #: :meta private:
+    LE      = '<='            #: :meta private:
+    EQ      = '='             #: :meta private:
+    LIKE    = 'like'          #: :meta private:
 
 
 @dataclass
@@ -272,7 +282,7 @@ class TTable(UserList):
         >>> print(f"{my_table.format_types['iban'](30, iban)}")
                 de12 1234 1234 1234 12
     """
-    column_names:       List[str]                       #: :meta private: List of column names
+    column_names:       List[str] | List[Tuple]         #: :meta private: List of column names
     title:              str         = 'TTable'          #: :meta private: Table title name
     column_names_map:   Dict[str, TTableCell]   = None  #: :meta private: Map name to columns
     column_names_alias: Dict[str, str]          = None  #: :meta private: Translated column names
@@ -301,11 +311,19 @@ class TTable(UserList):
         The formatter sends size aad value of the column and receives the formatted string """
         # Init the UserList and keep track on the table instances
         super().__init__()
-        self.table_index   = dict()
-        self.visible_items = int(self.visible_items)
+        self.table_index    = dict()
+        self.visible_items  = int(self.visible_items)
+        self.auto_eval_type = False in [isinstance(x, tuple) for x in self.column_names]
+
+        # check if we have a list of tuples
+        x_column_types = ['str'] * len(self.column_names)
+
+        if not self.auto_eval_type:
+            x_column_types    = [str(x[1]) for x in self.column_names]
+            self.column_names = [str(x[0]) for x in self.column_names]
 
         if not self.column_descr:
-            self.column_descr = [TTableColumn(index=x_inx, header=x_str, alias=x_str, width=len(x_str), sort=False)
+            self.column_descr = [TTableColumn(index=x_inx, header=x_str, alias=x_str, width=len(x_str), type=x_column_types[x_inx], sort=False)
                                  for x_inx, x_str in enumerate(self.column_names)]
 
         x_cells               = [TTableCell(name=x_str, value=x_str, index=x_inx, width=len(x_str)) for x_inx, x_str in enumerate(self.column_names)]
@@ -315,10 +333,13 @@ class TTable(UserList):
 
         if not self.format_types:
             self.format_types = {
-                'int':      lambda x_size, x_val: ' {{:>{}}} '.format(x_size).format(x_val),
-                'str':      lambda x_size, x_val: ' {{:<{}}} '.format(x_size).format(x_val),
-                'float':    lambda x_size, x_val: ' {{:>{}.2}} '.format(x_size).format(x_val),
-                'datetime': lambda x_size, x_val: ' {{:>{}}} '.format(x_size).format(x_val.strftime("%m/%d/%Y, %H:%M:%S"))}
+                'int':      lambda x_size, x_val: ' {{:>{}}} '.format(x_size).format(x_val)
+                                    if isinstance(x_val, int) else self.format_types['str'](x_size, x_val),
+                'str':      lambda x_size, x_val: ' {{:<{}}} '.format(x_size).format(str(x_val)),
+                'float':    lambda x_size, x_val: ' {{:>{}.2}} '.format(x_size).format(x_val)
+                                    if isinstance(x_val, float) else self.format_types['str'](x_size, x_val),
+                'datetime': lambda x_size, x_val: ' {{:>{}}} '.format(x_size).format(x_val.strftime("%m/%d/%Y, %H:%M:%S"))
+                                    if isinstance(x_val, datetime) else self.format_types['str'](x_size, x_val)}
 
     def get_column(self, column_name: str) -> TTableColumn | None:
         """:meta private:"""
@@ -329,7 +350,7 @@ class TTable(UserList):
         Clear the filters and return to original output """
         self.apply_filter_column = False
 
-    def filter_rows(self, row_filter_descr: List[List[str]]):
+    def filter_rows(self, row_filter_descr: List[List[Tuple]]):
         """:meta private:
         Set the row filter: Each inner list is joined with 'AND'.
         The outer list joins the inner lists with 'OR' """
@@ -402,8 +423,9 @@ class TTable(UserList):
 
         if x_inx == 0:
             self.table_index.clear()
-            for x_cell, x_descr in x_row_descr:
-                x_descr.type = type(x_cell).__name__
+            if self.auto_eval_type:
+                for x_cell, x_descr in x_row_descr:
+                    x_descr.type = type(x_cell).__name__
 
         # Check if the row-id is unique
         if self.table_index.get(row_id):
@@ -535,7 +557,7 @@ class TTable(UserList):
         yield from x_cursor.fetchall()
 
     @staticmethod
-    def create_filter(filter_descr: List[List[str]]) -> tuple:
+    def create_filter(filter_descr: List[List[Tuple]]) -> tuple:
         """ Constructs a SQL filter query and its corresponding arguments from a structured filter description.
         The filter description consists of nested lists representing conditions connected by logical "and" and "or"
         operators. Each condition within "and" is specified as a string with a column name, an operator, and a value.
@@ -549,11 +571,12 @@ class TTable(UserList):
         x_where     = list()
         x_args      = list()
         x_or_list   = list()
+        x_op: TOperator
 
         for x_or in filter_descr:
             for x_and in x_or:
-                x_column_name, x_op, x_value = x_and.split(' ', 2)
-                x_where.append(f'{x_column_name} {x_op} ?')
+                x_column_name, x_op, x_value = x_and
+                x_where.append(f'{x_column_name} {x_op.value} ?')
                 x_args.append(x_value)
             x_or_list.append(f"""({' and '.join(x_where)})""")
             x_where.clear()
@@ -670,7 +693,12 @@ class TTable(UserList):
             x_row_descr     = zip(x_cells, x_column_descr)
             x_format_descr  = [(x_descr.type, x_descr.width,     x_cell.value) if x_descr.type in self.format_types else ('str',        x_descr.width, str(x_cell.value)) for x_cell, x_descr in x_row_descr]
 
-            x_formatted_row = '|'.join([self.format_types[x_type](x_width, x_value) for x_type, x_width, x_value in x_format_descr])
+            try:
+                x_formatted_row = '|'.join([self.format_types[x_type](x_width, x_value) for x_type, x_width, x_value in x_format_descr])
+            except AttributeError as x_ex:
+                logger.exception(f'format error {x_ex}')
+                x_formatted_row = str(x_ex)
+
             print(f'{x_offset}|{x_formatted_row}|', file=file)
             if x_row.child:
                 x_row.child.print(level + 1)
@@ -725,12 +753,11 @@ def test_table():
     x_table.print(file=debug_out)
     logger.debug(debug_out.getvalue())
 
-    # x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[['Size > 20000'],['File like %py']])]
-    x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[["Size > 10000"], ["File like %.py"]])]
+    x_result = [x for x in x_table.do_select(get_all=True, filter_descr=[[("Size",  TOperator.GT,  "10000")], [("File", TOperator.LIKE, "%.py")]])]
     logger.debug(f'--- result = {x_result}')
 
     x_table.visible_items = 100
-    x_table.filter_rows([["Size > 10000"], ["File like %.py"]])
+    x_table.filter_rows([[("Size", TOperator.LT, "10000")], [("File", TOperator.LIKE, "%.py")]])
     x_table.print()
 
 
