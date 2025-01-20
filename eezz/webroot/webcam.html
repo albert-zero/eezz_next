@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<head>
+    <script data-eezz="template:websocket"></script>
+    <link rel="stylesheet" href="/css/eezz.css">
+    <style>
+    </style>
+
+</head>
+<html lang="en">
+<body>
+    <h2 id="eezz-status"></h2>
+    <meta charset="UTF-8">
+    <title>Camera</title>
+    <h1>WebCam</h1>
+
+    <div class='clzz_grid'
+        id="WebCamClass" 
+        data-eezz='
+            assign: examples.webcam.TCamera(), 
+            update: webcam_img.src = read_frame()'>
+    </div>
+
+    <img id='webcam_img'/>
+</body>
+</html>

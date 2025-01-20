@@ -1,15 +1,15 @@
 [project]
 name 		= "eezz"
-version 	= "0.0.12"
+version 	= "0.0.14"
 authors 	= [
   { name="Albert Zedlitz", email="albert.zedlitz@eezz.biz" }
 ]
-keywords        = ["HTML", "UserInterface"]
+keywords        = ["HTML", "User Interface"]
 dependencies    = [
 	"beautifulsoup4",
     "pycryptodome",
 	"loguru",
-    "lark>=1.0"
+    "lark>=1.2.1"
 ]
 
 description = "HTML User Interface for Python"
@@ -28,6 +28,7 @@ build-backend = "hatchling.build"
 include = ["eezz", "eezz/webroot"]
 
 [project.urls]
-Homepage = "https://github.com/albert-zero/eezz_next"
-
+Homepage     = "https://eezz.biz"
+Introduction = "https://eezz.biz/eezz.pdf"
+Sources      = "https://github.com/albert-zero/eezz_next"
 
