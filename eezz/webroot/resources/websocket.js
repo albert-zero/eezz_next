@@ -165,7 +165,8 @@ function dynamic_update(a_update_json) {
     if (x_elem == null) {
         if (x_dest.length > 1) {
             x_elem = document.querySelector('[data-eezz-subtree-id=' + x_dest[0] + ']');
-            x_elem = x_elem.querySelector(x_dest[1]);
+            if (x_element)
+                x_elem = x_elem.querySelector(x_dest[1]);
         }
 
         if (x_elem == null) {
