@@ -4,7 +4,7 @@ Graphical User Interface for Python
 EEZZ provides your application with a fast, easy to use and lightweight user interface.
 - It is bidirectional  
 - It is platform independent
-- It separates user interface from application development
+- It is open source
 
 The huge features list includes
 - Tree, Grid and Input-Form Views
@@ -33,6 +33,7 @@ Activate the nginx WebSocket interface (see https://nginx.org/en/docs/http/webso
 
 **python -m eezz.server --webroot /var/www/html** 
 
-
+EEZZ is your highway from prototype to product. It ensures shorter development cycles,
+easier ways to test your software and it encourages parallelizing your tasks. 
 
 

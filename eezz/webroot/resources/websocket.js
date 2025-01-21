@@ -14,7 +14,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-var g_eezz_socket_addr = "ws://localhost:8100";
+var g_eezz_socket_addr =   "ws://localhost:8100"  ;
 var g_eezz_arguments   = "";
 var g_eezz_web_socket;
 
