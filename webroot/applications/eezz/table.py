@@ -32,7 +32,7 @@ from    collections.abc  import Callable
 from    collections import UserList
 from    dataclasses import dataclass
 from    itertools   import filterfalse
-from    typing      import List, Dict, NewType, Any
+from    typing      import List, Dict, NewType, Any, Generator
 from    enum        import Enum
 from    pathlib     import Path
 from    datetime    import datetime, timezone
@@ -446,7 +446,7 @@ class TTable(UserList):
         """:meta private:"""
         return self.selected_row
 
-    def get_next_values(self, search_filter: Callable[[TTableRow], bool]) -> tuple:
+    def get_next_values(self, search_filter: Callable[[TTableRow], bool]) -> Generator[tuple, None, None]:
         """ Iterates over rows in the dataset and yields a tuple of values for each
         row that matches the given search filter. The search filter is a callable
         that should return a boolean indicating whether a particular row matches
@@ -474,7 +474,7 @@ class TTable(UserList):
         else:
             return None
 
-    def do_select(self, get_all: bool = False, filter_descr: list = None) -> list:
+    def do_select(self, get_all: bool = False, filter_descr: list = None) -> Generator[list]:
         """ Executes a SELECT statement on the SQLite database associated with the current
         object and retrieves data based on the specified filter and options. The data
         can be fetched from an existing database or an in-memory table. Supports optional
@@ -559,7 +559,7 @@ class TTable(UserList):
             x_where.clear()
         return ' or '.join(x_or_list), x_args
 
-    def get_visible_rows(self, get_all: bool = False) -> List[TTableRow]:
+    def get_visible_rows(self, get_all: bool = False) -> Generator[TTableRow, None, None]:
         """ Retrieves visible rows from the data source. The rows are filtered based
         on column descriptions and filter expressions, and can be further controlled
         by whether all rows should be retrieved or just a limited visible set.
@@ -573,7 +573,7 @@ class TTable(UserList):
         if self.row_filter_descr and not self.is_synchron:
             for x_selected in self.do_select(get_all=get_all, filter_descr=self.row_filter_descr):
                 yield self.data[x_selected[-1]]
-            return None
+            return
 
         x_filter_row = dict()
         for x_col in filterfalse(lambda xx_col: not xx_col.filter, self.column_descr):

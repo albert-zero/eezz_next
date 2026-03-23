@@ -160,3 +160,4 @@ def test_table_tree():
 if __name__ == '__main__':
     """ :meta private: """
     test_table_tree()
+    logger.success('test table')

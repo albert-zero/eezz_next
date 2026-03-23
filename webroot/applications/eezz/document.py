@@ -16,7 +16,7 @@ import  tarfile
 import  json
 from    loguru      import logger
 
-from    abc         import abstractmethod
+from abc import abstractmethod, ABC
 from    io          import BytesIO
 from    filesrv     import TFile, TFileMode
 from    service     import TService
@@ -86,7 +86,7 @@ class TManifest:
 
 
 @dataclass(kw_only=True)
-class TDocument:
+class TDocument(ABC):
     """ Manages documents
     A document is a zipped TAR file, w  ith a Metafile and a collection of data files.
 
@@ -227,7 +227,7 @@ class TDocument:
                 with x_source_path.open("rb") as x_input:
                     x_zip_file.addfile(tarinfo=x_tar_info, fileobj=x_input)
 
-    def read_file(self, document_title: str, file_name: str) -> bytes:
+    def read_file(self, document_title: str, file_name: str) -> bytes | None:
         """ Returns the bytestream of the specified file in the archive
 
         :param str document_title:  The title of the document is the name of the archive
@@ -240,6 +240,7 @@ class TDocument:
                 if x_dest.name == file_name:
                     if x_buffer := x_zip_file.extractfile(x_tar_info):
                         return x_buffer.read()
+            return None
 
     def extract_file(self, document_title: str, file_pattern: str = None, dest_root: Path = '.') -> None:
         """ Restores the specified files, given by the regular expression in file_pattern
@@ -263,10 +264,16 @@ class TDocument:
 
 
 # -- section for module tests
+class TMyDoc(TDocument):
+    def create_document(self):
+        logger.success('all files in place')
+        pass
+
+
 def test_document():
     """:meta private:"""
     logger.debug('Test class Document')
-    my_doc = TDocument(shelf_name='First', attributes=['title', 'desc', 'author', 'price', 'valid'], file_sources=['main'])
+    my_doc = TMyDoc(shelf_name='First', attributes=['title', 'desc', 'author', 'price', 'valid'], file_sources=['main'])
     logger.success('test document')
 
 

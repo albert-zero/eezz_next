@@ -13,8 +13,8 @@ from    loguru      import logger
 
 import re
 import itertools
-import json
 import sys
+# noinspection PyProtectedMember
 from   bs4                  import Tag, BeautifulSoup
 from   pathlib              import Path
 from   importlib            import import_module
@@ -395,7 +395,7 @@ class TQuery:
 
 
 # --- Section for module tests
-def test_parser(source: str) -> json:
+def test_parser(source: str) -> list:
     """ :meta private: """
 
     html = '<td style="font-size: .8em; font-family: monospace; background-color: rgb(244, 244, 244);"></td>'
@@ -446,48 +446,4 @@ if __name__ == '__main__':
     """ :meta private: """
     # test parser
     TService.set_environment(root_path='/Users/alzer/Projects/github/eezz_full/webroot')
-
-    logger.debug(f'{TService().resource_path=}')
-    logger.debug("Test Lark Parser")
-
-    test_parser_area()
-
-    logger.debug("assign statement")
-    x_source = """assign: examples.directory.TDirView(title="", path="/Users/alzer/Projects/github/eezz_full/webroot")"""
-    test_parser(source=x_source)
-
-    logger.debug("update statement 1")
-    x_source = """ event: on_select(index={row.row_id}), update: elem1.innerHTML = {object.path} """
-    test_parser(source=x_source)
-
-    logger.debug("update statement 2")
-    x_source = """ event: on_select(index={row.row_id}), update: elem1.innerHTML = {object.path}, elem2.innerHTML = {object.row_id}  """
-    x_result = test_parser(source=x_source)
-    logger.debug(x_result)
-
-    x_source = 'name: directory, assign: examples.directory.TDirView(path=".", title="dir"), process:sync'
-    x_result = test_parser(source=x_source)
-    logger.debug(x_result)
-
-    x_source = "event: FormInput.append(table_row = [field_index.value]), reference: cell.title"
-    x_result = test_parser(source=x_source)
-    logger.debug(x_result)
-
-    x_source = """ 
-                        template: cell (main), 
-                        onload:   this.src = read_file(document_title={cell.attrs},file_name={cell.value}) """
-
-    x_result = test_parser(source=x_source)
-    logger.debug(f'{x_source} ==> {x_result}')
-
     logger.success('test finished')
-    """
-    # test parser exception and logging
-    logger.debug(msg="Test the parser: wrong download statement:")
-    logger.debug(msg="download: files(name=test1, author=albert), documents( main=main, prev=prev )")
-
-    try:
-        test_parser(source=""download: files(name=test1, author=albert), documents( main=main, prev=prev )"")
-    except UnexpectedCharacters as xx_except:
-        logger.error(msg='Test parser exception successful', stack_info=True)
-"""

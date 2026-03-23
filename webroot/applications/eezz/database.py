@@ -21,7 +21,7 @@ from   typing_extensions import override
 from   service           import TService
 from   dataclasses       import dataclass
 from   table             import TTable, TNavigation, TTableRow, TTableColumn
-from   typing            import List
+from typing import List, Generator
 from   pathlib           import Path
 
 
@@ -224,7 +224,7 @@ class TDatabaseTable(TTable):
             self.is_synchron = False
 
     @override
-    def get_visible_rows(self, get_all=False) -> list:
+    def get_visible_rows(self, get_all=False) -> Generator[TTableRow, None, None]:
         """ Retrieves a list of visible rows from the data source. By default, it
         synchronizes the data if not already synchronized, clears any existing data
         in the process, and appends new data based on the current row filter

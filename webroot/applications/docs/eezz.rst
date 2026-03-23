@@ -107,13 +107,6 @@ module eezz.http\_agent
    :undoc-members:
    :show-inheritance:
 
-module eezz.seccom
-------------------
-
-.. automodule:: eezz.seccom
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 module eezz.server
 ------------------
@@ -130,16 +123,6 @@ module eezz.service
    :members:
    :undoc-members:
    :show-inheritance:
-
-module eezz.session
--------------------
-
-.. automodule:: eezz.session
-
-   .. autoclass:: TSession(sid, name)
-      :members:
-      :undoc-members:
-      :show-inheritance:
 
 
 module eezz.websocket
@@ -168,29 +151,3 @@ module eezz.websocket
       :members:
       :show-inheritance:
 
-
-module eezz.mobile
----------------------
-
-.. automodule:: eezz.mobile
-
-   .. autoclass:: TMobileDevices()
-      :members:
-      :undoc-members:
-      :show-inheritance:
-
-
-module eezz.blueserv
---------------------
-
-.. automodule:: eezz.blueserv
-
-   .. autoclass:: TBluetoothService( address )
-      :members:
-      :undoc-members:
-      :show-inheritance:
-
-   .. autoclass:: TBluetooth( None )
-      :members:
-      :undoc-members:
-      :show-inheritance:

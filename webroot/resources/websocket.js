@@ -48,12 +48,22 @@ function eezz_connect() {
         var x_body    = document.body;
         var x_json    = {"initialize": x_body.innerHTML, "args": g_eezz_arguments, 'title': x_title};
         g_eezz_web_socket.send(JSON.stringify(x_json));
+
+        var x_elem = document.getElementById('eezz-status');
+        if (x_elem) {
+            x_elem.innerHTML = 'connected';
+        }
     }
     
     /* Error handling: Reopen connection */
     g_eezz_web_socket.onerror = function(a_error) {
         console.log('error on websocket ...');
         window.console.error(a_error);
+
+        var x_elem = document.getElementById('eezz-status');
+        if (x_elem) {
+            x_elem.innerHTML = 'disconnected ' + a_error;
+        }
     }
 
     /* Wait for the application and update the document          */
@@ -85,6 +95,10 @@ function eezz_connect() {
                     }
                     dynamic_update(x_update_json);
                 } catch(err) {
+                    var x_elem = document.getElementById('eezz-status');
+                    if (x_elem) {
+                        x_elem.innerHTML = 'error ' + err;
+                    }
                     console.log("error " + err);
                 }
             }

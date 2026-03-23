@@ -1,54 +1,71 @@
 <!DOCTYPE html>
+<meta charset="UTF-8">
 <head>
     <script data-eezz="template:websocket"></script>
     <link rel="stylesheet" href="/css/eezz.css">
     <style>
-        table {
+		table {
+            border: 0px solid orange;
             position: relative;
             display: inline-block;
             background-color: white;
             left: 30px;
         }
 
-        .clz_output {
-            background-color: yellow;
-            border: 1px solid black;
-        }
-
         table[data-eezz-subtree-id] {
-            border-left: 2px solid black;
+            border-left: 1px solid black;
             // background-color: gray;
         }
-
-        tr td:first-child {
-             // border: 1px solid black;
-             // background-color: gray;
-        }
-
+	
     </style>
 
 </head>
 <html lang="en">
 <body>
+	<!-- Optional output of status -->
     <h2 id="eezz-status"></h2>
-    <meta charset="UTF-8">
-    <title>Title</title>
-    <h1>Simple table</h1>
+    <title>Directory View</title>
+    
+	<h1>Example for EEZZ TTableTree</h1>
 
-    <table id="Directory" data-eezz='assign: examples.directory.TDirTree(title="Simple Tree", path="/Users/alzer/Projects/github/eezz_full/webroot")'>
+	<!-- assign table to python -->
+    <table 
+		id	= "Directory" 
+		data-eezz = 
+			'assign: examples.directory.TDirTree(
+				title = "Directory View", 
+				path  = "/Users/alzer/Projects/github/eezz_full/webroot")'>
         <tbody>
-            <tr data-eezz="template: row, match: is_file,
-                            event  : on_select(index={row.row_id}),
-                            update : path_label.innerHTML={row.row_id}">
-                <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
-            <tr data-eezz='template: row, match: is_dir,
-                            event  : open_dir(path={row.row_id}),
-                            update : this.subtree=this.tbody.tfoot, path_label.innerHTML={row.row_id}'>
-                <td class='clzz_{cell.type}' data-eezz="template: cell">{cell.value}</td></tr>
+			<!-- template for files with update on logger -->
+            <tr data-eezz="
+				template: 	row, match: is_file,
+                event: 		on_select(index={row.row_id}),
+                update: 	path_label.innerHTML={row.row_id},
+								eezz_log_table">
+				
+                <!-- cell type specific formats possible -->
+				<td class='clzz_{cell.type}' 
+					data-eezz = "template: cell">{cell.value}</td></tr>
+					
+			<!-- template for directories with update on logger -->
+            <tr data-eezz='
+				template: 	row, match: is_dir,
+                event: 		open_dir(path={row.row_id}),
+                update: 	this.subtree=this.tbody.tfoot, 
+								path_label.innerHTML={row.row_id},
+								eezz_log_table'>
+                
+                <!-- cell type specific formats possible -->
+				<td class='clzz_{cell.type}' 
+					data-eezz="template: cell">{cell.value}</td></tr>
         </tbody>
     </table>
 
-    <h3>Output On Select</h3>
-    <span class="clz_output" id="path_label"></span>
+    <h3>Selected</h3>
+    <div id="path_label"></div>
+	
+    <!-- Optional logger output -->
+	<table id="eezz_log_table" data-eezz="assign: eezz.websocket.TLogger ()"></table >
+
 </body>
 </html>
